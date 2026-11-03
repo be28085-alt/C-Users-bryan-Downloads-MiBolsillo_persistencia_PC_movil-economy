@@ -78,7 +78,7 @@ La aplicación C++ es otro programa. Actualmente carga datos de demostración al
 ### Verificación
 - `node --check` para todos los JavaScript del proyecto: correcto.
 - `node test_shared.js`: `OK`.
-- No se ejecutó una prueba end-to-end en navegador ni se conectó a una base de datos remota. Los datos siguen dependiendo del almacenamiento local configurado por cada arquitectura.
+- No se ejecutó una prueba end-to-end en navegador ni se conectó a una base de datos remota. Los datos siguen dependiendo del almacenamiento local configurado por cada arquitectura....
 
 ## Persistencia compartida entre PC y móvil
 
