@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MiBolsillo · Control de Finanzas Personales | Ingeniería de Sistemas</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js para gráficos en escritorio -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Estilos de Escritorio -->
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+
+  <!-- BARRA SUPERIOR INFORMATIVA: CONMUTADOR DE VERSIONES SEPARADAS -->
+  <header class="top-notice-bar">
+    <div class="top-notice-left">
+      <span class="top-notice-badge">ESCRITORIO / PC</span>
+      <span>MiBolsillo · Sistema Integral de Finanzas Personales (Ingeniería de Sistemas - Semestre I)</span>
+    </div>
+    <div class="top-notice-right">
+      <a href="desktop.html" class="btn-switch-version active" title="Versión de escritorio">
+        💻 Versión PC
+      </a>
+      <a href="mobile.html" class="btn-switch-version" title="Ir a la Versión Móvil de smartphone">
+        📱 Abrir Versión Móvil
+      </a>
+    </div>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL: SIDEBAR + MAIN AREA -->
+  <div class="pc-app-layout">
+
+    <!-- ================================================================
+         SIDEBAR IZQUIERDO DE ESCRITORIO
+         ================================================================ -->
+    <aside class="pc-sidebar" id="pcSidebar">
+      <!-- Marca y Logotipo -->
+      <div class="sidebar-brand-box">
+        <div class="brand-icon-coin">❖</div>
+        <div class="brand-info">
+          <h2>mi dinero</h2>
+          <span>Finanzas personales</span>
+        </div>
+      </div>
+
+      <!-- Menú de Navegación Vertical -->
+      <ul class="sidebar-nav-list">
+        <li>
+          <button class="nav-item-btn active" data-view="inicio" onclick="pcApp.switchView('inicio')">
+            <span class="nav-icon">🏠</span>
+            <span>Inicio</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="movimientos" onclick="pcApp.switchView('movimientos')">
+            <span class="nav-icon">⇋</span>
+            <span>Movimientos</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="registrar" onclick="pcApp.switchView('registrar')">
+            <span class="nav-icon">⊕</span>
+            <span>Registrar movimiento</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="plan" onclick="pcApp.switchView('plan')">
+            <span class="nav-icon">🎯</span>
+            <span>Mi plan</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="metas" onclick="pcApp.switchView('metas')">
+            <span class="nav-icon">🐖</span>
+            <span>Metas de ahorro</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="deudas" onclick="pcApp.switchView('deudas')">
+            <span class="nav-icon">💳</span>
+            <span>Deudas</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="informes" onclick="pcApp.switchView('informes')">
+            <span class="nav-icon">📊</span>
+            <span>Informes</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="perfil" onclick="pcApp.switchView('perfil')">
+            <span class="nav-icon">⚙️</span>
+            <span>Perfil y ajustes</span>
+          </button>
+        </li>
+      </ul>
+
+      <!-- Pie del Sidebar: Academic & User -->
+      <div class="sidebar-footer">
+        <button class="btn-sidebar-academic" onclick="pcApp.openAcademicModal()">
+          <span>🎓</span> Fundamentos Académicos
+        </button>
+        <div class="sidebar-user-capsule" onclick="pcApp.switchView('perfil')">
+          <div class="user-avatar-mini" id="sidebarAvatar">LM</div>
+          <div class="user-mini-meta">
+            <strong id="sidebarUserName">Lucía Martín</strong>
+            <small>lucia.martin@email.com</small>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ================================================================
+         ÁREA PRINCIPAL DE CONTENIDO
+         ================================================================ -->
+    <main class="pc-main-wrapper">
+
+      <!-- TOP HEADER FIJO DEL CONTENIDO -->
+      <header class="pc-top-header">
+        <div class="header-left">
+          <div class="page-breadcrumb">
+            <span>Finanzas personales</span>
+            <span>/</span>
+            <strong id="lblBreadcrumbTitle">Balance general</strong>
+          </div>
+        </div>
+
+        <!-- Barra de Búsqueda Interactiva -->
+        <div class="header-search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="pcGlobalSearch" placeholder="Buscar movimientos, categorías..." oninput="pcApp.handleGlobalSearch()">
+          <span class="search-shortcut-badge">Ctrl K</span>
+        </div>
+
+        <!-- Controles Derechos -->
+        <div class="header-right">
+          <button class="header-action-icon" title="Notificaciones" onclick="pcApp.toggleAlertsSummary()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="notification-dot" id="headerNotificationDot"></span>
+          </button>
+
+          <button class="btn-pc-primary" onclick="pcApp.openModalNuevoMovimiento()">
+            <span>+</span> Nuevo movimiento
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENEDOR DE PANTALLAS (8 PANTALLAS DE ESCRITORIO) -->
+      <div class="pc-views-container">
+
+        <!-- ============================================================
+             PANTALLA 1: INICIO (DASHBOARD GENERAL)
+             ============================================================ -->
+        <section class="pc-view active" id="view-inicio">
+          <div class="view-top-banner">
+            <div class="view-heading">
+              <h1>Hola, <span id="lblDashboardUser">Lucía</span></h1>
+              <p>Resumen general de tu actividad financiera y flujo de caja.</p>
+            </div>
+            <div class="view-controls-bar">
+              <div class="month-picker-pill">
+                <button onclick="pcApp.cambiarMes(-1)">‹</button>
+                <span id="lblDashboardMonth">Octubre de 2026</span>
+                <button onclick="pcApp.cambiarMes(1)">›</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- FILA DE 3 TARJETAS MÉTRICAS KPI -->
+          <div class="pc-kpi-row">
+            <!-- Card 1: Saldo Total (Dark Slate Teal) -->
+            <div class="kpi-card hero-teal">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Saldo total</span>
+                <button class="btn-kpi-eye" onclick="pcApp.toggleOcultarSaldo()" title="Ocultar/Mostrar saldo">👁️</button>
+              </div>
+              <div class="kpi-amount" id="kpiSaldoTotal">3.859.500 COP</div>
+              <div class="kpi-sub-badge teal">
+                <span>Disponible en cuentas</span>
+              </div>
+            </div>
+
+            <!-- Card 2: Ingresos del Mes -->
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Ingresos del mes</span>
+                <span style="color: var(--pc-green); font-size: 1.1rem;">↗</span>
+              </div>
+              <div class="kpi-amount text-income" id="kpiIngresos">+3.200.000 COP</div>
+              <div class="kpi-sub-badge green">
+                <span>+12 % vs mes anterior</span>
+              </div>
+            </div>
+
+            <!-- Card 3: Gastos del Mes -->
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Gastos del mes</span>
+                <span style="color: var(--pc-red); font-size: 1.1rem;">↘</span>
+              </div>
+              <div class="kpi-amount text-expense" id="kpiGastos">-1.840.500 COP</div>
+              <div class="kpi-sub-badge red">
+                <span id="kpiPorcentajePresupuestoBadge">80 % del presupuesto</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ÁREA DE ALERTAS Y DIAGNÓSTICO PROPOSICIONAL -->
+          <div id="pcDashboardAlerts"></div>
+
+          <!-- FILA MEDIA: GRÁFICO (65%) + PRESUPUESTO (35%) -->
+          <div class="pc-grid-2col">
+            <!-- Gráfico: Tu dinero en perspectiva -->
+            <div class="pc-card">
+              <div class="pc-card-header">
+                <div>
+                  <h3 class="pc-card-title">Tu dinero, en perspectiva</h3>
+                  <span class="pc-card-subtitle">Evolución mensual de ingresos y gastos</span>
+                </div>
+                <div class="kpi-sub-badge green" id="badgeBalanceNeto">
+                  Balance neto: +1.359.500 COP
+                </div>
+              </div>
+              <div style="height: 260px; position: relative;">
+                <canvas id="chartDashboardPerspective"></canvas>
+              </div>
+            </div>
+
+            <!-- Presupuesto del mes -->
+            <div class="pc-card">
+              <div class="pc-card-header">
+                <div>
+                  <h3 class="pc-card-title">Tu presupuesto</h3>
+                  <span class="pc-card-subtitle" id="lblBudgetSubtitle">1.840.500 / 2.300.000 COP</span>
+                </div>
+                <strong style="color: var(--pc-teal-primary); font-size: 1.1rem;" id="lblBudgetPercentLarge">80 %</strong>
+              </div>
+
+              <div class="progress-container big">
+                <div class="progress-fill" id="barBudgetLarge" style="width: 80%;"></div>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--pc-text-muted); margin-bottom: 1.25rem;" id="lblBudgetAvailableText">
+                Te quedan 459.500 COP disponibles para este mes.
+              </p>
+
+              <!-- Categorías resumidas -->
+              <div id="dashboardCategoryBudgetsList">
+                <!-- Se llena dinámicamente -->
+              </div>
+
+              <button class="pc-link-btn" style="margin-top: 1rem; display: block;" onclick="pcApp.switchView('plan')">
+                Ver detalle de presupuesto →
+              </button>
+            </div>
+          </div>
+
+          <!-- FILA INFERIOR: ÚLTIMOS MOVIMIENTOS (65%) + TUS METAS (35%) -->
+          <div class="pc-grid-2col">
+            <!-- Tabla de últimos movimientos -->
+            <div class="pc-card">
+              <div class="pc-card-header">
+                <div>
+                  <h3 class="pc-card-title">Últimos movimientos</h3>
+                  <span class="pc-card-subtitle">Transacciones recientes registradas</span>
+                </div>
+                <button class="pc-link-btn" onclick="pcApp.switchView('movimientos')">Ver todos →</button>
+              </div>
+
+              <div class="pc-table-wrapper">
+                <table class="pc-table">
+                  <thead>
+                    <tr>
+                      <th>Concepto</th>
+                      <th>Categoría</th>
+                      <th>Fecha</th>
+                      <th>Cuenta</th>
+                      <th>Importe</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableRecentMovements">
+                    <!-- Filas dinámicas -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Tus metas de ahorro resumen -->
+            <div class="pc-card">
+              <div class="pc-card-header">
+                <div>
+                  <h3 class="pc-card-title">Tus metas</h3>
+                  <span class="pc-card-subtitle" id="lblTotalMetasHeader">2.750.000 COP ahorrados</span>
+                </div>
+                <button class="pc-link-btn" onclick="pcApp.switchView('metas')">Gestionar →</button>
+              </div>
+
+              <div id="dashboardMetasList" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                <!-- Lista de metas dinámicas -->
+              </div>
+
+              <button class="btn-card-action" style="margin-top: 1.25rem;" onclick="pcApp.openModalNuevaMeta()">
+                + Crear nueva meta
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 2: MOVIMIENTOS (HISTORIAL COMPLETO Y FILTROS)
+             ============================================================ -->
+        <section class="pc-view" id="view-movimientos">
+          <div class="view-top-banner">
+            <div class="view-heading">
+              <h1>Movimientos</h1>
+              <p>Historial contable de ingresos y gastos con trazabilidad completa.</p>
+            </div>
+            <div class="view-controls-bar">
+              <button class="btn-pc-secondary" onclick="pcApp.exportarCSV()">
+                📥 Exportar CSV
+              </button>
+              <button class="btn-pc-secondary" onclick="pcApp.imprimirPDF()">
+                📄 Imprimir / PDF
+              </button>
+              <button class="btn-pc-primary" onclick="pcApp.openModalNuevoMovimiento()">
+                + Nuevo movimiento
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI ROW PARA MOVIMIENTOS -->
+          <div class="pc-kpi-row">
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Ingresos registrados</span>
+                <span style="color: var(--pc-green);">↗</span>
+              </div>
+              <div class="kpi-amount text-income" id="movKpiIngresos">+3.200.000 COP</div>
+              <div class="kpi-sub-badge green">Entradas de capital</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Gastos registrados</span>
+                <span style="color: var(--pc-red);">↘</span>
+              </div>
+              <div class="kpi-amount text-expense" id="movKpiGastos">-1.840.500 COP</div>
+              <div class="kpi-sub-badge red">Desembolsos operacionales</div>
+            </div>
+
+            <div class="kpi-card hero-teal">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Balance neto del mes</span>
+                <span>⚖️</span>
+              </div>
+              <div class="kpi-amount" id="movKpiBalance">+1.359.500 COP</div>
+              <div class="kpi-sub-badge teal">Superávit operacional</div>
+            </div>
+          </div>
+
+          <!-- TARJETA PRINCIPAL CON TABLA Y FILTROS -->
+          <div class="pc-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button class="btn-pc-secondary active" id="btnFilterTodos" onclick="pcApp.setMovFilter('TODOS')">Todos</button>
+                <button class="btn-pc-secondary" id="btnFilterIngresos" onclick="pcApp.setMovFilter('INGRESO')">Ingresos</button>
+                <button class="btn-pc-secondary" id="btnFilterGastos" onclick="pcApp.setMovFilter('GASTO')">Gastos</button>
+              </div>
+
+              <div style="display: flex; gap: 0.75rem; align-items: center;">
+                <select class="pc-select" id="selectMovCategory" style="width: 180px;" onchange="pcApp.renderizarMovimientos()">
+                  <option value="TODAS">Todas las categorías</option>
+                  <option value="Alimentación">Alimentación</option>
+                  <option value="Transporte">Transporte</option>
+                  <option value="Ocio">Ocio</option>
+                  <option value="Vivienda">Vivienda</option>
+                  <option value="Sanidad">Sanidad</option>
+                  <option value="Salario">Salario</option>
+                  <option value="Freelance">Freelance</option>
+                  <option value="Otros">Otros</option>
+                </select>
+
+                <input type="text" class="pc-input" id="inputMovSearchTable" placeholder="Filtrar por texto..." style="width: 220px;" oninput="pcApp.renderizarMovimientos()">
+              </div>
+            </div>
+
+            <div class="pc-table-wrapper">
+              <table class="pc-table">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Concepto</th>
+                    <th>Categoría</th>
+                    <th>Fecha</th>
+                    <th>Cuenta</th>
+                    <th>Monto</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tableFullMovements">
+                  <!-- Filas dinámicas -->
+                </tbody>
+              </table>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; font-size: 0.84rem; color: var(--pc-text-muted);">
+              <span id="lblTableTotalCount">Mostrando 12 movimientos</span>
+              <span>Moneda de auditoría: COP ($)</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 3: REGISTRAR MOVIMIENTO (FORMULARIO DEDICADO DE PC)
+             ============================================================ -->
+        <section class="pc-view" id="view-registrar">
+          <div class="view-top-banner">
+            <div class="view-heading">
+              <h1>Registrar movimiento</h1>
+              <p>Elige tipo de transacción y completa los datos contables.</p>
+            </div>
+            <button class="btn-pc-secondary" onclick="pcApp.switchView('movimientos')">
+              ← Volver al historial
+            </button>
+          </div>
+
+          <div class="pc-card">
+            <form id="formRegistrarMovimiento" onsubmit="event.preventDefault(); pcApp.handleGuardarMovimientoForm();">
+            <div class="form-2col-layout">
+              <!-- Columna Izquierda: Formulario -->
+              <div>
+                <div class="type-segmented-control">
+                  <button type="button" class="btn-segment-type active expense" id="regTypeGasto" onclick="pcApp.setFormType('GASTO')">
+                    ↗ Gasto
+                  </button>
+                  <button type="button" class="btn-segment-type income" id="regTypeIngreso" onclick="pcApp.setFormType('INGRESO')">
+                    ↙ Ingreso
+                  </button>
+                </div>
+
+                <div class="amount-input-giant-wrapper">
+                  <label style="font-size: 0.78rem; font-weight: 700; color: var(--pc-text-muted); text-transform: uppercase;">
+                    Importe en Pesos Colombianos
+                  </label>
+                  <input type="number" class="amount-input-giant" id="regInputMonto" placeholder="0.00" min="100" step="0.01" value="42800.00" oninput="pcApp.updateLiveImpact()">
+                  <span style="font-weight: 700; color: var(--pc-text-muted);">COP ($)</span>
+                </div>
+
+                <div class="pc-form-group">
+                  <label>Selecciona una categoría:</label>
+                  <div class="category-selection-grid" id="regCategoryGrid">
+                    <!-- Categorías interactivas -->
+                  </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                  <div class="pc-form-group">
+                    <label for="regInputConcepto">Concepto / Descripción</label>
+                    <input type="text" class="pc-input" id="regInputConcepto" placeholder="Ej. Mercadona quincenal" value="Mercadona">
+                  </div>
+
+                  <div class="pc-form-group">
+                    <label for="regInputFecha">Fecha</label>
+                    <input type="date" class="pc-input" id="regInputFecha">
+                  </div>
+                </div>
+
+                <div class="pc-form-group">
+                  <label for="regSelectCuenta">Cuenta de origen / destino</label>
+                  <select class="pc-select" id="regSelectCuenta">
+                    <option value="Principal">Cuenta Principal (Nómina)</option>
+                    <option value="Efectivo">Billetera / Efectivo</option>
+                    <option value="Ahorros">Bolsillo de Ahorros</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Columna Derecha: Vista Previa e Impacto en Saldo -->
+              <div>
+                <div class="impact-summary-card">
+                  <span class="kpi-label">Vista previa del registro</span>
+                  <div class="impact-amount-preview expense" id="lblLiveImpactAmount">
+                    -42.800 COP
+                  </div>
+
+                  <div class="impact-metric-row">
+                    <span>Categoría:</span>
+                    <strong id="lblLiveImpactCategory">Alimentación</strong>
+                  </div>
+                  <div class="impact-metric-row">
+                    <span>Saldo actual:</span>
+                    <strong id="lblLiveCurrentBalance">3.859.500 COP</strong>
+                  </div>
+                  <div class="impact-metric-row">
+                    <span>Saldo proyectado:</span>
+                    <strong id="lblLiveProjectedBalance" style="color: var(--pc-teal-dark);">3.816.700 COP</strong>
+                  </div>
+                  <div class="impact-metric-row">
+                    <span>Impacto presupuestal:</span>
+                    <strong id="lblLiveBudgetImpact">+1.8 %</strong>
+                  </div>
+
+                  <div id="liveLogicNoticeArea" style="margin-top: 1rem;"></div>
+
+                  <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button class="btn-pc-secondary" style="flex: 1;" onclick="pcApp.switchView('movimientos')">
+                      Cancelar
+                    </button>
+                    <button type="submit" class="btn-pc-primary" style="flex: 1;">
+                      ✔ Guardar movimiento
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 4: MI PLAN (PRESUPUESTO Y DIAGNÓSTICO)
+             ============================================================ -->
+        <section class="pc-view" id="view-plan">
+          <div class="view-top-banner">
+            <div class="view-heading">
+              <h1>Mi plan</h1>
+              <p>Planificación de gastos mensuales por categoría y control preventivo.</p>
+            </div>
+            <button class="btn-pc-primary" onclick="pcApp.openModalAjustarPresupuesto()">
+              ✏️ Modificar presupuesto mensual
+            </button>
+          </div>
+
+          <div class="pc-kpi-row">
+            <div class="kpi-card hero-teal">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Presupuesto mensual</span>
+                <span>🎯</span>
+              </div>
+              <div class="kpi-amount" id="planKpiLimite">2.300.000 COP</div>
+              <div class="kpi-sub-badge teal">Límite asignado</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Gastado acumulado</span>
+                <span style="color: var(--pc-red);">↘</span>
+              </div>
+              <div class="kpi-amount text-expense" id="planKpiGastado">1.840.500 COP</div>
+              <div class="kpi-sub-badge red" id="planKpiPorcentaje">80 % consumido</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Disponible restante</span>
+                <span style="color: var(--pc-green);">✓</span>
+              </div>
+              <div class="kpi-amount text-income" id="planKpiDisponible">459.500 COP</div>
+              <div class="kpi-sub-badge green">Margen operativo</div>
+            </div>
+          </div>
+
+          <div class="pc-grid-2col">
+            <div class="pc-card">
+              <div class="pc-card-header">
+                <h3 class="pc-card-title">Tus categorías presupuestadas</h3>
+                <span class="pc-card-subtitle">Seguimiento individual por rubro</span>
+              </div>
+              <div id="planDetailedCategoriesList"></div>
+            </div>
+
+            <div class="pc-card">
+              <div class="pc-card-header">
+                <h3 class="pc-card-title">Diagnóstico y Estado</h3>
+                <span class="badge-setting">Lógica Proposicional</span>
+              </div>
+
+              <div style="text-align: center; margin-bottom: 1.5rem;">
+                <div style="font-size: 3rem; font-weight: 800; color: var(--pc-teal-dark);" id="lblPlanGaugePercent">80 %</div>
+                <p style="font-size: 0.85rem; color: var(--pc-text-muted);">de tu capacidad de gasto mensual consumida</p>
+              </div>
+
+              <div id="planAlertsContainer"></div>
+
+              <div style="margin-top: 1.5rem; border-top: 1px solid var(--pc-border-light); padding-top: 1rem;">
+                <h4 style="font-size: 0.88rem; margin-bottom: 0.75rem;">Configuración de alertas automáticas</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                  <span style="font-size: 0.82rem;">Alerta cuando supere el 85%</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" checked onchange="pcApp.toggleAlerta(this)">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 0.82rem;">Recordatorios de fin de mes</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" checked onchange="pcApp.toggleAlerta(this)">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 5: METAS DE AHORRO
+             ============================================================ -->
+        <section class="pc-view" id="view-metas">
+          <div class="view-top-banner">
+            <div class="view-heading">
+              <h1>Metas de ahorro</h1>
+              <p>Proyecta objetivos, acumula aportes y asegura tu futuro financiero.</p>
+            </div>
+            <button class="btn-pc-primary" onclick="pcApp.openModalNuevaMeta()">
+              + Nueva meta de ahorro
+            </button>
+          </div>
+
+          <div class="pc-kpi-row">
+            <div class="kpi-card hero-teal">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Total ahorrado para metas</span>
+                <span>🐖</span>
+              </div>
+              <div class="kpi-amount" id="metasKpiTotalAhorrado">2.750.000 COP</div>
+              <div class="kpi-sub-badge teal">+600.000 COP este mes</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Objetivo acumulado</span>
+                <span>🎯</span>
+              </div>
+              <div class="kpi-amount" id="metasKpiObjetivoTotal">4.700.000 COP</div>
+              <div class="kpi-sub-badge green">3 metas en progreso</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Restante por cumplir</span>
+                <span>⏳</span>
+              </div>
+              <div class="kpi-amount text-expense" id="metasKpiRestante">1.950.000 COP</div>
+              <div class="kpi-sub-badge red">58.5 % de avance global</div>
+            </div>
+          </div>
+
+          <div class="pc-grid-3cards" id="metasCardsGrid"></div>
+
+          <div class="pc-card">
+            <div class="pc-card-header">
+              <h3 class="pc-card-title">Últimos aportes a metas</h3>
+              <span class="pc-card-subtitle">Registro cronológico de capital destinado al ahorro</span>
+            </div>
+            <div class="pc-table-wrapper">
+              <table class="pc-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Meta de destino</th>
+                    <th>Valor del aporte</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="tableAportesMetas"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 6: DEUDAS Y OBLIGACIONES
+             ============================================================ -->
+        <section class="pc-view" id="view-deudas">
+          <div class="view-top-banner">
+            <div class="view-heading">
+              <h1>Deudas</h1>
+              <p>Seguimiento de pasivos, cuotas periódicas y calendario de pagos.</p>
+            </div>
+            <button class="btn-pc-primary" onclick="pcApp.openModalNuevaDeuda()">
+              + Registrar nueva deuda
+            </button>
+          </div>
+
+          <div class="pc-kpi-row">
+            <div class="kpi-card hero-teal">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Total pendiente</span>
+                <span>💳</span>
+              </div>
+              <div class="kpi-amount" id="deudasKpiPendiente">1.260.000 COP</div>
+              <div class="kpi-sub-badge teal">2 obligaciones activas</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Total amortizado</span>
+                <span>✓</span>
+              </div>
+              <div class="kpi-amount text-income" id="deudasKpiPagado">195.000 COP</div>
+              <div class="kpi-sub-badge green">Pagos al día</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Cuotas mensuales</span>
+                <span>📅</span>
+              </div>
+              <div class="kpi-amount" id="deudasKpiCuotas">155.000 COP/mes</div>
+              <div class="kpi-sub-badge red">Compromiso mensual</div>
+            </div>
+          </div>
+
+          <div class="pc-grid-equal" id="deudasCardsGrid"></div>
+
+          <div class="pc-grid-2col">
+            <div class="pc-card">
+              <div class="pc-card-header">
+                <h3 class="pc-card-title">Historial de abonos a deudas</h3>
+                <span class="pc-card-subtitle">Comprobantes de pago registrados</span>
+              </div>
+              <div class="pc-table-wrapper">
+                <table class="pc-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Obligación</th>
+                      <th>Valor abono</th>
+                      <th>Comprobante</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableAbonosDeudas"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="pc-card">
+              <div class="pc-card-header">
+                <h3 class="pc-card-title">Estrategia recomendada</h3>
+                <span class="badge-setting">Asesor Contable</span>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--pc-text-muted); margin-bottom: 1rem;">
+                Basado en tus deudas actuales, la estrategia óptima es el <strong>Método Avalancha</strong> para minimizar intereses financieros:
+              </p>
+              <div style="background: var(--pc-bg); padding: 1rem; border-radius: var(--radius-md); font-size: 0.82rem; margin-bottom: 1rem;">
+                <strong>1. Prioridad: Tratamiento dental (5% TIN)</strong>
+                <p>Amortiza saldo adicional aquí para evitar sobrecostos por intereses.</p>
+              </div>
+              <div style="background: var(--pc-bg); padding: 1rem; border-radius: var(--radius-md); font-size: 0.82rem;">
+                <strong>2. Portátil (0% TIN)</strong>
+                <p>Mantén el pago puntual de la cuota mínima de 80.000 COP sin mora.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 7: INFORMES (ESTADÍSTICAS Y GRÁFICOS)
+             ============================================================ -->
+        <section class="pc-view" id="view-informes">
+          <div class="view-top-banner">
+            <div class="view-heading">
+              <h1>Tu dinero, en perspectiva</h1>
+              <p>Analítica descriptiva, distribución de gastos y tasa de ahorro.</p>
+            </div>
+            <div class="view-controls-bar">
+              <button class="btn-pc-secondary" onclick="pcApp.exportarCSV()">📥 Descargar datos (CSV)</button>
+              <button class="btn-pc-primary" onclick="pcApp.imprimirPDF()">📄 Generar Reporte PDF</button>
+            </div>
+          </div>
+
+          <div class="pc-kpi-row">
+            <div class="kpi-card hero-teal">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Balance neto del periodo</span>
+                <span>🌱</span>
+              </div>
+              <div class="kpi-amount" id="infKpiBalanceNeto">+1.359.500 COP</div>
+              <div class="kpi-sub-badge teal" id="infKpiTasaAhorro">Conservas el 42.5 % de tus ingresos</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Ingresos totales</span>
+                <span style="color: var(--pc-green);">↗</span>
+              </div>
+              <div class="kpi-amount text-income" id="infKpiIngresos">+3.200.000 COP</div>
+              <div class="kpi-sub-badge green">Flujo entrante mensual</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-card-top">
+                <span class="kpi-label">Gastos totales</span>
+                <span style="color: var(--pc-red);">↘</span>
+              </div>
+              <div class="kpi-amount text-expense" id="infKpiGastos">-1.840.500 COP</div>
+              <div class="kpi-sub-badge red">Tasa de gasto: 57.5 %</div>
+            </div>
+          </div>
+
+          <div class="pc-grid-equal">
+            <div class="pc-card">
+              <div class="pc-card-header">
+                <h3 class="pc-card-title">Comparativa mensual de ingresos vs gastos</h3>
+                <span class="pc-card-subtitle">Últimos 6 meses</span>
+              </div>
+              <div style="height: 300px; position: relative;">
+                <canvas id="chartInformesBars"></canvas>
+              </div>
+            </div>
+
+            <div class="pc-card">
+              <div class="pc-card-header">
+                <h3 class="pc-card-title">¿En qué se va el dinero?</h3>
+                <span class="pc-card-subtitle">Distribución por categorías</span>
+              </div>
+              <div style="height: 300px; position: relative;">
+                <canvas id="chartInformesDonut"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="pc-card">
+            <div class="pc-card-header">
+              <h3 class="pc-card-title">Desglose porcentual y auditoría por categoría</h3>
+              <span class="pc-card-subtitle">Cálculo exacto del impacto de cada rubro</span>
+            </div>
+            <div class="pc-table-wrapper">
+              <table class="pc-table">
+                <thead>
+                  <tr>
+                    <th>Categoría</th>
+                    <th>Total gastado</th>
+                    <th>% del gasto total</th>
+                    <th>Límite asignado</th>
+                    <th>Estado de alerta</th>
+                  </tr>
+                </thead>
+                <tbody id="tableCategoryBreakdown"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 8: PERFIL Y AJUSTES
+             ============================================================ -->
+        <section class="pc-view" id="view-perfil">
+          <div class="view-top-banner">
+            <div class="view-heading">
+              <h1>Tu espacio</h1>
+              <p>Perfil de usuario, preferencias del sistema y respaldo de información.</p>
+            </div>
+          </div>
+
+          <div class="pc-card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 1.25rem;">
+              <div style="width: 64px; height: 64px; border-radius: var(--radius-full); background: var(--pc-teal-dark); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800;" id="profileAvatarBig">
+                LM
+              </div>
+              <div>
+                <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--pc-text-title);" id="profileNameBig">Lucía Martín</h2>
+                <p style="font-size: 0.88rem; color: var(--pc-text-muted);" id="profileEmailBig">lucia.martin@email.com</p>
+                <span class="top-notice-badge" style="margin-top: 0.35rem; display: inline-block;">Usuario Activo · Moneda Oficial COP</span>
+              </div>
+            </div>
+            <button class="btn-pc-secondary" onclick="pcApp.openModalEditarPerfil()">
+              ✏️ Editar datos
+            </button>
+          </div>
+
+          <div class="pc-grid-equal">
+            <div class="pc-card">
+              <h3 class="pc-card-title" style="margin-bottom: 1rem;">A tu medida</h3>
+
+              <div class="pc-form-group">
+                <label>Moneda base de operaciones</label>
+                <input type="text" class="pc-input" value="COP - Pesos Colombianos ($)" readonly>
+              </div>
+
+              <div class="pc-form-group">
+                <label>Idioma del sistema</label>
+                <select class="pc-select">
+                  <option selected>Español (Colombia / Internacional)</option>
+                  <option>English (US)</option>
+                </select>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem;">
+                <div>
+                  <strong>Ocultar saldo por privacidad</strong>
+                  <p style="font-size: 0.78rem; color: var(--pc-text-muted);">Muestra asteriscos en los montos principales</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="chkOcultarSaldo" onchange="pcApp.toggleOcultarSaldo()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="pc-card">
+              <h3 class="pc-card-title" style="margin-bottom: 1rem;">Notificaciones y alertas</h3>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <div>
+                  <strong>Alertas de presupuesto en riesgo</strong>
+                  <p style="font-size: 0.78rem; color: var(--pc-text-muted);">Avisar cuando se supere el 85% del límite</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <div>
+                  <strong>Recordatorio de vencimiento de deudas</strong>
+                  <p style="font-size: 0.78rem; color: var(--pc-text-muted);">Notificar con 5 días de anticipación</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong>Resumen mensual contable</strong>
+                  <p style="font-size: 0.78rem; color: var(--pc-text-muted);">Generar reporte automático al cierre de mes</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="pc-card" style="margin-top: 1.5rem;">
+            <h3 class="pc-card-title" style="margin-bottom: 1rem;">Gestión y respaldo de datos</h3>
+            <p style="font-size: 0.85rem; color: var(--pc-text-muted); margin-bottom: 1.25rem;">
+              Tus datos están sincronizados localmente en tu navegador y son compartidos automáticamente entre la Versión PC y la Versión Móvil.
+            </p>
+
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+              <button class="btn-pc-secondary" onclick="pcApp.exportarJSON()">
+                💾 Descargar Copia de Seguridad (JSON)
+              </button>
+              <button class="btn-pc-secondary" onclick="pcApp.exportarCSV()">
+                📥 Descargar Movimientos (CSV)
+              </button>
+              <button class="btn-pc-secondary" style="color: var(--pc-red); border-color: #fecdd3;" onclick="pcApp.restablecerDatos()">
+                🔄 Restablecer Datos Iniciales de Fábrica
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODALES DE ESCRITORIO -->
+  <div class="pc-modal-backdrop hidden" id="modalPcNuevoMovimiento">
+    <div class="pc-modal-window">
+      <div class="pc-modal-header">
+        <h3>Registrar nuevo movimiento</h3>
+        <button class="btn-close-modal" onclick="pcApp.closeModalNuevoMovimiento()">✕</button>
+      </div>
+      <form onsubmit="pcApp.handleQuickMovementSubmit(event)">
+        <div class="pc-modal-body">
+          <div class="type-segmented-control" style="margin-bottom: 1rem;">
+            <button type="button" class="btn-segment-type active expense" id="modalQuickTypeGasto" onclick="pcApp.setModalQuickType('GASTO')">
+              ↗ Gasto
+            </button>
+            <button type="button" class="btn-segment-type income" id="modalQuickTypeIngreso" onclick="pcApp.setModalQuickType('INGRESO')">
+              ↙ Ingreso
+            </button>
+          </div>
+
+          <div class="pc-form-group">
+            <label for="modalQuickValor">Importe (COP)</label>
+            <input type="number" class="pc-input" id="modalQuickValor" placeholder="Ej. 50000.00" min="100" step="0.01" required>
+          </div>
+
+          <div class="pc-form-group">
+            <label for="modalQuickConcepto">Concepto / Detalle</label>
+            <input type="text" class="pc-input" id="modalQuickConcepto" placeholder="Ej. Supermercado, Transporte..." required>
+          </div>
+
+          <div class="pc-form-group">
+            <label for="modalQuickCategoria">Categoría</label>
+            <select class="pc-select" id="modalQuickCategoria">
+              <option value="Alimentación">🛒 Alimentación</option>
+              <option value="Transporte">🚌 Transporte</option>
+              <option value="Ocio">☕ Ocio</option>
+              <option value="Vivienda">🏠 Vivienda</option>
+              <option value="Sanidad">⚕️ Sanidad</option>
+              <option value="Salario">💼 Salario</option>
+              <option value="Freelance">💻 Freelance</option>
+              <option value="Otros">··· Otros</option>
+            </select>
+          </div>
+
+          <div class="pc-form-group">
+            <label for="modalQuickFecha">Fecha</label>
+            <input type="date" class="pc-input" id="modalQuickFecha" required>
+          </div>
+        </div>
+        <div class="pc-modal-footer">
+          <button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalNuevoMovimiento()">Cancelar</button>
+          <button type="submit" class="btn-pc-primary">Guardar movimiento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalPcNuevaMeta">
+    <div class="pc-modal-window">
+      <div class="pc-modal-header">
+        <h3>Crear nueva meta de ahorro</h3>
+        <button class="btn-close-modal" onclick="pcApp.closeModalNuevaMeta()">✕</button>
+      </div>
+      <form onsubmit="pcApp.handleNuevaMetaSubmit(event)">
+        <div class="pc-modal-body">
+          <div class="pc-form-group">
+            <label for="inputMetaNombre">Nombre de la meta</label>
+            <input type="text" class="pc-input" id="inputMetaNombre" placeholder="Ej. Vacaciones de verano" required>
+          </div>
+          <div class="pc-form-group">
+            <label for="inputMetaObjetivo">Monto objetivo total (COP)</label>
+            <input type="number" class="pc-input" id="inputMetaObjetivo" placeholder="Ej. 1500000.00" min="10000" step="0.01" required>
+          </div>
+          <div class="pc-form-group">
+            <label for="inputMetaAhorrado">Ahorro inicial ya disponible (COP)</label>
+            <input type="number" class="pc-input" id="inputMetaAhorrado" placeholder="0.00" min="0" step="0.01" value="0">
+          </div>
+          <div class="pc-form-group">
+            <label for="inputMetaPlazo">Plazo estimado</label>
+            <input type="text" class="pc-input" id="inputMetaPlazo" placeholder="Ej. Para diciembre de 2027">
+          </div>
+        </div>
+        <div class="pc-modal-footer">
+          <button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalNuevaMeta()">Cancelar</button>
+          <button type="submit" class="btn-pc-primary">Crear meta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalPcAportarMeta">
+    <div class="pc-modal-window">
+      <div class="pc-modal-header">
+        <h3 id="lblAporteMetaTitle">Aportar a Meta</h3>
+        <button class="btn-close-modal" onclick="pcApp.closeModalAportarMeta()">✕</button>
+      </div>
+      <form onsubmit="pcApp.handleAporteMetaSubmit(event)">
+        <input type="hidden" id="aporteMetaId">
+        <div class="pc-modal-body">
+          <div class="pc-form-group">
+            <label for="inputAporteMetaValor">Monto a aportar (COP)</label>
+            <input type="number" class="pc-input" id="inputAporteMetaValor" placeholder="Ej. 100000.00" min="1000" step="0.01" required>
+          </div>
+        </div>
+        <div class="pc-modal-footer">
+          <button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalAportarMeta()">Cancelar</button>
+          <button type="submit" class="btn-pc-primary">Confirmar aporte</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalPcNuevaDeuda">
+    <div class="pc-modal-window">
+      <div class="pc-modal-header">
+        <h3>Registrar nueva obligación / deuda</h3>
+        <button class="btn-close-modal" onclick="pcApp.closeModalNuevaDeuda()">✕</button>
+      </div>
+      <form onsubmit="pcApp.handleNuevaDeudaSubmit(event)">
+        <div class="pc-modal-body">
+          <div class="pc-form-group">
+            <label for="inputDeudaNombre">Nombre de la deuda / acreedor</label>
+            <input type="text" class="pc-input" id="inputDeudaNombre" placeholder="Ej. Tarjeta de crédito" required>
+          </div>
+          <div class="pc-form-group">
+            <label for="inputDeudaMontoInicial">Monto total inicial (COP)</label>
+            <input type="number" class="pc-input" id="inputDeudaMontoInicial" placeholder="Ej. 1200000.00" min="10000" step="0.01" required>
+          </div>
+          <div class="pc-form-group">
+            <label for="inputDeudaSaldoPendiente">Saldo pendiente actual (COP)</label>
+            <input type="number" class="pc-input" id="inputDeudaSaldoPendiente" placeholder="Ej. 800000.00" min="0" step="0.01" required>
+          </div>
+          <div class="pc-form-group">
+            <label for="inputDeudaCuota">Valor cuota mensual (COP)</label>
+            <input type="number" class="pc-input" id="inputDeudaCuota" placeholder="Ej. 100000.00" min="1000" step="0.01" required>
+          </div>
+          <div class="pc-form-group">
+            <label for="inputDeudaCondiciones">Condiciones / Tasa</label>
+            <input type="text" class="pc-input" id="inputDeudaCondiciones" placeholder="Ej. 0% TIN en 12 cuotas">
+          </div>
+        </div>
+        <div class="pc-modal-footer">
+          <button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalNuevaDeuda()">Cancelar</button>
+          <button type="submit" class="btn-pc-primary">Guardar deuda</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalPcAbonarDeuda">
+    <div class="pc-modal-window">
+      <div class="pc-modal-header">
+        <h3 id="lblAbonoDeudaTitle">Registrar abono a deuda</h3>
+        <button class="btn-close-modal" onclick="pcApp.closeModalAbonarDeuda()">✕</button>
+      </div>
+      <form onsubmit="pcApp.handleAbonoDeudaSubmit(event)">
+        <input type="hidden" id="abonoDeudaId">
+        <div class="pc-modal-body">
+          <div class="pc-form-group">
+            <label for="inputAbonoDeudaValor">Monto del abono (COP)</label>
+            <input type="number" class="pc-input" id="inputAbonoDeudaValor" placeholder="Ej. 80000.00" min="1000" step="0.01" required>
+          </div>
+        </div>
+        <div class="pc-modal-footer">
+          <button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalAbonarDeuda()">Cancelar</button>
+          <button type="submit" class="btn-pc-primary">Registrar abono</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalPcAjustarPresupuesto">
+    <div class="pc-modal-window">
+      <div class="pc-modal-header">
+        <h3>Ajustar presupuesto mensual</h3>
+        <button class="btn-close-modal" onclick="pcApp.closeModalAjustarPresupuesto()">✕</button>
+      </div>
+      <form onsubmit="pcApp.handlePresupuestoSubmit(event)">
+        <div class="pc-modal-body">
+          <div class="pc-form-group">
+            <label for="inputPresupuestoGlobal">Límite mensual total (COP)</label>
+            <input type="number" class="pc-input" id="inputPresupuestoGlobal" min="100000" step="0.01" required>
+          </div>
+        </div>
+        <div class="pc-modal-footer">
+          <button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalAjustarPresupuesto()">Cancelar</button>
+          <button type="submit" class="btn-pc-primary">Guardar límite</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalPcEditarPerfil">
+    <div class="pc-modal-window">
+      <div class="pc-modal-header">
+        <h3>Editar datos personales</h3>
+        <button class="btn-close-modal" onclick="pcApp.closeModalEditarPerfil()">✕</button>
+      </div>
+      <form onsubmit="pcApp.handlePerfilSubmit(event)">
+        <div class="pc-modal-body">
+          <div class="pc-form-group">
+            <label for="inputPerfilNombre">Nombre completo</label>
+            <input type="text" class="pc-input" id="inputPerfilNombre" required>
+          </div>
+          <div class="pc-form-group">
+            <label for="inputPerfilEmail">Correo electrónico</label>
+            <input type="email" class="pc-input" id="inputPerfilEmail" required>
+          </div>
+          <div class="pc-form-group">
+            <label for="inputPerfilSaldoInicial">Saldo inicial (COP)</label>
+            <input type="number" class="pc-input" id="inputPerfilSaldoInicial" step="0.01" required>
+          </div>
+        </div>
+        <div class="pc-modal-footer">
+          <button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalEditarPerfil()">Cancelar</button>
+          <button type="submit" class="btn-pc-primary">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalPcAcademic">
+    <div class="pc-modal-window wide">
+      <div class="pc-modal-header">
+        <div>
+          <span class="top-notice-badge">PRIMER SEMESTRE</span>
+          <h3>Fundamentos de Programación e Ingeniería de Sistemas</h3>
+        </div>
+        <button class="btn-close-modal" onclick="pcApp.closeAcademicModal()">✕</button>
+      </div>
+      <div class="pc-modal-body" style="font-size: 0.88rem; line-height: 1.6;">
+        <div style="background: var(--pc-teal-subtle); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+          <strong>🎯 Fórmulas Contables Implementadas:</strong>
+          <p>• <strong>Ingresos Totales:</strong> $I_T = \sum \text{ingreso}_i$</p>
+          <p>• <strong>Gastos Totales:</strong> $G_T = \sum \text{gasto}_j$</p>
+          <p>• <strong>Dinero Disponible:</strong> $D = I_T - G_T$ (Superávit operacional sin doble conteo de ahorro acumulado)</p>
+          <p>• <strong>Tasa de Ahorro:</strong> $T_A = \frac{D}{I_T} \times 100\%$ con control de división por cero</p>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <strong>1. Modularidad y Arquitectura Separada:</strong>
+          <p>El código separa explícitamente la <em>Versión Escritorio (desktop.html / desktop.css / desktop.js)</em> y la <em>Versión Móvil (mobile.html / mobile.css / mobile.js)</em>, desacopladas mediante el núcleo reactivo <code>shared.js</code>.</p>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <strong>2. Lógica Proposicional:</strong>
+          <p>Evaluación de expresiones compuestas <code>(G > I)</code> y <code>(G > LímitePresupuesto)</code> para generar diagnósticos automáticos.</p>
+        </div>
+
+        <div>
+          <strong>3. Persistencia y Colecciones:</strong>
+          <p>Sincronización bidireccional inmediata en tiempo real mediante <code>localStorage</code> y eventos de almacenamiento entre pestañas.</p>
+        </div>
+      </div>
+      <div class="pc-modal-footer">
+        <button class="btn-pc-primary" onclick="pcApp.closeAcademicModal()">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="shared.js?v=20261103-5"></script>
+  <script src="desktop.js?v=20261103-5"></script>
+</body>
+</html>

@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MiBolsillo · Versión Móvil | Finanzas Personales</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Estilos dedicados para la versión móvil -->
+  <link rel="stylesheet" href="styles/mobile.css">
+</head>
+<body>
+
+  <!-- BARRA SUPERIOR INFORMATIVA: CONMUTADOR DE VERSIONES SEPARADAS -->
+  <div class="mobile-top-notice">
+    <div>
+      <span class="badge">MÓVIL / SMARTPHONE</span>
+      <span style="margin-left: 6px; font-weight: 500;">MiBolsillo (Ingeniería de Sistemas - Semestre I)</span>
+    </div>
+    <div>
+      <a href="desktop.html" class="btn-switch-link" title="Abrir versión completa de escritorio">
+        💻 Abrir Versión PC
+      </a>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR VIEWPORT DEL DISPOSITIVO MÓVIL -->
+  <div class="mobile-viewport-wrapper">
+    <div class="mobile-device-shell" id="mobileShell">
+
+      <!-- STATUS BAR NATIVO -->
+      <div class="status-bar">
+        <span class="status-time" id="mobileStatusTime">9:41</span>
+        <div class="status-notch"></div>
+        <div class="status-icons">
+          <svg width="15" height="12" viewBox="0 0 17 12" fill="currentColor">
+            <rect x="0" y="9" width="3" height="3" rx="0.5"/>
+            <rect x="4.5" y="6" width="3" height="6" rx="0.5"/>
+            <rect x="9" y="3" width="3" height="9" rx="0.5"/>
+            <rect x="13.5" y="0" width="3" height="12" rx="0.5"/>
+          </svg>
+          <svg width="14" height="11" viewBox="0 0 16 12" fill="currentColor">
+            <path d="M8 2.5C10.5 2.5 12.8 3.5 14.5 5.2L16 3.6C13.9 1.4 11.1 0 8 0C4.9 0 2.1 1.4 0 3.6L1.5 5.2C3.2 3.5 5.5 2.5 8 2.5ZM8 6.5C9.4 6.5 10.7 7.1 11.7 8L13.2 6.4C11.8 5 9.9 4 8 4C6.1 4 4.2 5 2.8 6.4L4.3 8C5.3 7.1 6.6 6.5 8 6.5ZM8 10C8.8 10 9.5 10.7 9.5 11.5C9.5 12.3 8.8 13 8 13C7.2 13 6.5 12.3 6.5 11.5C6.5 10.7 7.2 10 8 10Z"/>
+          </svg>
+          <svg width="22" height="11" viewBox="0 0 24 12" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="1" y="1" width="19" height="10" rx="3"/>
+            <path d="M22 4.5v3" stroke-linecap="round"/>
+            <rect x="3" y="3" width="13" height="6" rx="1.5" fill="currentColor"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- CONTENEDOR DE PANTALLAS CON SCROLL INTERNO -->
+      <main class="screens-scroll-container" id="mobileScreensContainer">
+
+        <!-- ============================================================
+             PANTALLA 1: INICIO (DASHBOARD MÓVIL)
+             ============================================================ -->
+        <section class="screen-view active" id="view-inicio">
+          <div class="view-header">
+            <div class="header-titles">
+              <span class="sub-label">MIBOLSILLO · TU DINERO, A TU RITMO</span>
+              <h1 class="main-user-title">Hola, <span id="lblMobileUserNombre">Lucía</span></h1>
+            </div>
+            <button class="user-avatar-btn" onclick="mobileApp.switchTab('perfil')" title="Tu espacio">
+              <span id="lblMobileAvatarInitials">LM</span>
+            </button>
+          </div>
+
+          <!-- Selector de Mes -->
+          <div class="month-selector-bar">
+            <button class="btn-arrow" onclick="mobileApp.cambiarMes(-1)">‹</button>
+            <span class="month-label" id="lblMobileCurrentMonth">Octubre de 2026</span>
+            <button class="btn-arrow" onclick="mobileApp.cambiarMes(1)">›</button>
+          </div>
+
+          <!-- Hero Card: Saldo Total -->
+          <div class="hero-balance-card">
+            <div class="hero-header">
+              <span class="hero-label">Saldo total</span>
+              <button class="btn-eye-toggle" onclick="mobileApp.toggleOcultarSaldo()" title="Ocultar/Mostrar saldo">
+                👁️
+              </button>
+            </div>
+            <div class="hero-amount" id="lblMobileHeroBalance">3.859.500 COP</div>
+
+            <div class="hero-breakdown-row">
+              <div class="breakdown-item breakdown-income">
+                <span>↗</span>
+                <span id="lblMobileHeroIngresos">+3.200.000 COP</span>
+              </div>
+              <div class="breakdown-item breakdown-expense">
+                <span>↘</span>
+                <span id="lblMobileHeroGastos">-1.840.500 COP</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botón de Acción Rápida -->
+          <button class="btn-action-primary" onclick="mobileApp.openModalRegistrar()">
+            <span>+</span> Registrar movimiento
+          </button>
+
+          <!-- Alertas Proposicionales -->
+          <div id="mobileDashboardAlerts"></div>
+
+          <!-- Card de Resumen de Presupuesto -->
+          <div class="section-card" onclick="mobileApp.switchTab('plan', 'presupuestos')" style="cursor: pointer;">
+            <div class="section-card-header">
+              <h3>Tu presupuesto, en orden</h3>
+              <strong style="color: var(--color-primary);" id="lblMobileBudgetPercent">80 %</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar-fill" id="barMobileBudget" style="width: 80%;"></div>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem;" id="lblMobileBudgetAvailable">
+              Te quedan 459.500 COP para este mes...
+            </p>
+          </div>
+
+          <!-- Últimos Movimientos -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>Últimos movimientos</h3>
+              <button class="link-btn" onclick="mobileApp.switchTab('movimientos')">Ver todos</button>
+            </div>
+            <div id="mobileRecentTransactionsList">
+              <!-- Renderizado dinámico -->
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>Tus metas</h3>
+              <button class="link-btn" onclick="mobileApp.switchTab('plan', 'metas')">Gestionar</button>
+            </div>
+            <div id="mobileDashboardGoals"></div>
+            <button class="link-btn" style="margin-top:0.75rem;" onclick="mobileApp.openModalNuevaMeta()">+ Crear nueva meta</button>
+          </div>
+
+          <!-- Banner Motivacional -->
+          <div class="section-card" style="background: var(--color-primary-soft); display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="mobileApp.switchTab('plan', 'metas')">
+            <span style="font-size: 0.86rem; font-weight: 700; color: var(--color-primary);">Cada pequeño paso cuenta.</span>
+            <span style="font-size: 1.1rem; color: var(--color-primary);">→</span>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 2: MOVIMIENTOS (HISTORIAL MÓVIL)
+             ============================================================ -->
+        <section class="screen-view" id="view-movimientos">
+          <div class="view-header">
+            <div class="header-titles">
+              <span class="sub-label">CADA PASO TIENE SU HISTORIA</span>
+              <h1 class="screen-title">Movimientos</h1>
+            </div>
+            <button class="btn-icon-pill" onclick="mobileApp.openModalRegistrar()" title="Nuevo movimiento">+</button>
+          </div>
+
+          <div class="month-selector-bar">
+            <button class="btn-arrow" onclick="mobileApp.cambiarMes(-1)">‹</button>
+            <span class="month-label" id="lblMobileMovCurrentMonth">Octubre de 2026</span>
+            <button class="btn-arrow" onclick="mobileApp.cambiarMes(1)">›</button>
+          </div>
+
+          <!-- Buscador y Filtros -->
+          <div style="margin-bottom: 1rem;">
+            <input type="text" id="mobileInputSearch" placeholder="Buscar por concepto o categoría..." style="width: 100%; padding: 0.65rem 1rem; border-radius: var(--radius-full); border: 1px solid var(--border-card); background: var(--bg-card); font-family: inherit; font-size: 0.85rem;" oninput="mobileApp.renderizarMovimientos()">
+          </div>
+
+          <div style="display: flex; gap: 0.4rem; margin-bottom: 1rem;">
+            <button class="segment-tab active" id="mobChipTodos" onclick="mobileApp.setFiltroTipo('TODOS')">Todos</button>
+            <button class="segment-tab" id="mobChipIngresos" onclick="mobileApp.setFiltroTipo('INGRESO')">Ingresos</button>
+            <button class="segment-tab" id="mobChipGastos" onclick="mobileApp.setFiltroTipo('GASTO')">Gastos</button>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <select id="mobileSelectCategory" aria-label="Filtrar por categoría" onchange="mobileApp.renderizarMovimientos()" style="width: 100%; padding: 0.65rem 1rem; border-radius: var(--radius-full); border: 1px solid var(--border-card); background: var(--bg-card); font-family: inherit; font-size: 0.85rem;">
+              <option value="TODAS">Todas las categorías</option>
+              <option value="Alimentación">Alimentación</option>
+              <option value="Transporte">Transporte</option>
+              <option value="Ocio">Ocio</option>
+              <option value="Vivienda">Vivienda</option>
+              <option value="Sanidad">Sanidad</option>
+              <option value="Salario">Salario</option>
+              <option value="Ventas">Ventas</option>
+              <option value="Freelance">Freelance</option>
+              <option value="Inversiones">Inversiones</option>
+              <option value="Mesada">Mesada</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+            <button class="segment-tab" onclick="mobileApp.exportarCSV()">📥 Exportar CSV</button>
+            <button class="segment-tab" onclick="mobileApp.imprimirPDF()">📄 Imprimir / PDF</button>
+          </div>
+
+          <!-- Totales del mes -->
+          <div class="section-card" style="display: flex; justify-content: space-between; text-align: left;">
+            <div>
+              <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Ingresos</span>
+              <div style="font-size: 1.1rem; font-weight: 800; color: var(--color-income);" id="lblMobileMovIngresos">+3.200.000 COP</div>
+            </div>
+            <div style="text-align:center;">
+              <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Balance</span>
+              <div style="font-size: 1.1rem; font-weight: 800; color: var(--color-primary);" id="lblMobileMovBalance">+1.359.500 COP</div>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Gastos</span>
+              <div style="font-size: 1.1rem; font-weight: 800; color: var(--color-expense);" id="lblMobileMovGastos">-1.840.500 COP</div>
+            </div>
+          </div>
+
+          <!-- Lista agrupada -->
+          <div id="mobileGroupedTransactionsList">
+            <!-- Renderizado dinámico -->
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 3: MI PLAN (PRESUPUESTOS, METAS Y DEUDAS)
+             ============================================================ -->
+        <section class="screen-view" id="view-plan">
+          <div class="view-header">
+            <div class="header-titles">
+              <span class="sub-label" id="lblMobilePlanHeaderSub">QUÉ EN LUGAR DE ESTÁ PASO</span>
+              <h1 class="screen-title">Mi plan</h1>
+            </div>
+            <button class="btn-icon-pill" title="Opciones" onclick="mobileApp.openModalAcademic()">🎓</button>
+          </div>
+
+          <!-- Selector de Subpestañas -->
+          <div class="segmented-control-tabs">
+            <button class="segment-tab active" data-subtab="presupuestos" onclick="mobileApp.switchPlanSubtab('presupuestos')">Presupuestos</button>
+            <button class="segment-tab" data-subtab="metas" onclick="mobileApp.switchPlanSubtab('metas')">Metas</button>
+            <button class="segment-tab" data-subtab="deudas" onclick="mobileApp.switchPlanSubtab('deudas')">Deudas</button>
+          </div>
+
+          <!-- SUB-PANE: PRESUPUESTOS -->
+          <div class="plan-subpane active" id="subpane-presupuestos">
+            <div class="section-card" style="text-align: center;">
+              <div style="font-size: 1.6rem; font-weight: 800; color: var(--color-primary);" id="lblMobileBudgetHeroCurrent">1.840.500 COP</div>
+              <span style="font-size: 0.85rem; color: var(--text-muted);" id="lblMobileBudgetHeroLimit">de 2.300.000 COP</span>
+              <div class="progress-track big-track" style="margin: 0.85rem 0;">
+                <div class="progress-bar-fill" id="barMobileBudgetHero" style="width: 80%;"></div>
+              </div>
+              <span style="font-size:0.78rem; color:var(--text-muted);" id="lblMobileBudgetPercentPlan">80% consumido</span>
+              <span style="font-size: 0.78rem; color: var(--color-primary);" id="lblMobileBudgetHeroAvailable">459.500 COP disponibles · 15 días por delante</span>
+            </div>
+
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Tus categorías</h3>
+                <button class="link-btn" onclick="mobileApp.openModalConfigPresupuesto()">Editar</button>
+              </div>
+              <div id="mobileListCategoriesBudget">
+                <!-- Items de categorías -->
+              </div>
+            </div>
+            <div class="section-card">
+              <div class="section-card-header"><h3>Diagnóstico y alertas</h3></div>
+              <div id="mobilePlanAlerts"></div>
+            </div>
+
+            <button class="btn-action-primary" onclick="mobileApp.openModalConfigPresupuesto()">
+              <span>+</span> Modificar presupuesto mensual
+            </button>
+          </div>
+
+          <!-- SUB-PANE: METAS -->
+          <div class="plan-subpane" id="subpane-metas">
+            <div class="hero-balance-card" style="background: linear-gradient(145deg, #0d2830, #134e4a);">
+              <span class="hero-label">De tu saldo, reservado para metas:</span>
+              <div class="hero-amount" id="lblMobileMetasTotal">2.750.000 COP</div>
+              <div class="kpi-sub-badge teal">+600.000 COP este mes</div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Un paso más cerca</h3>
+                <span class="badge-semestre" id="lblMobileMetasCount">3 metas</span>
+              </div>
+              <div id="mobileListMetasCards" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                <!-- Tarjetas de metas -->
+              </div>
+            </div>
+            <div class="section-card">
+                <div class="section-card-header">
+                  <h3>Resumen de metas</h3>
+                </div>
+                <div style="display:flex; justify-content:space-between; gap:0.75rem; font-size:0.82rem;">
+                  <span>Objetivo total</span><strong id="lblMobileMetasObjetivo">0 COP</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; gap:0.75rem; font-size:0.82rem; margin-top:0.5rem;">
+                  <span>Restante</span><strong id="lblMobileMetasRestante">0 COP</strong>
+                </div>
+            </div>
+            <div class="section-card">
+                <div class="section-card-header"><h3>Historial de aportes</h3></div>
+                <div id="mobileListAportesMetas"></div>
+            </div>
+            <button class="btn-action-primary" onclick="mobileApp.openModalNuevaMeta()">
+                <span>+</span> Crear una meta
+            </button>
+          </div>
+
+          <!-- SUB-PANE: DEUDAS -->
+          <div class="plan-subpane" id="subpane-deudas">
+            <div class="hero-balance-card" style="background: linear-gradient(145deg, #133842, #3b1115);">
+              <span class="hero-label">Total pendiente:</span>
+              <div class="hero-amount" id="lblMobileDeudasTotal">1.260.000 COP</div>
+              <div class="kpi-sub-badge red">155.000 COP en cuotas mensuales · 2 deudas</div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Todo bajo control</h3>
+              </div>
+              <div id="mobileListDeudasCards" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                <!-- Tarjetas de deudas -->
+              </div>
+            </div>
+            <div class="section-card">
+              <div class="section-card-header"><h3>Resumen de deudas</h3></div>
+              <div style="display:flex; justify-content:space-between; gap:0.75rem; font-size:0.82rem;">
+                <span>Total amortizado</span><strong id="lblMobileDeudasPagado">0 COP</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; gap:0.75rem; font-size:0.82rem; margin-top:0.5rem;">
+                <span>Cuotas mensuales</span><strong id="lblMobileDeudasCuotas">0 COP/mes</strong>
+              </div>
+            </div>
+            <div class="section-card">
+              <div class="section-card-header"><h3>Historial de abonos</h3></div>
+              <div id="mobileListAbonosDeudas"></div>
+            </div>
+            <div class="section-card">
+              <div class="section-card-header"><h3>Estrategia recomendada</h3></div>
+              <p style="font-size:0.82rem; color:var(--text-muted);">
+                Prioriza los abonos adicionales a la deuda con mayor tasa de interés y mantén al día las cuotas mínimas de las demás.
+              </p>
+            </div>
+            <button class="btn-action-primary" onclick="mobileApp.openModalNuevaDeuda()">
+              <span>+</span> Añadir deuda
+            </button>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 3B: MÓDULO NEGOCIO (MÓVIL)
+             ============================================================ -->
+        <section class="screen-view" id="view-negocio">
+          <div class="view-header">
+            <div class="header-titles">
+              <span class="sub-label">GESTOR PRO</span>
+              <h1 class="screen-title">Mi bolsillo negocio</h1>
+            </div>
+            <button class="btn-icon-pill" onclick="mobileApp.exportarCSV()" title="Exportar CSV">📥</button>
+          </div>
+
+          <div class="business-panel active" data-business-panel="negocio">
+            <div class="business-summary-card">
+              <div class="business-summary-topbar">
+                <span>Balance del negocio</span>
+                <button class="segment-tab business-action-btn" onclick="mobileApp.imprimirPDF()">📄 PDF</button>
+              </div>
+              <div class="business-summary-grid">
+                <div class="business-metric-box income">
+                  <span>Ingresos</span>
+                  <strong id="lblMobileBusinessIngresos">0 COP</strong>
+                </div>
+                <div class="business-metric-box balance">
+                  <span>Balance</span>
+                  <strong id="lblMobileBusinessBalance">0 COP</strong>
+                </div>
+                <div class="business-metric-box expense">
+                  <span>Gastos</span>
+                  <strong id="lblMobileBusinessGastos">0 COP</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Resumen de operación</h3>
+              </div>
+              <div class="business-kpi-grid">
+                <div class="business-kpi-item">
+                  <span>Ventas</span>
+                  <strong id="lblMobileBusinessVentas">0 COP</strong>
+                </div>
+                <div class="business-kpi-item">
+                  <span>Compras</span>
+                  <strong id="lblMobileBusinessCompras">0 COP</strong>
+                </div>
+                <div class="business-kpi-item">
+                  <span>Utilidad</span>
+                  <strong id="lblMobileBusinessUtilidad">0 COP</strong>
+                </div>
+                <div class="business-kpi-item warning">
+                  <span>Inventario bajo</span>
+                  <strong id="lblMobileBusinessStockBajo">0</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Inventario</h3>
+              </div>
+              <div id="mobileBusinessInventoryList" class="compact-list"></div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Flujo de ventas y compras</h3>
+              </div>
+              <div style="height: 200px; position: relative;">
+                <canvas id="mobileBusinessChart"></canvas>
+              </div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Actividad reciente</h3>
+              </div>
+              <div id="mobileBusinessActivityList" class="compact-list"></div>
+            </div>
+          </div>
+
+          <div class="business-panel" data-business-panel="inventario">
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Inventario</h3>
+              </div>
+              <div id="mobileBusinessInventoryPanelList" class="compact-list"></div>
+            </div>
+          </div>
+
+          <div class="business-panel" data-business-panel="movimientos">
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Movimientos del negocio</h3>
+              </div>
+              <div id="mobileBusinessMovementList" class="compact-list"></div>
+            </div>
+          </div>
+
+          <div class="business-panel" data-business-panel="clientes">
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Clientes y proveedores</h3>
+              </div>
+              <div id="mobileBusinessClientList" class="compact-list"></div>
+            </div>
+          </div>
+
+          <div class="business-panel" data-business-panel="informes">
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Informes del negocio</h3>
+              </div>
+              <div id="mobileBusinessReportList" class="compact-list"></div>
+            </div>
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Flujo de ventas y compras</h3>
+              </div>
+              <div style="height: 200px; position: relative;">
+                <canvas id="mobileBusinessChartReports"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 4: INFORMES (GRÁFICOS MÓVILES)
+             ============================================================ -->
+        <section class="screen-view" id="view-informes">
+          <div class="view-header">
+            <div class="header-titles">
+              <span class="sub-label">ENTENDER ES EL PRIMER PASO</span>
+              <h1 class="screen-title">Tu dinero, en perspectiva</h1>
+            </div>
+            <button class="btn-icon-pill" onclick="mobileApp.exportarCSV()" title="Exportar CSV">📥</button>
+          </div>
+
+          <div class="section-card" style="text-align: center;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Balance del mes</span>
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--color-income); margin: 0.3rem 0;" id="lblMobileReportBalance">+1.359.500 COP</div>
+            <span style="font-size: 0.8rem; color: var(--text-muted);" id="lblMobileReportTasa">🌱 Conservas el 42.5 % de tus ingresos</span>
+          </div>
+          <div class="section-card" style="display:flex; justify-content:space-between; gap:0.75rem;">
+            <div><span style="font-size:0.72rem; color:var(--text-muted);">Ingresos del período</span><strong id="lblMobileReportIncome" style="display:block; color:var(--color-income);">0 COP</strong></div>
+            <div style="text-align:right;"><span style="font-size:0.72rem; color:var(--text-muted);">Gastos del período</span><strong id="lblMobileReportExpense" style="display:block; color:var(--color-expense);">0 COP</strong></div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>Comparativa mensual de ingresos y gastos</h3>
+            </div>
+            <div style="height: 200px; position: relative;">
+              <canvas id="mobileChartPerspective"></canvas>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-card-header"><h3>Distribución de gastos</h3></div>
+            <div style="height: 220px; position: relative;">
+              <canvas id="mobileChartCategories"></canvas>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>Desglose por categoría y presupuesto</h3>
+              <strong id="lblMobileReportTotalSpent">1.840.500 COP</strong>
+            </div>
+            <div id="mobileGridReportCategories" style="display: flex; flex-direction: column; gap: 0.6rem;">
+              <!-- Categorías -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             PANTALLA 5: PERFIL (TU ESPACIO)
+             ============================================================ -->
+        <section class="screen-view" id="view-perfil">
+          <div class="view-header">
+            <div class="header-titles">
+              <span class="sub-label">MIBOLSILLO A TU MANERA</span>
+              <h1 class="screen-title">Tu espacio</h1>
+            </div>
+            <button class="btn-icon-pill" onclick="mobileApp.openModalAcademic()">🎓</button>
+          </div>
+
+          <div class="section-card" style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div class="user-avatar-btn" style="width: 48px; height: 48px; font-size: 1.1rem;" id="mobileProfileAvatar">LM</div>
+              <div>
+                <strong style="display: block; font-size: 1.05rem;" id="mobileProfileName">Lucía Martín</strong>
+                <span style="font-size: 0.78rem; color: var(--text-muted);" id="mobileProfileEmail">lucia.martin@email.com</span>
+              </div>
+            </div>
+            <button class="btn-icon-pill" onclick="mobileApp.openModalEditarPerfil()">✏️</button>
+          </div>
+
+          <div class="section-card">
+            <div class="section-card-header" style="margin-bottom: 0.75rem;">
+              <h3 style="font-size: 0.95rem; margin: 0;">Espacio activo</h3>
+            </div>
+            <div class="mobile-module-toggle mobile-module-toggle-inline">
+              <button class="module-toggle-btn active" type="button" data-module="PERSONAL" onclick="mobileApp.setModulo('PERSONAL', 'inicio')">
+                Mi dinero
+              </button>
+              <button class="module-toggle-btn" type="button" data-module="EMPRESARIAL" onclick="mobileApp.setModulo('EMPRESARIAL', 'negocio')">
+                Negocio
+              </button>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <h3 style="margin-bottom: 0.75rem; font-size: 0.95rem;">Ajustes rápidos</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+              <span>Moneda base</span>
+              <strong>COP ($)</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+              <span>Ocultar saldos</span>
+              <input type="checkbox" id="mobChkOcultarSaldo" onchange="mobileApp.toggleOcultarSaldo()" aria-label="Ocultar saldos">
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+              <span>Alertas de presupuesto</span>
+              <input type="checkbox" id="mobChkAlertasPresupuesto" onchange="mobileApp.toggleAlertaPresupuesto(this.checked)" aria-label="Alertas de presupuesto">
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+              <span>Recordatorios de deudas</span>
+              <input type="checkbox" id="mobChkRecordatoriosDeudas" onchange="mobileApp.toggleRecordatoriosDeudas(this.checked)" aria-label="Recordatorios de deudas">
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+              <span>Saldo inicial</span>
+              <strong id="mobLblSaldoInicial">0 COP</strong>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <h3 style="margin-bottom: 0.75rem; font-size: 0.95rem;">Gestión de datos</h3>
+            <button class="btn-action-primary" style="margin-bottom: 0.5rem;" onclick="mobileApp.exportarJSON()">
+              💾 Descargar copia JSON
+            </button>
+            <button class="btn-action-primary" style="margin-bottom: 0.5rem;" onclick="mobileApp.exportarCSV()">
+              📥 Descargar movimientos CSV
+            </button>
+            <button class="btn-action-primary" style="margin-bottom: 0.5rem;" onclick="mobileApp.imprimirPDF()">
+              📄 Imprimir / guardar informe PDF
+            </button>
+            <button class="btn-action-primary" style="background: transparent; color: var(--color-expense); border: 1px solid var(--color-expense); box-shadow: none;" onclick="mobileApp.restablecerDatos()">
+              🔄 Restablecer datos iniciales
+            </button>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- BARRA DE NAVEGACIÓN INFERIOR (BOTTOM NAV) -->
+      <nav class="bottom-nav-bar" id="mobilePersonalNav">
+        <button class="nav-btn active" data-tab="inicio" onclick="mobileApp.switchTab('inicio')">
+          <span style="font-size: 1.25rem;">🏠</span>
+          <span>Inicio</span>
+        </button>
+        <button class="nav-btn" data-tab="movimientos" onclick="mobileApp.switchTab('movimientos')">
+          <span style="font-size: 1.25rem;">⇋</span>
+          <span>Movs</span>
+        </button>
+        <button class="nav-center-action-btn" onclick="mobileApp.openQuickActionMenu('PERSONAL')" title="Registrar movimiento personal">
+          +
+        </button>
+        <button class="nav-btn" data-tab="plan" onclick="mobileApp.switchTab('plan')">
+          <span style="font-size: 1.25rem;">🎯</span>
+          <span>Mi plan</span>
+        </button>
+        <button class="nav-btn" data-tab="informes" onclick="mobileApp.switchTab('informes')">
+          <span style="font-size: 1.25rem;">📊</span>
+          <span>Informes</span>
+        </button>
+      </nav>
+
+      <nav class="bottom-nav-bar bottom-nav-business" id="mobileBusinessNav" style="display: none;">
+        <button class="nav-btn active" data-business-tab="negocio" onclick="mobileApp.switchBusinessTab('negocio')">
+          <span style="font-size: 1.25rem;">🏢</span>
+          <span>Inicio</span>
+        </button>
+        <button class="nav-btn" data-business-tab="inventario" onclick="mobileApp.switchBusinessTab('inventario')">
+          <span style="font-size: 1.25rem;">📦</span>
+          <span>Inventario</span>
+        </button>
+        <button class="nav-btn" data-business-tab="movimientos" onclick="mobileApp.switchBusinessTab('movimientos')">
+          <span style="font-size: 1.25rem;">⇋</span>
+          <span>Movs</span>
+        </button>
+        <button class="nav-center-action-btn" onclick="mobileApp.openQuickActionMenu('EMPRESARIAL')" title="Acciones empresariales">
+          +
+        </button>
+        <button class="nav-btn" data-business-tab="clientes" onclick="mobileApp.switchBusinessTab('clientes')">
+          <span style="font-size: 1.25rem;">👥</span>
+          <span>Clientes</span>
+        </button>
+        <button class="nav-btn" data-business-tab="informes" onclick="mobileApp.switchBusinessTab('informes')">
+          <span style="font-size: 1.25rem;">📊</span>
+          <span>Informes</span>
+        </button>
+      </nav>
+
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       MODALES BOTTOM-SHEET MÓVILES
+       ==================================================================== -->
+
+  <div class="bottom-sheet-backdrop hidden" id="mobileQuickActions">
+    <div class="bottom-sheet-container quick-action-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">Acciones rápidas</h2>
+        <button class="btn-close-circle" onclick="mobileApp.closeQuickActionMenu()">✕</button>
+      </div>
+      <div class="quick-actions-list" id="mobileQuickActionsList"></div>
+    </div>
+  </div>
+
+  <!-- MODAL 1: REGISTRAR MOVIMIENTO -->
+  <div class="bottom-sheet-backdrop hidden" id="modalMobileRegistrar">
+    <div class="bottom-sheet-container">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">Registrar movimiento</h2>
+        <button class="btn-close-circle" onclick="mobileApp.closeModalRegistrar()">✕</button>
+      </div>
+
+      <form onsubmit="mobileApp.handleGuardarMovimiento(event)">
+        <div class="segmented-control-tabs" style="margin-bottom: 1rem;">
+          <button type="button" class="segment-tab active" id="mobRegGasto" onclick="mobileApp.setModalType('GASTO')">↗ Gasto</button>
+          <button type="button" class="segment-tab" id="mobRegIngreso" onclick="mobileApp.setModalType('INGRESO')">↙ Ingreso</button>
+        </div>
+
+        <div class="form-inputs-group">
+          <div class="form-row-custom">
+            <label for="mobInputMonto">Valor en Pesos Colombianos (COP)</label>
+            <input type="number" id="mobInputMonto" placeholder="Ej. 42800.00" min="100" step="0.01" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobInputConcepto">Concepto</label>
+            <input type="text" id="mobInputConcepto" placeholder="Ej. Mercadona" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobSelectCategoria">Categoría</label>
+            <select id="mobSelectCategoria">
+              <option value="Alimentación">🛒 Alimentación</option>
+              <option value="Transporte">🚌 Transporte</option>
+              <option value="Ocio">☕ Ocio</option>
+              <option value="Vivienda">🏠 Vivienda</option>
+              <option value="Sanidad">⚕️ Sanidad</option>
+              <option value="Salario">💼 Salario</option>
+              <option value="Freelance">💻 Freelance</option>
+              <option value="Otros">··· Otros</option>
+            </select>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobSelectCuenta">Cuenta de origen / destino</label>
+            <select id="mobSelectCuenta">
+              <option value="Principal">Cuenta Principal (Nómina)</option>
+              <option value="Efectivo">Billetera / Efectivo</option>
+              <option value="Ahorros">Bolsillo de Ahorros</option>
+            </select>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobInputFecha">Fecha</label>
+            <input type="date" id="mobInputFecha" required>
+          </div>
+          <div class="section-card" style="padding:0.85rem; margin-bottom:1rem;">
+            <strong>Impacto estimado</strong>
+            <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.82rem;"><span>Categoría</span><strong id="mobLblRegCategory">Alimentación</strong></div>
+            <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.82rem;"><span>Saldo actual</span><strong id="mobLblSaldoActual">0 COP</strong></div>
+            <div style="display:flex; justify-content:space-between; margin-top:0.35rem; font-size:0.82rem;"><span>Saldo proyectado</span><strong id="mobLblSaldoProyectado">0 COP</strong></div>
+            <div style="display:flex; justify-content:space-between; margin-top:0.35rem; font-size:0.82rem;"><span>Impacto presupuestal</span><strong id="mobLblBudgetImpact">0%</strong></div>
+            <div id="mobRegImpactAlert" style="font-size:0.78rem; color:var(--color-expense); margin-top:0.5rem;"></div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-action-primary">✔ Guardar movimiento</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: NUEVA META -->
+  <div class="bottom-sheet-backdrop hidden" id="modalMobileNuevaMeta">
+    <div class="bottom-sheet-container">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">Crear meta de ahorro</h2>
+        <button class="btn-close-circle" onclick="mobileApp.closeModalNuevaMeta()">✕</button>
+      </div>
+      <form onsubmit="mobileApp.handleNuevaMeta(event)">
+        <div class="form-inputs-group">
+          <div class="form-row-custom">
+            <label for="mobMetaNombre">Nombre de la meta</label>
+            <input type="text" id="mobMetaNombre" placeholder="Ej. Fondo de tranquilidad" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobMetaObjetivo">Monto objetivo (COP)</label>
+            <input type="number" id="mobMetaObjetivo" placeholder="Ej. 2500000.00" min="10000" step="0.01" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobMetaAhorrado">Ahorro inicial (COP)</label>
+            <input type="number" id="mobMetaAhorrado" placeholder="0.00" min="0" step="0.01" value="0">
+          </div>
+          <div class="form-row-custom">
+            <label for="mobMetaPlazo">Plazo estimado</label>
+            <input type="text" id="mobMetaPlazo" placeholder="Ej. Para abril de 2027">
+          </div>
+        </div>
+        <button type="submit" class="btn-action-primary">✔ Crear meta</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: APORTAR A META -->
+  <div class="bottom-sheet-backdrop hidden" id="modalMobileAportarMeta">
+    <div class="bottom-sheet-container">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title" id="mobLblAporteMetaTitle">Aportar a meta</h2>
+        <button class="btn-close-circle" onclick="mobileApp.closeModalAportarMeta()">✕</button>
+      </div>
+      <form onsubmit="mobileApp.handleAporteMeta(event)">
+        <input type="hidden" id="mobAporteMetaId">
+        <div class="form-inputs-group">
+          <div class="form-row-custom">
+            <label for="mobAporteMetaValor">Valor del aporte (COP)</label>
+            <input type="number" id="mobAporteMetaValor" placeholder="Ej. 50000.00" min="1000" step="0.01" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-action-primary">✔ Confirmar aporte</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: NUEVA DEUDA -->
+  <div class="bottom-sheet-backdrop hidden" id="modalMobileNuevaDeuda">
+    <div class="bottom-sheet-container">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">Añadir deuda</h2>
+        <button class="btn-close-circle" onclick="mobileApp.closeModalNuevaDeuda()">✕</button>
+      </div>
+      <form onsubmit="mobileApp.handleNuevaDeuda(event)">
+        <div class="form-inputs-group">
+          <div class="form-row-custom">
+            <label for="mobDeudaNombre">Nombre de la deuda</label>
+            <input type="text" id="mobDeudaNombre" placeholder="Ej. Portátil" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobDeudaValorInicial">Monto total inicial (COP)</label>
+            <input type="number" id="mobDeudaValorInicial" placeholder="Ej. 1440000.00" min="10000" step="0.01" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobDeudaSaldoPendiente">Saldo pendiente (COP)</label>
+            <input type="number" id="mobDeudaSaldoPendiente" placeholder="Ej. 960000.00" min="0" step="0.01" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobDeudaCuota">Cuota mensual (COP)</label>
+            <input type="number" id="mobDeudaCuota" placeholder="Ej. 80000.00" min="1000" step="0.01" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobDeudaCondiciones">Condiciones / tasa</label>
+            <input type="text" id="mobDeudaCondiciones" placeholder="Ej. 0% TIN en 12 cuotas">
+          </div>
+        </div>
+        <button type="submit" class="btn-action-primary">✔ Guardar deuda</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 5: ABONAR A DEUDA -->
+  <div class="bottom-sheet-backdrop hidden" id="modalMobileAbonarDeuda">
+    <div class="bottom-sheet-container">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title" id="mobLblAbonoDeudaTitle">Abonar a deuda</h2>
+        <button class="btn-close-circle" onclick="mobileApp.closeModalAbonarDeuda()">✕</button>
+      </div>
+      <form onsubmit="mobileApp.handleAbonoDeuda(event)">
+        <input type="hidden" id="mobAbonoDeudaId">
+        <div class="form-inputs-group">
+          <div class="form-row-custom">
+            <label for="mobAbonoDeudaValor">Valor del abono (COP)</label>
+            <input type="number" id="mobAbonoDeudaValor" placeholder="Ej. 80000.00" min="1000" step="0.01" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-action-primary">✔ Confirmar abono</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 6: AJUSTAR PRESUPUESTO -->
+  <div class="bottom-sheet-backdrop hidden" id="modalMobilePresupuesto">
+    <div class="bottom-sheet-container">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">Ajustar presupuesto mensual</h2>
+        <button class="btn-close-circle" onclick="mobileApp.closeModalConfigPresupuesto()">✕</button>
+      </div>
+      <form onsubmit="mobileApp.handlePresupuesto(event)">
+        <div class="form-inputs-group">
+          <div class="form-row-custom">
+            <label for="mobInputPresupuestoMonto">Límite mensual (COP)</label>
+            <input type="number" id="mobInputPresupuestoMonto" min="100000" step="0.01" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-action-primary">✔ Guardar límite</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 7: EDITAR PERFIL -->
+  <div class="bottom-sheet-backdrop hidden" id="modalMobileEditarPerfil">
+    <div class="bottom-sheet-container">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">Editar perfil</h2>
+        <button class="btn-close-circle" onclick="mobileApp.closeModalEditarPerfil()">✕</button>
+      </div>
+      <form onsubmit="mobileApp.handlePerfil(event)">
+        <div class="form-inputs-group">
+          <div class="form-row-custom">
+            <label for="mobInputPerfilNombre">Nombre completo</label>
+            <input type="text" id="mobInputPerfilNombre" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobInputPerfilEmail">Correo electrónico</label>
+            <input type="email" id="mobInputPerfilEmail" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobInputPerfilSaldoInicial">Saldo inicial (COP)</label>
+            <input type="number" id="mobInputPerfilSaldoInicial" step="0.01" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-action-primary">✔ Guardar cambios</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 8: SUSTENTACIÓN ACADÉMICA -->
+  <div class="bottom-sheet-backdrop hidden" id="modalMobileAcademic">
+    <div class="bottom-sheet-container">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">Fundamentos Académicos</h2>
+        <button class="btn-close-circle" onclick="mobileApp.closeModalAcademic()">✕</button>
+      </div>
+      <div style="font-size: 0.85rem; line-height: 1.5; color: var(--text-body);">
+        <p style="margin-bottom: 0.75rem;"><strong>1. Arquitectura Separada:</strong> Código desacoplado en Versión PC (<code>desktop.html</code>) y Versión Móvil (<code>mobile.html</code>), sincronizados a través de <code>shared.js</code>.</p>
+        <p style="margin-bottom: 0.75rem;"><strong>2. Fórmulas Matemáticas:</strong> Balance neto $D = I_T - G_T$, ahorro acumulado sin doble conteo y tasa porcentual acotada.</p>
+        <p><strong>3. Lógica Proposicional:</strong> Diagnóstico automático de flujos y alertas preventivas en tiempo real.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST FLOTANTE -->
+  <div class="toast-container" id="mobileToastContainer"></div>
+
+  <!-- SCRIPTS: ARQUITECTURA MODULAR + NÚCLEO COMPARTIDO + CONTROLADOR MÓVIL -->
+  <script src="src/utils/formatters.js?v=20261103-6"></script>
+  <script src="src/utils/dates.js?v=20261103-6"></script>
+  <script src="src/utils/security.js?v=20261103-6"></script>
+  <script src="src/utils/validators.js?v=20261103-6"></script>
+  <script src="src/storage/seedData.js?v=20261103-6"></script>
+  <script src="src/storage/demoData.js?v=20261103-6"></script>
+  <script src="src/storage/localStorage.js?v=20261103-6"></script>
+  <script src="src/domains/personal/movementsDomain.js?v=20261103-6"></script>
+  <script src="src/domains/personal/budgetDomain.js?v=20261103-6"></script>
+  <script src="src/domains/personal/goalsDomain.js?v=20261103-6"></script>
+  <script src="src/domains/personal/debtsDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/businessDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/productsDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/inventoryDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/purchasesDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/salesDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/creditsDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/productionDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/employeesDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/expensesDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/metricsDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/cashFlowDomain.js?v=20261103-6"></script>
+  <script src="src/domains/user/userService.js?v=20261103-6"></script>
+  <script src="src/services/finanzasCore.js?v=20261103-6"></script>
+  <script src="src/utils/shared.js?v=20261103-6"></script>
+  <script src="src/utils/mobile.js?v=20261103-6"></script>
+</body>
+</html>

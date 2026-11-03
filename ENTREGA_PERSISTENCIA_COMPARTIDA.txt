@@ -1,0 +1,19 @@
+MiBolsillo - Persistencia compartida PC/Móvil
+
+CAMBIOS
+1. Unificado el formato persistente: { version, updatedAt, updatedBy, data }.
+2. La versión móvil lee tanto el formato nuevo como el formato plano anterior.
+3. Los cambios móviles se escriben en la misma clave FINANZAS_ETAPA_DATA_V2 que utiliza PC.
+4. La versión móvil escucha eventos storage y BroadcastChannel y actualiza FinanzasCore sin volver a guardar el estado recibido.
+5. La versión PC ya escuchaba el evento storage; ahora puede leer el mismo sobre emitido por móvil.
+6. Se actualizaron los query strings de scripts para invalidar caché.
+7. Se documentó la diferencia entre sincronización local del mismo origen y sincronización automática entre dispositivos.
+
+LIMITACIÓN IMPORTANTE
+La sincronización automática funciona entre pestañas/versiones abiertas en el mismo navegador y origen. Para sincronización por Internet entre un celular y un PC distintos se requiere desplegar un backend autenticado y una base de datos remota. No se han inventado credenciales ni se afirma que exista un servidor cloud.
+
+PRUEBAS EJECUTADAS
+- test_shared.js: OK
+- test_dates.js: OK
+- node --check en todos los archivos JavaScript: OK
+- La prueba visual de extremo a extremo en navegador debe realizarse en el entorno del usuario.
