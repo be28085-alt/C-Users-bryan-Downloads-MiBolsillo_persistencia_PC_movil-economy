@@ -91,6 +91,7 @@
       if (!Array.isArray(next.productos)) next.productos = [];
       if (!Array.isArray(next.proveedores)) next.proveedores = [];
       if (!Array.isArray(next.cuentas)) next.cuentas = [];
+      if (!Array.isArray(next.ingresosNegocio)) next.ingresosNegocio = [];
 
       next.movimientos = next.movimientos.map((item, index) => ({
         ...item,
@@ -557,6 +558,10 @@
       return domain ? domain.getProductos(this.state.productos, nId, filtroTipo) : [];
     }
 
+    getProductoById(id) {
+      return (this.state.productos || []).find(producto => producto.id === id) || null;
+    }
+
     agregarProducto(datos) {
       const nId = datos.negocioId || this.state.negocioActivoId;
       const domain = window.BusinessProductsDomain;
@@ -688,6 +693,30 @@
     getVentas(negocioId = null) {
       const nId = negocioId || this.state.negocioActivoId;
       return (this.state.ventas || []).filter(v => v.negocioId === nId);
+    }
+
+    getIngresosNegocio(negocioId = null) {
+      const nId = negocioId || this.state.negocioActivoId;
+      return (this.state.ingresosNegocio || []).filter(i => i.negocioId === nId);
+    }
+
+    registrarIngresoNegocio(datos = {}) {
+      const monto = Number(datos.monto);
+      const descripcion = (datos.descripcion || '').trim();
+      if (!Number.isFinite(monto) || monto <= 0) return { error: 'El monto debe ser mayor que cero.' };
+      if (!descripcion) return { error: 'La descripción es obligatoria.' };
+
+      const ingreso = {
+        id: `ing-neg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        negocioId: datos.negocioId || this.state.negocioActivoId,
+        categoria: (datos.categoria || 'Otros ingresos').trim(),
+        descripcion,
+        monto,
+        fecha: datos.fecha || (window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0])
+      };
+      this.state.ingresosNegocio.unshift(ingreso);
+      this.guardarEstado();
+      return { ingreso };
     }
 
     registrarVenta(datos) {

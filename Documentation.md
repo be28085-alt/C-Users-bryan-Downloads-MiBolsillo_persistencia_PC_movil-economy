@@ -19,7 +19,7 @@
 | **Unidad Monetaria** | Peso Colombiano ($ COP) |
 | **Almacenamiento** | Datos en memoria durante la ejecución de C++; estado web guardado localmente como JSON en `localStorage` |
 | **Entradas web** | `index.html` (PC), `desktop.html` (PC) y `mobile.html` (móvil) |
-| **Núcleo web** | `shared.js`; controladores `desktop.js` y `mobile.js` |
+| **Núcleo web** | Módulos de `src/` (estado, persistencia y dominios); controladores activos `src/utils/desktop.js` y `src/utils/mobile.js` |
 
 ---
 
@@ -81,11 +81,13 @@ Las cantidades precargadas son datos demostrativos, no datos de una persona real
 
 ### 4.1 Arquitectura de Código Separada (Versión PC vs. Versión Móvil):
 La aplicación web separa la interfaz del estado y la lógica compartida:
-* **Núcleo (`shared.js`):** mantiene movimientos, metas, deudas, preferencias, saldo inicial y período seleccionado. Guarda el estado en `localStorage` bajo la clave `FINANZAS_ETAPA_DATA_V2` y notifica cambios entre pestañas del mismo navegador. Los campos monetarios aceptan centavos y, al salir de cada campo, normalizan la entrada a dos decimales; los valores de la aplicación también se presentan con dos decimales.
-* **Escritorio (`desktop.html`, `desktop.css`, `desktop.js`):** navegación lateral, paneles de resumen, formularios, tablas, gráficos y exportación.
-* **Móvil (`mobile.html`, `mobile.css`, `mobile.js`):** interfaz adaptada a un viewport móvil, navegación inferior y formularios tipo modal.
+* **Núcleo (`src/services/finanzasCore.js`, `src/storage/` y `src/domains/`):** mantiene movimientos personales y datos empresariales, y persiste el estado en `localStorage` bajo `FINANZAS_ETAPA_DATA_V2`, con sincronización entre pestañas del mismo origen.
+* **Escritorio (`desktop.html`, `desktop.css`, `src/utils/desktop.js`):** interfaz PC con navegación lateral y el mismo conjunto de secciones empresariales que móvil: Inicio, Inventario, Movimientos, Ventas, Clientes, Informes y Tu espacio. Las acciones rápidas permiten registrar ventas, compras, productos, gastos, ingresos adicionales y ajustes de inventario.
+* **Móvil (`mobile.html`, `mobile.css`, `src/utils/mobile.js`):** interfaz móvil con navegación inferior y módulo empresarial móvil. «Tu espacio» y el selector «Mi dinero / Negocio» están disponibles en ambos espacios.
 * **Entrada `index.html`:** carga el núcleo compartido y el controlador de escritorio; es una alternativa de entrada PC.
 * **Consola (`main.cpp`):** aplicación C++ separada; no actúa como backend de la web ni comparte su almacenamiento.
+
+Los ingresos empresariales que no correspondan a una venta se guardan por negocio y se incluyen en las métricas de ingresos/reportes y en la actividad de ambas interfaces.
 
 Las páginas web cargan Chart.js y fuentes desde servicios CDN externos. Si Chart.js no está disponible, la interfaz puede omitir los gráficos o mostrar un aviso; no se debe describir la aplicación como completamente autónoma o garantizada sin conexión.
 
@@ -157,7 +159,7 @@ El núcleo web distingue cálculos del período seleccionado y cálculos globale
 
 | Concepto Académico | Implementación en C++ (`main.cpp`) | Implementación web |
 | :--- | :--- | :--- |
-| **1. Programación estructurada y modular** | Funciones para cálculos, registro, historial, ahorro, deudas y presupuesto. | `FinanzasCore` en `shared.js`, con controladores separados en `desktop.js` y `mobile.js`. |
+| **1. Programación estructurada y modular** | Funciones para cálculos, registro, historial, ahorro, deudas y gestión empresarial. | `FinanzasCore` en `src/services/finanzasCore.js`, dominios bajo `src/domains/` y controladores específicos para PC y móvil. |
 | **2. Variables y tipos de datos** | `double`, `std::string`, `int` y `bool`. | `Number`, `String`, `Array` y `Boolean`. |
 | **3. Colecciones y estructuras** | `struct Movimiento`, `struct MetaAhorro` y `struct Deuda`, agrupados mediante `std::vector`. | Objetos y arreglos de objetos para movimientos, metas, deudas e historiales. |
 | **4. Condicionales** | `if`, `else` y `switch` para validación, alertas y menú. | `if / else` para validaciones, estados y presentación. |
@@ -386,8 +388,7 @@ src/
         └── desktopApp.js           # Orquestador DesktopApp (navegación, breadcrumbs, toasts)
 ```
 
-### 11.3 Archivos Rediseñados como Fachadas de Compatibilidad
-* `src/utils/desktop.js`: De un monolito de 3.139 líneas pasó a un punto de entrada conciso (25 líneas) que delega en `src/ui/desktop/desktopApp.js` y expone `window.pcApp`.
-* `src/utils/shared.js`: De un archivo masivo de 2.463 líneas pasó a un puente de compatibilidad (50 líneas) que re-exporta los catálogos y funciones en el espacio global para garantizar funcionamiento con scripts existentes y la versión móvil.
-
-
+### 11.3 Entradas activas de las interfaces
+* `desktop.html` carga el núcleo modular y `src/utils/desktop.js`, que enruta las vistas personales y empresariales de escritorio.
+* `mobile.html` carga el mismo núcleo modular y `src/utils/mobile.js`, que conserva la navegación adaptada a móvil.
+* Los archivos JavaScript de la raíz se mantienen como implementaciones históricas y no son los controladores activos de estas páginas.

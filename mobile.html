@@ -360,7 +360,10 @@
               <span class="sub-label">GESTOR PRO</span>
               <h1 class="screen-title">Mi bolsillo negocio</h1>
             </div>
-            <button class="btn-icon-pill" onclick="mobileApp.exportarCSV()" title="Exportar CSV">📥</button>
+            <div style="display: flex; gap: 0.4rem;">
+              <button class="btn-icon-pill" onclick="mobileApp.switchBusinessTab('perfil')" title="Tu espacio y ajustes" aria-label="Tu espacio y ajustes">⚙️</button>
+              <button class="btn-icon-pill" onclick="mobileApp.exportarCSV()" title="Exportar CSV" aria-label="Exportar CSV">📥</button>
+            </div>
           </div>
 
           <div class="business-panel active" data-business-panel="negocio">
@@ -547,7 +550,10 @@
                 <span style="font-size: 0.78rem; color: var(--text-muted);" id="mobileProfileEmail">lucia.martin@email.com</span>
               </div>
             </div>
-            <button class="btn-icon-pill" onclick="mobileApp.openModalEditarPerfil()">✏️</button>
+            <div style="display: flex; gap: 0.35rem;">
+              <button class="btn-icon-pill hidden" id="mobileProfileBusinessReturn" onclick="mobileApp.switchBusinessTab('negocio')" title="Volver al negocio" aria-label="Volver al negocio">🏢</button>
+              <button class="btn-icon-pill" onclick="mobileApp.openModalEditarPerfil()" title="Editar perfil" aria-label="Editar perfil">✏️</button>
+            </div>
           </div>
 
           <div class="section-card">
@@ -653,6 +659,10 @@
         <button class="nav-btn" data-business-tab="informes" onclick="mobileApp.switchBusinessTab('informes')">
           <span style="font-size: 1.25rem;">📊</span>
           <span>Informes</span>
+        </button>
+        <button class="nav-btn" data-business-tab="perfil" onclick="mobileApp.switchBusinessTab('perfil')">
+          <span style="font-size: 1.25rem;">⚙️</span>
+          <span>Tu espacio</span>
         </button>
       </nav>
 
@@ -941,6 +951,6 @@
   <script src="src/domains/user/userService.js?v=20261103-6"></script>
   <script src="src/services/finanzasCore.js?v=20261103-6"></script>
   <script src="src/utils/shared.js?v=20261103-6"></script>
-  <script src="src/utils/mobile.js?v=20261103-6"></script>
+  <script src="src/utils/mobile.js?v=20261104-1"></script>
 </body>
 </html>

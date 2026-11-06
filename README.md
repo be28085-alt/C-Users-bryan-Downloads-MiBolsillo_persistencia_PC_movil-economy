@@ -2,29 +2,21 @@
 
 ## Archivos
 
-- `shared.js`: núcleo único de estado, validación, cálculos y persistencia para la aplicación web.
-- `desktop.js`: controlador de la interfaz de escritorio (conserva las llamadas al núcleo `Finanzas`).
-- `mobile.js`: controlador de la interfaz móvil (conserva las llamadas al mismo núcleo `Finanzas`).
+- `desktop.html` y `mobile.html`: interfaces activas de escritorio y móvil; ambas usan el núcleo modular de `src/`.
+- `src/utils/desktop.js` y `src/utils/mobile.js`: controladores activos de cada interfaz.
+- `src/services/finanzasCore.js` y `src/storage/`: lógica financiera/empresarial y persistencia compartidas.
+- `shared.js`, `desktop.js` y `mobile.js` de la raíz: implementaciones anteriores conservadas por compatibilidad; no son las entradas activas de esas páginas.
 - `mibolsillo.cpp`: versión de consola C++ original; es un programa independiente y no comparte datos con la aplicación web.
 - `test_shared.js`: prueba automatizada básica del núcleo web en Node.js.
 
-## Orden de carga requerido
+## Arquitectura web activa
 
-En `desktop.html`, cargar primero el núcleo y después el controlador de escritorio:
-
-```html
-<script src="shared.js"></script>
-<script src="desktop.js"></script>
-```
-
-En `mobile.html`, cargar primero el núcleo y después el controlador móvil:
-
-```html
-<script src="shared.js"></script>
-<script src="mobile.js"></script>
-```
-
-No cargar `desktop.js` y `mobile.js` simultáneamente en la misma página. Cada controlador espera su propio HTML y sus propios identificadores de elementos.
+- `desktop.html` carga las utilidades, dominios y persistencia de `src/`, y termina con `src/utils/desktop.js`.
+- `mobile.html` carga el mismo núcleo y termina con `src/utils/mobile.js`.
+- El selector «Mi dinero / Negocio» conserva la plataforma: PC muestra su módulo empresarial y móvil mantiene su interfaz móvil. Ambas comparten los datos locales del mismo origen.
+- El módulo PC replica las secciones móviles Inicio, Inventario, Movimientos, Ventas, Clientes, Informes y Tu espacio; incluye acciones para registrar ventas, compras, productos, gastos, ingresos y ajustes de inventario.
+- Las acciones empresariales guardan datos mediante `FinanzasCore`; ingresos adicionales del negocio se persisten y se incorporan a las métricas de ingresos, reportes y actividad móvil.
+- Los controladores activos son específicos de su HTML; no se deben cargar juntos en una misma página.
 
 ## Correcciones realizadas en el núcleo
 
@@ -45,20 +37,16 @@ No cargar `desktop.js` y `mobile.js` simultáneamente en la misma página. Cada 
 - Prueba de creación de movimiento, cálculo, creación de meta con aporte inicial, eliminación en cascada, abono/eliminación de deuda y escritura en `localStorage` (`node test_shared.js`).
 - Compilación sintáctica C++17 (`g++ -std=c++17 -fsyntax-only mibolsillo.cpp`).
 
-## Límites que requieren los archivos faltantes
+## Límites
 
-No se recibieron `desktop.html`, `mobile.html`, hojas CSS ni recursos externos. Por eso no es posible comprobar que cada `id`, formulario, botón, modal y gráfico exista en el HTML o hacer una prueba integral de navegación en navegador. Los controladores se conservaron y siguen dependiendo de esos elementos.
-
-`localStorage` conserva datos en el mismo navegador y origen. No sincroniza entre computadores o celulares distintos. Para sincronización multi-dispositivo hace falta un backend con autenticación y base de datos (por ejemplo, Supabase o Firebase), además de definir cómo se resuelven conflictos de edición.
-
-La aplicación C++ es otro programa. Actualmente carga datos de demostración al iniciar y no está conectada a `shared.js`; por tanto, no comparte persistencia ni sincroniza datos con la aplicación web. Debe tratarse como una versión de consola separada hasta implementar su propio almacenamiento o una API común.
+- La navegación de los espacios personal y empresarial de PC/móvil se verificó en navegador. No se ejecutó la suite de Node.js porque Node no está disponible en este entorno.
+- `localStorage` conserva datos en el mismo navegador y origen; no sincroniza equipos distintos. Para ello hace falta un backend con autenticación y base de datos remota.
+- La aplicación C++ es independiente y no comparte persistencia con la aplicación web.
 
 
 ## Integración HTML de escritorio (actualización)
-- `desktop.html` incluye el formulario de registro conectado por `onsubmit` al controlador.
-- `desktop.js` expone `window.pcApp` para garantizar compatibilidad con los manejadores inline del HTML.
-- Mantén `desktop.css` en la misma carpeta; no venía incluido en el material entregado.
-- Orden requerido al final de `desktop.html`: primero `shared.js`, después `desktop.js`.
+- `desktop.html` incluye las vistas personales y empresariales de PC, conectadas a `src/utils/desktop.js`.
+- `desktop.css` conserva el puente a `styles/desktop.css`; ambas referencias se versionan para evitar contenido antiguo en caché.
 
 
 ## Auditoría de registro único (03-11-2026)
@@ -71,14 +59,14 @@ La aplicación C++ es otro programa. Actualmente carga datos de demostración al
 - Se conservan las funciones y archivos originales; no se hizo una reescritura destructiva de los módulos empresariales, metas, deudas, exportación o reportes.
 
 ### Arquitectura activa observada
-- PC (`desktop.html`): `shared.js` + `desktop.js` (controlador legado).
-- Móvil (`mobile.html`): carga la arquitectura modular bajo `src/`, incluyendo `src/services/finanzasCore.js`, `src/utils/shared.js` y `src/utils/mobile.js`.
-- Hay dos implementaciones históricas de la interfaz móvil (`mobile.js` en la raíz y `src/utils/mobile.js`). La que se ejecuta desde `mobile.html` es `src/utils/mobile.js`; la de la raíz se conserva por compatibilidad pero no es el controlador activo de esa página.
+- PC (`desktop.html`): núcleo modular bajo `src/` más `src/utils/desktop.js`; incluye Inicio, Inventario, Movimientos, Ventas, Clientes, Informes y acceso al mismo perfil/ajustes, junto con formularios para las acciones empresariales rápidas.
+- Móvil (`mobile.html`): núcleo modular bajo `src/` más `src/utils/mobile.js`; el menú empresarial mantiene su navegación móvil y «Tu espacio» conserva las opciones comunes.
+- Las implementaciones de la raíz (`shared.js`, `desktop.js` y `mobile.js`) se mantienen por compatibilidad histórica, pero no son cargadas por las páginas activas.
 
 ### Verificación
-- `node --check` para todos los JavaScript del proyecto: correcto.
-- `node test_shared.js`: `OK`.
-- No se ejecutó una prueba end-to-end en navegador ni se conectó a una base de datos remota. Los datos siguen dependiendo del almacenamiento local configurado por cada arquitectura....
+- En navegador: PC abre el panel empresarial de escritorio; funcionan las seis secciones y se verificó el registro de ventas/ingresos con actualización de inventario y métricas.
+- En navegador: móvil conserva el módulo empresarial móvil y su acceso a «Tu espacio».
+- `git diff --check`: correcto. No se conectó a una base de datos remota; los datos dependen del almacenamiento local.
 
 ## Persistencia compartida entre PC y móvil
 

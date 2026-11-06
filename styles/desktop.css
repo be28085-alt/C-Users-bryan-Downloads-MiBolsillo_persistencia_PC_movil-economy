@@ -499,6 +499,45 @@ body {
   transition: var(--transition);
 }
 
+.pc-space-toggle {
+  display: flex;
+  width: min(100%, 360px);
+  gap: 0.4rem;
+  padding: 0.25rem;
+  border: 1px solid var(--pc-border);
+  border-radius: 999px;
+  background: #f8fafc;
+}
+
+.pc-space-option {
+  display: inline-flex;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pc-text-muted);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pc-space-option.active {
+  background: var(--pc-teal-dark);
+  color: #fff;
+}
+
+.pc-profile-setting {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--pc-border);
+}
+
 .btn-pc-secondary:hover {
   background: var(--pc-bg);
   border-color: #cbd5e1;
@@ -2268,4 +2307,350 @@ input:checked + .toggle-slider:before {
   text-transform: uppercase;
   color: var(--biz-text-muted);
   font-weight: 700;
+}
+
+/* Dashboard empresarial de escritorio */
+.business-dashboard {
+  --dashboard-gap: 1.25rem;
+  max-width: 1600px;
+}
+
+.business-dashboard__header {
+  margin-bottom: 1.25rem;
+  padding: 0.25rem 0;
+}
+
+.business-dashboard__eyebrow {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--pc-teal-primary);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.business-dashboard__header .view-heading h1 {
+  font-size: clamp(1.7rem, 2.2vw, 2.15rem);
+  letter-spacing: -0.06em;
+}
+
+.business-dashboard__header .view-heading p {
+  margin-top: 0.35rem;
+  font-size: 0.92rem;
+}
+
+.business-dashboard__controls {
+  flex-wrap: wrap;
+}
+
+.business-dashboard__quick-actions,
+.business-dashboard__sales,
+.business-dashboard__inventory,
+.business-dashboard__receivables,
+.business-dashboard__movements {
+  min-width: 0;
+  border-color: #e5ebef;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045);
+}
+
+.business-dashboard__quick-actions {
+  margin-bottom: var(--dashboard-gap);
+  padding: 1.2rem 1.35rem;
+}
+
+.business-dashboard__section-heading {
+  margin-bottom: 1rem;
+}
+
+.business-dashboard__section-heading .pc-card-title {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.business-dashboard__section-heading .pc-card-subtitle {
+  margin-top: 0.2rem;
+}
+
+.business-dashboard__action-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.business-dashboard__action-list .btn-pc-primary,
+.business-dashboard__action-list .btn-pc-secondary {
+  min-height: 40px;
+}
+
+.business-dashboard__kpis.pc-kpi-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--dashboard-gap);
+  margin-bottom: var(--dashboard-gap);
+}
+
+.business-dashboard__kpi {
+  min-width: 0;
+  min-height: 145px;
+  padding: 1.25rem 1.35rem;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045);
+  overflow: hidden;
+}
+
+.business-dashboard__kpi::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--pc-teal-primary);
+  content: "";
+}
+
+.business-dashboard__kpi--cost::before {
+  background: #64748b;
+}
+
+.business-dashboard__kpi--expense::before {
+  background: var(--pc-yellow);
+}
+
+.business-dashboard__kpi--profit::before {
+  background: var(--pc-green);
+}
+
+.business-dashboard__kpi .kpi-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+}
+
+.business-dashboard__kpi .kpi-amount {
+  margin: 0.55rem 0 0.35rem;
+  font-size: clamp(1.25rem, 1.7vw, 1.75rem);
+  letter-spacing: -0.055em;
+  overflow-wrap: anywhere;
+}
+
+.business-dashboard__kpi small {
+  color: var(--pc-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.business-dashboard__main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(290px, 1fr);
+  align-items: start;
+  gap: var(--dashboard-gap);
+}
+
+.business-dashboard__sales,
+.business-dashboard__movements {
+  padding: 1.35rem;
+}
+
+.business-dashboard__sales .pc-card-header,
+.business-dashboard__movements .pc-card-header {
+  margin-bottom: 1rem;
+}
+
+.business-dashboard__side-panels {
+  display: grid;
+  gap: var(--dashboard-gap);
+  min-width: 0;
+}
+
+.business-dashboard__inventory,
+.business-dashboard__receivables {
+  padding: 1.3rem;
+}
+
+.business-dashboard__inventory .pc-card-title,
+.business-dashboard__receivables .pc-card-title {
+  font-size: 1rem;
+}
+
+.business-dashboard__inventory-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.business-dashboard__inventory-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--pc-border-light);
+  border-radius: var(--radius-md);
+  background: #f8fafc;
+}
+
+.business-dashboard__inventory-summary span {
+  color: var(--pc-text-muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.business-dashboard__inventory-summary strong {
+  color: var(--pc-text-title);
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.business-dashboard__inventory #bizContainerAlertasStock > div {
+  margin-bottom: 0;
+  font-size: 0.78rem !important;
+  line-height: 1.5;
+}
+
+.business-dashboard__receivables .kpi-amount {
+  display: block;
+  margin: 0.85rem 0 0;
+  font-size: clamp(1.4rem, 1.8vw, 1.85rem);
+  overflow-wrap: anywhere;
+}
+
+.business-dashboard__movements {
+  margin-top: var(--dashboard-gap);
+}
+
+.business-dashboard .pc-table {
+  min-width: 650px;
+}
+
+.business-dashboard__movements .pc-table {
+  min-width: 500px;
+}
+
+.business-dashboard .pc-table th {
+  background: #f8fafc;
+}
+
+.business-dashboard .pc-table tbody tr {
+  transition: background-color 0.18s ease;
+}
+
+.business-dashboard .pc-table tbody tr:hover td {
+  background-color: #f4f8f8;
+}
+
+.business-dashboard .pc-card,
+.business-dashboard .kpi-card {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.business-dashboard .pc-card:hover,
+.business-dashboard .kpi-card:hover {
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.075);
+}
+
+@media (max-width: 1200px) {
+  .business-dashboard__kpis.pc-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .business-dashboard__main-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .business-dashboard__side-panels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .pc-main-wrapper {
+    min-width: 0;
+  }
+
+  .pc-top-header {
+    min-width: 0;
+    padding: 0 1rem;
+  }
+
+  .header-search-box {
+    display: none;
+  }
+
+  .pc-views-container {
+    padding: 1rem;
+  }
+
+  .business-dashboard__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .business-dashboard__controls {
+    width: 100%;
+  }
+
+  .business-dashboard__controls .pc-select,
+  .business-dashboard__controls .btn-pc-primary {
+    flex: 1 1 180px;
+  }
+
+  .business-dashboard__side-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .business-dashboard__action-list .btn-pc-primary,
+  .business-dashboard__action-list .btn-pc-secondary {
+    flex: 1 1 190px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .pc-top-header .header-left {
+    display: none;
+  }
+
+  .pc-top-header .header-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .pc-top-header .header-right .btn-pc-primary {
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    padding: 0.5rem;
+    font-size: 0;
+  }
+
+  .pc-top-header .header-right .btn-pc-primary span {
+    font-size: 1.2rem;
+  }
+
+  .pc-views-container {
+    padding: 0.75rem;
+  }
+
+  .business-dashboard__kpis.pc-kpi-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .business-dashboard__quick-actions,
+  .business-dashboard__sales,
+  .business-dashboard__inventory,
+  .business-dashboard__receivables,
+  .business-dashboard__movements {
+    padding: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .business-dashboard .pc-card,
+  .business-dashboard .kpi-card,
+  .business-dashboard .pc-table tbody tr {
+    transition: none;
+  }
 }

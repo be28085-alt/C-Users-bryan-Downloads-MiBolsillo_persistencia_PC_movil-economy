@@ -68,10 +68,14 @@ class DesktopApp {
     this.updateLiveImpact();
 
     // Sincronizar estado inicial de visualización de módulos
-    this.actualizarModuloVisual(Finanzas.state.moduloActivo || 'PERSONAL');
+    const requestedModule = new URLSearchParams(window.location.search).get('modulo');
+    const initialModule = requestedModule && requestedModule.toUpperCase() === 'EMPRESARIAL'
+      ? 'EMPRESARIAL'
+      : 'PERSONAL';
 
     // Renderizar toda la interfaz
     this.renderAll();
+    this.setModulo(initialModule, initialModule === 'EMPRESARIAL' ? 'negocio-dashboard' : 'inicio');
 
     // Atajo de teclado: Ctrl + K para enfocar búsqueda
     window.addEventListener('keydown', (e) => {
@@ -142,6 +146,11 @@ class DesktopApp {
     const brandTitle = document.getElementById('sidebarBrandTitle');
     const brandSub = document.getElementById('sidebarBrandSubtitle');
     const brandIcon = document.getElementById('sidebarBrandIcon');
+    const personalQuickAction = document.getElementById('btnPcPersonalQuick');
+    const businessQuickAction = document.getElementById('btnPcBusinessQuick');
+
+    if (personalQuickAction) personalQuickAction.style.display = isEmpresarial ? 'none' : '';
+    if (businessQuickAction) businessQuickAction.style.display = isEmpresarial ? '' : 'none';
 
     if (navPersonal && navEmpresarial) {
       navPersonal.style.display = isEmpresarial ? 'none' : 'block';
@@ -174,7 +183,8 @@ class DesktopApp {
   switchView(viewId) {
     this.currentView = viewId;
 
-    const esEmpresarial = viewId.startsWith('negocio-');
+    const esEmpresarial = viewId.startsWith('negocio-') ||
+      (viewId === 'perfil' && Finanzas.state.moduloActivo === 'EMPRESARIAL');
     this.actualizarModuloVisual(esEmpresarial ? 'EMPRESARIAL' : 'PERSONAL');
 
     // Actualizar botones de navegación en sidebar
@@ -208,9 +218,12 @@ class DesktopApp {
       'perfil': 'Tu espacio · Perfil y ajustes',
       'negocio-dashboard': 'Dashboard Empresarial',
       'negocio-inventario': 'Inventario del negocio',
+      'negocio-movimientos': 'Movimientos del negocio',
       'negocio-compras': 'Compras & Abastecimiento',
       'negocio-proveedores': 'Directorio de Proveedores',
-      'negocio-ventas': 'Ventas & Facturación'
+      'negocio-ventas': 'Ventas & Facturación',
+      'negocio-clientes': 'Clientes y proveedores',
+      'negocio-informes': 'Informes del negocio'
     };
     const titleEl = document.getElementById('lblBreadcrumbTitle');
     if (titleEl) titleEl.textContent = breadcrumbMap[viewId] || 'Gestor Financiero';
@@ -1004,6 +1017,12 @@ class DesktopApp {
     // Saldo inicial configurable
     const inpSaldoIni = document.getElementById('inputPerfilSaldoInicial');
     if (inpSaldoIni) inpSaldoIni.value = Finanzas.state.saldoInicial || 0;
+
+    document.querySelectorAll('.pc-space-option[data-space]').forEach((button) => {
+      const active = button.dataset.space === (Finanzas.state.moduloActivo || 'PERSONAL');
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
   }
 
   // ==========================================================================
@@ -1611,6 +1630,9 @@ class DesktopApp {
     this.renderBusinessCompras(negActivo);
     this.renderBusinessProveedores(negActivo);
     this.renderBusinessVentas(negActivo);
+    this.renderBusinessClientes(negActivo);
+    this.renderBusinessMovimientos(negActivo);
+    this.renderBusinessReportes(negActivo);
   }
 
   renderBusinessSelectors() {
@@ -1643,7 +1665,7 @@ class DesktopApp {
     if (elMargen) elMargen.textContent = `Margen Neto: ${metricas.margenNetoPct.toFixed(1)}% | Bruto: ${metricas.margenBrutoPct.toFixed(1)}%`;
     if (elCobrar) elCobrar.textContent = formatCOP(metricas.cuentasPorCobrar);
     if (elInventario) elInventario.textContent = formatCOP(metricas.valorInventario);
-    if (elAlertasStock) elAlertasStock.textContent = `${metricas.productosAlerta} alertas de stock bajo`;
+    if (elAlertasStock) elAlertasStock.textContent = metricas.productosAlerta;
 
     // Tabla de últimas ventas en Dashboard
     const tbodyVentas = document.getElementById('bizTbodyDashboardVentas');
@@ -1663,6 +1685,7 @@ class DesktopApp {
           </tr>
         `).join('');
       }
+
     }
 
     // Alertas de stock bajo en Dashboard
@@ -1707,6 +1730,90 @@ class DesktopApp {
         `).join('');
       }
     }
+  }
+
+  renderBusinessMovimientos(negActivo) {
+    const tbody = document.getElementById('bizTbodyMovimientos');
+    if (!tbody) return;
+
+    const rows = [
+      ...Finanzas.getVentas(negActivo.id).map(item => ({
+        fecha: item.fecha, tipo: 'Venta', descripcion: item.clienteNombre || 'Venta de mostrador',
+        referencia: item.id, monto: Number(item.total) || 0, ingreso: true
+      })),
+      ...Finanzas.getIngresosNegocio(negActivo.id).map(item => ({
+        fecha: item.fecha, tipo: 'Ingreso', descripcion: item.descripcion,
+        referencia: item.categoria, monto: Number(item.monto) || 0, ingreso: true
+      })),
+      ...Finanzas.getCompras(negActivo.id).map(item => ({
+        fecha: item.fecha, tipo: 'Compra', descripcion: item.proveedorNombre || 'Compra',
+        referencia: item.id, monto: Number(item.total) || 0, ingreso: false
+      })),
+      ...Finanzas.getGastosNegocio(negActivo.id).map(item => ({
+        fecha: item.fecha, tipo: 'Gasto', descripcion: item.descripcion,
+        referencia: item.categoria, monto: Number(item.monto) || 0, ingreso: false
+      })),
+      ...Finanzas.getPagosEmpleado(negActivo.id).map(item => ({
+        fecha: item.fecha, tipo: 'Nómina', descripcion: item.empleadoNombre || item.concepto,
+        referencia: item.periodo || 'Pago de nómina', monto: Number(item.monto) || 0, ingreso: false
+      })),
+      ...Finanzas.getMovimientosInventario(negActivo.id).map(item => ({
+        fecha: item.fecha, tipo: `Inventario · ${item.tipo}`, descripcion: item.productoNombre,
+        referencia: item.motivo, monto: null, ingreso: item.tipo === 'ENTRADA' || item.tipo === 'PRODUCCION'
+      }))
+    ].sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+
+    tbody.innerHTML = rows.length
+      ? rows.map(item => `
+        <tr>
+          <td>${escapeHTML(item.fecha || '-')}</td>
+          <td><span class="badge-stock ${item.ingreso ? 'badge-stock-ok' : 'badge-stock-low'}">${escapeHTML(item.tipo)}</span></td>
+          <td>${escapeHTML(item.descripcion || '-')}</td>
+          <td>${escapeHTML(String(item.referencia || '-'))}</td>
+          <td>${item.monto === null ? '—' : `<strong style="color:${item.ingreso ? '#059669' : 'var(--pc-red)'}">${item.ingreso ? '+' : '-'}${formatCOP(item.monto)}</strong>`}</td>
+        </tr>
+      `).join('')
+      : '<tr><td colspan="5" style="text-align:center;color:var(--pc-text-muted);padding:2rem;">Sin movimientos registrados.</td></tr>';
+  }
+
+  openQuickBusinessActions() {
+    const modal = document.getElementById('modalPcBusinessActions');
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  closeQuickBusinessActions() {
+    const modal = document.getElementById('modalPcBusinessActions');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  openModalNuevoIngresoNegocio() {
+    this.closeQuickBusinessActions();
+    const fecha = document.getElementById('modalIngresoNegFecha');
+    if (fecha) fecha.value = obtenerFechaHoyISO();
+    this.openModalBiz('modalBizNuevoIngreso');
+  }
+
+  handleIngresoNegocioSubmit(e) {
+    e.preventDefault();
+    const negActivo = Finanzas.getNegocioActivo();
+    if (!negActivo) return;
+
+    const res = Finanzas.registrarIngresoNegocio({
+      negocioId: negActivo.id,
+      categoria: document.getElementById('modalIngresoNegCategoria').value,
+      descripcion: document.getElementById('modalIngresoNegDesc').value,
+      monto: document.getElementById('modalIngresoNegMonto').value,
+      fecha: document.getElementById('modalIngresoNegFecha').value
+    });
+    if (res.error) {
+      alert(res.error);
+      return;
+    }
+
+    this.closeModalBiz('modalBizNuevoIngreso');
+    e.target.reset();
+    this.renderBusinessModule();
+    this.showToast(`Ingreso de ${formatCOP(res.ingreso.monto)} registrado.`);
   }
 
   // 2. MI NEGOCIO (PERFIL & LISTA)
@@ -1779,13 +1886,9 @@ class DesktopApp {
       direccion: document.getElementById('modalBizDir').value
     });
 
-    if (res.ok) {
-      this.closeModalBiz('modalBizNuevoNegocio');
-      e.target.reset();
-      this.showToast(`🏢 ¡Negocio "${res.negocio.nombre}" creado exitosamente!`);
-    } else {
-      alert(res.error);
-    }
+    this.closeModalBiz('modalBizNuevoNegocio');
+    e.target.reset();
+    this.showToast(`🏢 ¡Negocio "${res.nombre}" creado exitosamente!`);
   }
 
   eliminarNegocio(id) {
@@ -1921,13 +2024,9 @@ class DesktopApp {
       stockMinimo: document.getElementById('modalBizProdStockMin').value
     });
 
-    if (res.ok) {
-      this.closeModalBiz('modalBizNuevoProducto');
-      e.target.reset();
-      this.showToast(`✓ Artículo "${res.producto.nombre}" guardado.`);
-    } else {
-      alert(res.error);
-    }
+    this.closeModalBiz('modalBizNuevoProducto');
+    e.target.reset();
+    this.showToast(`✓ Artículo "${res.nombre}" guardado.`);
   }
 
   eliminarProducto(id) {
@@ -2028,19 +2127,19 @@ class DesktopApp {
     const negActivo = Finanzas.getNegocioActivo();
     if (!negActivo) return;
 
-    const res = Finanzas.ajustarStockInventario({
-      negocioId: negActivo.id,
-      productoId: document.getElementById('modalAjusteProducto').value,
-      nuevoStock: document.getElementById('modalAjusteNuevoStock').value,
-      motivo: document.getElementById('modalAjusteMotivo').value,
-      fecha: obtenerFechaHoyISO()
-    });
+    const productoId = document.getElementById('modalAjusteProducto').value;
+    const nuevoStock = Number(document.getElementById('modalAjusteNuevoStock').value);
+    const actualizado = Finanzas.ajustarStockProducto(
+      productoId,
+      nuevoStock,
+      document.getElementById('modalAjusteMotivo').value
+    );
 
-    if (res.ok) {
+    if (actualizado) {
       this.closeModalBiz('modalBizAjustarInventario');
-      this.showToast(`✓ Stock de "${res.producto.nombre}" ajustado a ${res.producto.stock}.`);
+      this.showToast('✓ Existencias actualizadas.');
     } else {
-      alert(res.error);
+      alert('No se pudo actualizar el inventario. Verifica el artículo seleccionado.');
     }
   }
 
@@ -2141,10 +2240,6 @@ class DesktopApp {
     if (!negActivo) return;
 
     const proveedorId = document.getElementById('modalCompraProveedor').value;
-    if (!proveedorId) {
-      alert('Por favor selecciona o registra un proveedor.');
-      return;
-    }
 
     const detalles = [];
     document.querySelectorAll('#bizContainerItemsCompra .biz-item-row').forEach(row => {
@@ -2169,11 +2264,11 @@ class DesktopApp {
       detalles
     });
 
-    if (res.ok) {
+    if (res.error) {
+      alert(res.error);
+    } else {
       this.closeModalBiz('modalBizNuevaCompra');
       this.showToast(`✓ Compra por ${formatCOP(res.compra.total)} confirmada e inventario actualizado.`);
-    } else {
-      alert(res.error);
     }
   }
 
@@ -2428,13 +2523,9 @@ class DesktopApp {
       direccion: document.getElementById('modalProvDir').value
     });
 
-    if (res.ok) {
-      this.closeModalBiz('modalBizNuevoProveedor');
-      e.target.reset();
-      this.showToast(`✓ Proveedor "${res.proveedor.nombre}" registrado.`);
-    } else {
-      alert(res.error);
-    }
+    this.closeModalBiz('modalBizNuevoProveedor');
+    e.target.reset();
+    this.showToast(`✓ Proveedor "${res.nombre}" registrado.`);
   }
 
   eliminarProveedor(id) {
@@ -2584,8 +2675,9 @@ class DesktopApp {
     if (!negActivo) return;
 
     const clienteId = document.getElementById('modalVentaCliente').value;
-    if (!clienteId) {
-      alert('Por favor selecciona o registra un cliente.');
+    const tipoPago = document.getElementById('modalVentaTipoPago').value;
+    if (tipoPago === 'CREDITO' && !clienteId) {
+      alert('Selecciona un cliente para registrar una venta a crédito.');
       return;
     }
 
@@ -2604,12 +2696,14 @@ class DesktopApp {
       return;
     }
 
-    const tipoPago = document.getElementById('modalVentaTipoPago').value;
     const metodoPago = document.getElementById('modalVentaMetodo').value;
 
     const res = Finanzas.registrarVenta({
       negocioId: negActivo.id,
       clienteId,
+      clienteNombre: clienteId
+        ? document.getElementById('modalVentaCliente').selectedOptions[0].textContent.split(' (')[0]
+        : 'Cliente Mostrador',
       fecha: document.getElementById('modalVentaFecha').value,
       tipoPago,
       metodoPago,
@@ -2617,11 +2711,11 @@ class DesktopApp {
       detalles
     });
 
-    if (res.ok) {
+    if (res.error) {
+      alert(res.error);
+    } else {
       this.closeModalBiz('modalBizNuevaVenta');
       this.showToast(`✓ Venta por ${formatCOP(res.venta.total)} confirmada.`);
-    } else {
-      alert(res.error);
     }
   }
 
@@ -2669,13 +2763,9 @@ class DesktopApp {
       direccion: document.getElementById('modalCliDir').value
     });
 
-    if (res.ok) {
-      this.closeModalBiz('modalBizNuevoCliente');
-      e.target.reset();
-      this.showToast(`✓ Cliente "${res.cliente.nombre}" registrado.`);
-    } else {
-      alert(res.error);
-    }
+    this.closeModalBiz('modalBizNuevoCliente');
+    e.target.reset();
+    this.showToast(`✓ Cliente "${res.nombre}" registrado.`);
   }
 
   eliminarCliente(id) {
@@ -2960,13 +3050,9 @@ class DesktopApp {
       descripcion: document.getElementById('modalGastoNegDesc').value
     });
 
-    if (res.ok) {
-      this.closeModalBiz('modalBizNuevoGasto');
-      e.target.reset();
-      this.showToast(`✓ Gasto de ${formatCOP(res.gasto.monto)} registrado.`);
-    } else {
-      alert(res.error);
-    }
+    this.closeModalBiz('modalBizNuevoGasto');
+    e.target.reset();
+    this.showToast(`✓ Gasto de ${formatCOP(res.monto)} registrado.`);
   }
 
   eliminarGastoNegocio(id) {

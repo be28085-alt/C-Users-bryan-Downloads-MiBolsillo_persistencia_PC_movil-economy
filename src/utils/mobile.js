@@ -57,14 +57,15 @@ class MobileApp {
     document.getElementById('mobInputMonto')?.addEventListener('input', () => this.updateLiveImpact());
     document.getElementById('mobSelectCategoria')?.addEventListener('change', () => this.updateLiveImpact());
 
-    // El módulo visible es estado de interfaz local, no un dato financiero compartido.
-    // La app móvil inicia en "Mi dinero" aunque el último módulo usado en otro
-    // dispositivo o en PC haya sido "Mi negocio".
-    this.currentModule = 'PERSONAL';
-    this.currentTab = 'inicio';
-    this.actualizarModuloVisual('PERSONAL');
+    // Abre el módulo solicitado por el acceso directo; de forma predeterminada
+    // inicia en "Mi dinero", independientemente del último módulo utilizado.
+    const requestedModule = new URLSearchParams(window.location.search).get('modulo');
+    const openBusiness = requestedModule && requestedModule.toUpperCase() === 'EMPRESARIAL';
+    this.currentModule = openBusiness ? 'EMPRESARIAL' : 'PERSONAL';
+    this.currentTab = openBusiness ? 'negocio' : 'inicio';
+    this.actualizarModuloVisual(this.currentModule);
     this.renderNavigationState();
-    this.switchTab('inicio');
+    this.switchTab(this.currentTab);
 
     // Renderizar estado inicial
     this.renderAll();
@@ -161,7 +162,7 @@ class MobileApp {
 
     if (tabId === 'negocio') {
       this.currentModule = 'EMPRESARIAL';
-      this.currentBusinessTab = this.currentBusinessTab || 'negocio';
+      this.currentBusinessTab = this.currentBusinessTab === 'perfil' ? 'negocio' : (this.currentBusinessTab || 'negocio');
       this.actualizarModuloVisual('EMPRESARIAL');
       if (Finanzas && typeof Finanzas.setModuloActivo === 'function') {
         Finanzas.setModuloActivo('EMPRESARIAL');
@@ -169,11 +170,21 @@ class MobileApp {
       document.querySelectorAll('.business-panel').forEach(panel => {
         panel.classList.toggle('active', panel.dataset.businessPanel === this.currentBusinessTab);
       });
-    } else if (['inicio', 'movimientos', 'plan', 'informes', 'perfil'].includes(tabId)) {
+    } else if (['inicio', 'movimientos', 'plan', 'informes'].includes(tabId)) {
       this.currentModule = 'PERSONAL';
       this.actualizarModuloVisual('PERSONAL');
       if (Finanzas && typeof Finanzas.setModuloActivo === 'function') {
         Finanzas.setModuloActivo('PERSONAL');
+      }
+    } else if (tabId === 'perfil') {
+      if (this.currentModule === 'EMPRESARIAL') {
+        this.currentBusinessTab = 'perfil';
+      } else {
+        this.currentModule = 'PERSONAL';
+        this.actualizarModuloVisual('PERSONAL');
+        if (Finanzas && typeof Finanzas.setModuloActivo === 'function') {
+          Finanzas.setModuloActivo('PERSONAL');
+        }
       }
     }
 
@@ -211,6 +222,23 @@ class MobileApp {
   }
 
   switchBusinessTab(tabId) {
+    if (tabId === 'perfil') {
+      this.currentModule = 'EMPRESARIAL';
+      this.currentBusinessTab = 'perfil';
+      this.currentTab = 'perfil';
+      if (Finanzas && typeof Finanzas.setModuloActivo === 'function') {
+        Finanzas.setModuloActivo('EMPRESARIAL');
+      }
+      this.actualizarModuloVisual('EMPRESARIAL');
+      document.querySelectorAll('.screen-view').forEach(view => view.classList.remove('active'));
+      document.getElementById('view-perfil')?.classList.add('active');
+      this.renderNavigationState();
+      this.renderPerfil();
+      const container = document.getElementById('mobileScreensContainer');
+      if (container) container.scrollTop = 0;
+      return;
+    }
+
     this.currentBusinessTab = tabId;
     this.currentModule = 'EMPRESARIAL';
     this.currentTab = 'negocio';
@@ -285,15 +313,19 @@ class MobileApp {
   }
 
   renderNegocio() {
-    const ventas = Finanzas.state.ventas || [];
-    const compras = Finanzas.state.compras || [];
-    const gastosNegocio = Finanzas.state.gastosNegocio || [];
-    const pagosEmpleado = Finanzas.state.pagosEmpleado || [];
-    const productos = Finanzas.state.productos || [];
-    const clientes = Finanzas.state.clientes || [];
-    const proveedores = Finanzas.state.proveedores || [];
+    const negocio = Finanzas.getNegocioActivo();
+    if (!negocio) return;
+    const ventas = Finanzas.getVentas(negocio.id);
+    const ingresosNegocio = Finanzas.getIngresosNegocio(negocio.id);
+    const compras = Finanzas.getCompras(negocio.id);
+    const gastosNegocio = Finanzas.getGastosNegocio(negocio.id);
+    const pagosEmpleado = Finanzas.getPagosEmpleado(negocio.id);
+    const productos = Finanzas.getProductos(negocio.id, 'ALL');
+    const clientes = Finanzas.getClientes(negocio.id);
+    const proveedores = Finanzas.getProveedores(negocio.id);
 
-    const ventasTotal = ventas.reduce((sum, item) => sum + Number(item.total || 0), 0);
+    const ventasTotal = ventas.reduce((sum, item) => sum + Number(item.total || 0), 0)
+      + ingresosNegocio.reduce((sum, item) => sum + Number(item.monto || 0), 0);
     const comprasTotal = compras.reduce((sum, item) => sum + Number(item.total || 0), 0);
     const gastosTotal = gastosNegocio.reduce((sum, item) => sum + Number(item.monto || 0), 0);
     const nominaTotal = pagosEmpleado.reduce((sum, item) => sum + Number(item.monto || 0), 0);
@@ -356,19 +388,22 @@ class MobileApp {
 
     const movementContainer = document.getElementById('mobileBusinessMovementList');
     if (movementContainer) {
-      const activity = [...ventas, ...compras]
-        .sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0))
+      const activity = [
+        ...ventas.map(item => ({ ...item, actividadTipo: 'VENTA' })),
+        ...ingresosNegocio.map(item => ({ ...item, actividadTipo: 'INGRESO' })),
+        ...compras.map(item => ({ ...item, actividadTipo: 'COMPRA' }))
+      ].sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0))
         .slice(0, 6);
       movementContainer.innerHTML = activity.map(item => {
-        const isSale = Boolean(item.clienteNombre || item.tipo === 'VENTA');
-        const label = item.clienteNombre || item.proveedorNombre || (isSale ? 'Venta' : 'Compra');
+        const isIncome = item.actividadTipo === 'VENTA' || item.actividadTipo === 'INGRESO';
+        const label = item.clienteNombre || item.proveedorNombre || item.descripcion || (isIncome ? 'Ingreso' : 'Compra');
         return `
           <div class="business-list-item">
             <div>
               <strong>${escapeHTML(label)}</strong>
               <small>${escapeHTML(item.fecha || 'Sin fecha')}</small>
             </div>
-            <span class="value ${isSale ? 'positive' : 'negative'}">${isSale ? '+' : '-'}${formatCOP(Number(item.total || 0))}</span>
+            <span class="value ${isIncome ? 'positive' : 'negative'}">${isIncome ? '+' : '-'}${formatCOP(Number(item.total || item.monto || 0))}</span>
           </div>
         `;
       }).join('') || '<div class="business-list-item"><div><strong>Sin actividad</strong></div></div>';
@@ -376,19 +411,22 @@ class MobileApp {
 
     const activityContainer = document.getElementById('mobileBusinessActivityList');
     if (activityContainer) {
-      const activity = [...ventas.slice(-2), ...compras.slice(-2)]
-        .sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0))
+      const activity = [
+        ...ventas.slice(-2).map(item => ({ ...item, actividadTipo: 'VENTA' })),
+        ...ingresosNegocio.slice(-2).map(item => ({ ...item, actividadTipo: 'INGRESO' })),
+        ...compras.slice(-2).map(item => ({ ...item, actividadTipo: 'COMPRA' }))
+      ].sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0))
         .slice(0, 4);
       activityContainer.innerHTML = activity.map(item => {
-        const isSale = Boolean(item.clienteNombre || item.tipo === 'VENTA');
-        const label = item.clienteNombre || item.proveedorNombre || (isSale ? 'Venta' : 'Compra');
+        const isIncome = item.actividadTipo === 'VENTA' || item.actividadTipo === 'INGRESO';
+        const label = item.clienteNombre || item.proveedorNombre || item.descripcion || (isIncome ? 'Ingreso' : 'Compra');
         return `
           <div class="business-list-item">
             <div>
               <strong>${escapeHTML(label)}</strong>
               <small>${escapeHTML(item.fecha || 'Sin fecha')}</small>
             </div>
-            <span class="value ${isSale ? 'positive' : 'negative'}">${isSale ? '+' : '-'}${formatCOP(Number(item.total || 0))}</span>
+            <span class="value ${isIncome ? 'positive' : 'negative'}">${isIncome ? '+' : '-'}${formatCOP(Number(item.total || item.monto || 0))}</span>
           </div>
         `;
       }).join('') || '<div class="business-list-item"><div><strong>Sin actividad</strong></div></div>';
@@ -948,8 +986,10 @@ class MobileApp {
       if (!canvas) return;
       if (this[instanceKey]) this[instanceKey].destroy();
 
-      const ventas = Finanzas.state.ventas || [];
-      const compras = Finanzas.state.compras || [];
+      const negocio = Finanzas.getNegocioActivo();
+      const ventas = negocio ? Finanzas.getVentas(negocio.id) : [];
+      const ingresos = negocio ? Finanzas.getIngresosNegocio(negocio.id) : [];
+      const compras = negocio ? Finanzas.getCompras(negocio.id) : [];
       const labels = [];
       const ventasSeries = [];
       const comprasSeries = [];
@@ -960,12 +1000,12 @@ class MobileApp {
         const label = monthDate.toLocaleDateString('es-CO', { month: 'short' });
         labels.push(label.charAt(0).toUpperCase() + label.slice(1));
         const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
-        ventasSeries.push(ventas.reduce((sum, item) => {
+        ventasSeries.push([...ventas, ...ingresos].reduce((sum, item) => {
           const fecha = item?.fecha ? new Date(item.fecha) : null;
           const entryKey = fecha && !Number.isNaN(fecha.getTime())
             ? `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`
             : null;
-          return sum + (entryKey === monthKey ? Number(item.total || 0) : 0);
+          return sum + (entryKey === monthKey ? Number(item.total || item.monto || 0) : 0);
         }, 0));
         comprasSeries.push(compras.reduce((sum, item) => {
           const fecha = item?.fecha ? new Date(item.fecha) : null;
@@ -982,7 +1022,7 @@ class MobileApp {
           labels,
           datasets: [
             {
-              label: 'Ventas',
+              label: 'Ingresos',
               data: ventasSeries,
               borderColor: '#0f8b65',
               backgroundColor: 'rgba(15, 139, 101, 0.12)',
@@ -1043,6 +1083,8 @@ class MobileApp {
     if (lblSaldoIni) lblSaldoIni.textContent = formatCOP(Finanzas.state.saldoInicial || 0);
     const chkSaldoOculto = document.getElementById('mobChkOcultarSaldo');
     if (chkSaldoOculto) chkSaldoOculto.checked = !!Finanzas.state.saldoOculto;
+    const businessReturn = document.getElementById('mobileProfileBusinessReturn');
+    if (businessReturn) businessReturn.classList.toggle('hidden', this.currentModule !== 'EMPRESARIAL');
   }
 
   // ==========================================================================

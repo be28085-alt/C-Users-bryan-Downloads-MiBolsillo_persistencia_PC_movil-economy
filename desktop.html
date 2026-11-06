@@ -14,7 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <!-- Estilos de Escritorio -->
-  <link rel="stylesheet" href="desktop.css">
+  <link rel="stylesheet" href="desktop.css?v=20261104-2">
 </head>
 <body>
 
@@ -43,15 +43,15 @@
     <aside class="pc-sidebar" id="pcSidebar">
       <!-- Marca y Logotipo -->
       <div class="sidebar-brand-box">
-        <div class="brand-icon-coin">❖</div>
+        <div class="brand-icon-coin" id="sidebarBrandIcon">❖</div>
         <div class="brand-info">
-          <h2>mi dinero</h2>
-          <span>Finanzas personales</span>
+          <h2 id="sidebarBrandTitle">mi dinero</h2>
+          <span id="sidebarBrandSubtitle">Finanzas personales</span>
         </div>
       </div>
 
       <!-- Menú de Navegación Vertical -->
-      <ul class="sidebar-nav-list">
+      <ul class="sidebar-nav-list" id="navPersonal">
         <li>
           <button class="nav-item-btn active" data-view="inicio" onclick="pcApp.switchView('inicio')">
             <span class="nav-icon">🏠</span>
@@ -98,6 +98,50 @@
           <button class="nav-item-btn" data-view="perfil" onclick="pcApp.switchView('perfil')">
             <span class="nav-icon">⚙️</span>
             <span>Perfil y ajustes</span>
+          </button>
+        </li>
+      </ul>
+      <ul class="sidebar-nav-list" id="navEmpresarial" style="display: none;">
+        <li>
+          <button class="nav-item-btn" data-view="negocio-dashboard" onclick="pcApp.switchView('negocio-dashboard')">
+            <span class="nav-icon">🏠</span>
+            <span>Inicio</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="negocio-inventario" onclick="pcApp.switchView('negocio-inventario')">
+            <span class="nav-icon">📦</span>
+            <span>Inventario</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="negocio-movimientos" onclick="pcApp.switchView('negocio-movimientos')">
+            <span class="nav-icon">📋</span>
+            <span>Movimientos</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="negocio-ventas" onclick="pcApp.switchView('negocio-ventas')">
+            <span class="nav-icon">💰</span>
+            <span>Ventas</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="negocio-clientes" onclick="pcApp.switchView('negocio-clientes')">
+            <span class="nav-icon">👥</span>
+            <span>Clientes</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="negocio-informes" onclick="pcApp.switchView('negocio-informes')">
+            <span class="nav-icon">📊</span>
+            <span>Informes</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item-btn" data-view="perfil" onclick="pcApp.switchView('perfil')">
+            <span class="nav-icon">⚙️</span>
+            <span>Tu espacio</span>
           </button>
         </li>
       </ul>
@@ -152,8 +196,11 @@
             <span class="notification-dot" id="headerNotificationDot"></span>
           </button>
 
-          <button class="btn-pc-primary" onclick="pcApp.openModalNuevoMovimiento()">
+          <button class="btn-pc-primary" id="btnPcPersonalQuick" onclick="pcApp.openModalNuevoMovimiento()">
             <span>+</span> Nuevo movimiento
+          </button>
+          <button class="btn-pc-primary" id="btnPcBusinessQuick" style="display:none;" onclick="pcApp.openQuickBusinessActions()">
+            <span>+</span> Acción rápida
           </button>
         </div>
       </header>
@@ -859,6 +906,229 @@
         <!-- ============================================================
              PANTALLA 8: PERFIL Y AJUSTES
              ============================================================ -->
+        <section class="pc-view business-dashboard" id="view-negocio-dashboard">
+          <div class="view-top-banner business-dashboard__header">
+            <div class="view-heading">
+              <span class="business-dashboard__eyebrow">CENTRO DE CONTROL</span>
+              <h1>Resumen del negocio</h1>
+              <p>Una vista clara de tus ventas, rentabilidad e inventario.</p>
+            </div>
+            <div class="view-controls-bar business-dashboard__controls">
+              <label class="sr-only" for="bizDashboardSelector">Negocio activo</label>
+              <select class="pc-select sel-biz-global" id="bizDashboardSelector" onchange="pcApp.cambiarNegocioActivo(this.value)"></select>
+              <button class="btn-pc-primary" onclick="pcApp.openQuickBusinessActions()">+ Acción rápida</button>
+            </div>
+          </div>
+
+          <section class="pc-card business-dashboard__quick-actions" aria-labelledby="bizQuickActionsTitle">
+            <div class="business-dashboard__section-heading">
+              <div>
+                <h2 class="pc-card-title" id="bizQuickActionsTitle">Accesos rápidos</h2>
+                <p class="pc-card-subtitle">Registra la actividad de tu negocio sin salir del resumen.</p>
+              </div>
+            </div>
+            <div class="business-dashboard__action-list">
+              <button class="btn-pc-primary" onclick="pcApp.openModalNuevaVenta()">Registrar venta</button>
+              <button class="btn-pc-secondary" onclick="pcApp.openModalNuevaCompra()">Registrar compra</button>
+              <button class="btn-pc-secondary" onclick="pcApp.openModalNuevoProducto('PRODUCTO')">Agregar producto</button>
+              <button class="btn-pc-secondary" onclick="pcApp.openModalNuevoGasto()">Registrar gasto</button>
+              <button class="btn-pc-secondary" onclick="pcApp.openModalNuevoIngresoNegocio()">Registrar ingreso</button>
+              <button class="btn-pc-secondary" onclick="pcApp.openModalAjusteInventario()">Movimiento de inventario</button>
+            </div>
+          </section>
+
+          <div class="pc-kpi-row business-dashboard__kpis">
+            <article class="kpi-card business-dashboard__kpi business-dashboard__kpi--income">
+              <span class="kpi-label">Ingresos del período</span>
+              <strong class="kpi-amount" id="bizKpiVentas">0 COP</strong>
+              <small id="bizKpiVentasCount">0 facturas</small>
+            </article>
+            <article class="kpi-card business-dashboard__kpi business-dashboard__kpi--cost">
+              <span class="kpi-label">Costos de ventas</span>
+              <strong class="kpi-amount" id="bizKpiCostoVentas">0 COP</strong>
+              <small>Costo de productos vendidos</small>
+            </article>
+            <article class="kpi-card business-dashboard__kpi business-dashboard__kpi--expense">
+              <span class="kpi-label">Gastos operativos</span>
+              <strong class="kpi-amount" id="bizKpiGastosOperativos">0 COP</strong>
+              <small>Gastos registrados en el negocio</small>
+            </article>
+            <article class="kpi-card business-dashboard__kpi business-dashboard__kpi--profit">
+              <span class="kpi-label">Utilidad neta</span>
+              <strong class="kpi-amount" id="bizKpiUtilidadNeta">0 COP</strong>
+              <small id="bizKpiMargenNeto">Margen: 0%</small>
+            </article>
+          </div>
+
+          <div class="business-dashboard__main-grid">
+            <section class="pc-card business-dashboard__sales" aria-labelledby="bizRecentSalesTitle">
+              <div class="pc-card-header business-dashboard__section-heading">
+                <div>
+                  <h2 class="pc-card-title" id="bizRecentSalesTitle">Ventas recientes</h2>
+                  <p class="pc-card-subtitle">Últimas operaciones registradas</p>
+                </div>
+              </div>
+              <div class="pc-table-wrapper">
+                <table class="pc-table">
+                  <thead><tr><th>Referencia</th><th>Cliente</th><th>Fecha</th><th>Pago</th><th>Total</th><th>Estado</th></tr></thead>
+                  <tbody id="bizTbodyDashboardVentas"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <aside class="business-dashboard__side-panels">
+              <section class="pc-card business-dashboard__inventory" aria-labelledby="bizInventoryHealthTitle">
+                <div class="business-dashboard__section-heading">
+                  <div>
+                    <h2 class="pc-card-title" id="bizInventoryHealthTitle">Salud del inventario</h2>
+                    <p class="pc-card-subtitle">Existencias y artículos por reponer</p>
+                  </div>
+                </div>
+                <div class="business-dashboard__inventory-summary">
+                  <div><span>Valor del inventario</span><strong id="bizKpiValorInventario">0 COP</strong></div>
+                  <div><span>Artículos por reponer</span><strong id="bizKpiAlertasStock">0</strong></div>
+                </div>
+                <div id="bizContainerAlertasStock"></div>
+              </section>
+              <section class="pc-card business-dashboard__receivables" aria-labelledby="bizReceivablesTitle">
+                <div>
+                  <h2 class="pc-card-title" id="bizReceivablesTitle">Cuentas por cobrar</h2>
+                  <p class="pc-card-subtitle">Saldo pendiente de tus ventas a crédito</p>
+                </div>
+                <strong class="kpi-amount" id="bizKpiCuentasCobrar">0 COP</strong>
+              </section>
+            </aside>
+          </div>
+
+          <section class="pc-card business-dashboard__movements" aria-labelledby="bizRecentInventoryTitle">
+            <div class="pc-card-header business-dashboard__section-heading">
+              <div>
+                <h2 class="pc-card-title" id="bizRecentInventoryTitle">Movimientos recientes de inventario</h2>
+                <p class="pc-card-subtitle">Entradas, salidas y ajustes de existencias</p>
+              </div>
+            </div>
+            <div class="pc-table-wrapper">
+              <table class="pc-table">
+                <thead><tr><th>Tipo</th><th>Artículo</th><th>Cantidad</th><th>Motivo</th></tr></thead>
+                <tbody id="bizTbodyDashboardKardex"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="pc-view" id="view-negocio-inventario">
+          <div class="view-top-banner">
+            <div class="view-heading"><h1>Inventario</h1><p>Existencias y alertas de stock del negocio.</p></div>
+            <div class="view-controls-bar">
+              <button class="btn-pc-primary" onclick="pcApp.openModalNuevoProducto('PRODUCTO')">+ Producto</button>
+              <button class="btn-pc-secondary" onclick="pcApp.openModalNuevoProducto('MATERIA_PRIMA')">+ Materia prima</button>
+              <button class="btn-pc-secondary" onclick="pcApp.openModalAjusteInventario()">Ajustar stock</button>
+              <button class="btn-pc-secondary" onclick="pcApp.filtrarInventarioTipo('ALL')">Todo</button>
+              <button class="btn-pc-secondary" onclick="pcApp.filtrarInventarioTipo('PRODUCTO')">Productos</button>
+              <button class="btn-pc-secondary" onclick="pcApp.filtrarInventarioTipo('MATERIA_PRIMA')">Materias primas</button>
+            </div>
+          </div>
+          <div id="bizInventarioAlertasBox"></div>
+          <div class="pc-card">
+            <div class="pc-table-wrapper">
+              <table class="pc-table">
+                <thead><tr><th>Tipo</th><th>Artículo</th><th>Costo unitario</th><th>Existencias</th><th>Mínimo</th><th>Valor total</th><th>Estado</th></tr></thead>
+                <tbody id="bizTbodyInventarioStock"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="pc-view" id="view-negocio-movimientos">
+          <div class="view-top-banner">
+            <div class="view-heading"><h1>Movimientos</h1><p>Actividad financiera e inventario del negocio activo.</p></div>
+            <div class="view-controls-bar">
+              <button class="btn-pc-primary" onclick="pcApp.openModalNuevaVenta()">+ Venta</button>
+              <button class="btn-pc-secondary" onclick="pcApp.openModalNuevaCompra()">+ Compra</button>
+              <button class="btn-pc-secondary" onclick="pcApp.openModalNuevoGasto()">+ Gasto</button>
+            </div>
+          </div>
+          <div class="pc-card">
+            <div class="pc-table-wrapper">
+              <table class="pc-table">
+                <thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Referencia</th><th>Valor</th></tr></thead>
+                <tbody id="bizTbodyMovimientos"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="pc-view" id="view-negocio-ventas">
+          <div class="view-top-banner">
+            <div class="view-heading"><h1>Ventas</h1><p>Historial de ventas del negocio activo.</p></div>
+            <div class="view-controls-bar">
+              <button class="btn-pc-primary" onclick="pcApp.openModalNuevaVenta()">+ Registrar venta</button>
+              <button class="btn-pc-secondary" onclick="pcApp.filtrarVentasTipo('ALL')">Todas</button>
+              <button class="btn-pc-secondary" onclick="pcApp.filtrarVentasTipo('CONTADO')">Contado</button>
+              <button class="btn-pc-secondary" onclick="pcApp.filtrarVentasTipo('CREDITO')">Crédito</button>
+            </div>
+          </div>
+          <div class="pc-card">
+            <div class="pc-table-wrapper">
+              <table class="pc-table">
+                <thead><tr><th>Referencia</th><th>Cliente</th><th>Fecha</th><th>Pago</th><th>Total</th><th>Saldo</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="bizTbodyVentas"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="pc-view" id="view-negocio-clientes">
+          <div class="view-top-banner">
+            <div class="view-heading"><h1>Clientes y proveedores</h1><p>Contactos asociados al negocio activo.</p></div>
+            <div class="view-controls-bar">
+              <button class="btn-pc-primary" onclick="pcApp.openModalNuevoCliente()">+ Cliente</button>
+              <button class="btn-pc-secondary" onclick="pcApp.openModalNuevoProveedor()">+ Proveedor</button>
+            </div>
+          </div>
+          <div class="pc-card">
+            <h3 class="pc-card-title">Clientes</h3>
+            <div class="pc-table-wrapper">
+              <table class="pc-table">
+                <thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th>Saldo pendiente</th><th>Acciones</th></tr></thead>
+                <tbody id="bizTbodyClientes"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="pc-card" style="margin-top:1.5rem;">
+            <h3 class="pc-card-title">Proveedores</h3>
+            <div class="pc-table-wrapper">
+              <table class="pc-table">
+                <thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th>Acciones</th></tr></thead>
+                <tbody id="bizTbodyProveedores"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="pc-view" id="view-negocio-informes">
+          <div class="view-top-banner">
+            <div class="view-heading"><h1>Informes</h1><p>Resultados y rentabilidad del negocio activo.</p></div>
+            <div class="view-controls-bar">
+              <select class="pc-select" aria-label="Período del informe" onchange="pcApp.cambiarFiltroReportesPeriodo(this.value)">
+                <option value="MES_ACTUAL">Mes actual</option>
+                <option value="ANIO_ACTUAL">Año actual</option>
+                <option value="TODOS">Histórico</option>
+              </select>
+            </div>
+          </div>
+          <div class="pc-card">
+            <h3 class="pc-card-title" id="bizReportePeriodoTitulo">Resultados del negocio</h3>
+            <div class="pc-kpi-row">
+              <div class="kpi-card"><span class="kpi-label">Ingresos</span><strong class="kpi-amount" id="repVentasTotales">0 COP</strong></div>
+              <div class="kpi-card"><span class="kpi-label">Costo de ventas</span><strong class="kpi-amount" id="repCostoVentas">0 COP</strong></div>
+              <div class="kpi-card"><span class="kpi-label">Utilidad bruta</span><strong class="kpi-amount" id="repUtilidadBruta">0 COP</strong><small>Margen <span id="repMargenBruto">0%</span></small></div>
+              <div class="kpi-card"><span class="kpi-label">Gastos operativos</span><strong class="kpi-amount" id="repGastosOperativos">0 COP</strong></div>
+              <div class="kpi-card"><span class="kpi-label">Utilidad neta</span><strong class="kpi-amount" id="repUtilidadNeta">0 COP</strong><small>Margen <span id="repMargenNeto">0%</span></small></div>
+            </div>
+          </div>
+        </section>
+
         <section class="pc-view" id="view-perfil">
           <div class="view-top-banner">
             <div class="view-heading">
@@ -881,6 +1151,14 @@
             <button class="btn-pc-secondary" onclick="pcApp.openModalEditarPerfil()">
               ✏️ Editar datos
             </button>
+          </div>
+
+          <div class="pc-card" style="margin-bottom: 1.5rem;">
+            <h3 class="pc-card-title" style="margin-bottom: 0.75rem;">Espacio activo</h3>
+            <div class="pc-space-toggle" role="group" aria-label="Seleccionar espacio">
+              <button type="button" class="pc-space-option" data-space="PERSONAL" onclick="pcApp.setModulo('PERSONAL', 'inicio')">Mi dinero</button>
+              <button type="button" class="pc-space-option" data-space="EMPRESARIAL" onclick="pcApp.setModulo('EMPRESARIAL', 'negocio-dashboard')">Negocio</button>
+            </div>
           </div>
 
           <div class="pc-grid-equal">
@@ -910,6 +1188,10 @@
                   <span class="toggle-slider"></span>
                 </label>
               </div>
+              <div class="pc-profile-setting">
+                <span>Saldo inicial</span>
+                <strong id="lblPerfilSaldoInicial">0 COP</strong>
+              </div>
             </div>
 
             <div class="pc-card">
@@ -921,7 +1203,7 @@
                   <p style="font-size: 0.78rem; color: var(--pc-text-muted);">Avisar cuando se supere el 85% del límite</p>
                 </div>
                 <label class="toggle-switch">
-                  <input type="checkbox" checked>
+                  <input type="checkbox" id="chkAlertasPresupuestoPerfil" onchange="pcApp.toggleAlertaPresupuesto(this.checked)">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
@@ -932,21 +1214,11 @@
                   <p style="font-size: 0.78rem; color: var(--pc-text-muted);">Notificar con 5 días de anticipación</p>
                 </div>
                 <label class="toggle-switch">
-                  <input type="checkbox" checked>
+                  <input type="checkbox" id="chkRecordatoriosDeudasPerfil" onchange="pcApp.toggleRecordatoriosDeudas(this.checked)">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
 
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                  <strong>Resumen mensual contable</strong>
-                  <p style="font-size: 0.78rem; color: var(--pc-text-muted);">Generar reporte automático al cierre de mes</p>
-                </div>
-                <label class="toggle-switch">
-                  <input type="checkbox" checked>
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
             </div>
           </div>
 
@@ -962,6 +1234,9 @@
               </button>
               <button class="btn-pc-secondary" onclick="pcApp.exportarCSV()">
                 📥 Descargar Movimientos (CSV)
+              </button>
+              <button class="btn-pc-secondary" onclick="pcApp.imprimirPDF()">
+                📄 Imprimir / guardar informe PDF
               </button>
               <button class="btn-pc-secondary" style="color: var(--pc-red); border-color: #fecdd3;" onclick="pcApp.restablecerDatos()">
                 🔄 Restablecer Datos Iniciales de Fábrica
@@ -1232,8 +1507,166 @@
     </div>
   </div>
 
+  <div class="pc-modal-backdrop hidden" id="modalPcBusinessActions" role="dialog" aria-modal="true" aria-labelledby="modalPcBusinessActionsTitle" onclick="if(event.target===this) pcApp.closeQuickBusinessActions()">
+    <div class="pc-modal-window">
+      <div class="pc-modal-header"><h3 id="modalPcBusinessActionsTitle">Acciones del negocio</h3><button class="btn-close-modal" type="button" aria-label="Cerrar" onclick="pcApp.closeQuickBusinessActions()">×</button></div>
+      <div class="pc-modal-body" style="display:grid;gap:.65rem;">
+        <button class="btn-pc-primary" onclick="pcApp.closeQuickBusinessActions();pcApp.openModalNuevaVenta()">Registrar venta</button>
+        <button class="btn-pc-secondary" onclick="pcApp.closeQuickBusinessActions();pcApp.openModalNuevaCompra()">Registrar compra</button>
+        <button class="btn-pc-secondary" onclick="pcApp.closeQuickBusinessActions();pcApp.openModalNuevoProducto('PRODUCTO')">Agregar producto</button>
+        <button class="btn-pc-secondary" onclick="pcApp.closeQuickBusinessActions();pcApp.openModalNuevoGasto()">Registrar gasto</button>
+        <button class="btn-pc-secondary" onclick="pcApp.openModalNuevoIngresoNegocio()">Registrar ingreso</button>
+        <button class="btn-pc-secondary" onclick="pcApp.closeQuickBusinessActions();pcApp.openModalAjusteInventario()">Movimiento de inventario</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalBizNuevaVenta" role="dialog" aria-modal="true" aria-labelledby="modalVentaTitulo">
+    <form class="pc-modal-window wide" onsubmit="pcApp.handleVentaSubmit(event)">
+      <div class="pc-modal-header"><h3 id="modalVentaTitulo">Registrar venta</h3><button class="btn-close-modal" type="button" aria-label="Cerrar" onclick="pcApp.closeModalBiz('modalBizNuevaVenta')">×</button></div>
+      <div class="pc-modal-body">
+        <div class="pc-form-grid">
+          <label>Cliente<select id="modalVentaCliente" class="pc-select"></select></label>
+          <label>Fecha<input id="modalVentaFecha" class="pc-input" type="date" required></label>
+          <label>Tipo de pago<select id="modalVentaTipoPago" class="pc-select"><option value="CONTADO">Contado</option><option value="CREDITO">Crédito</option></select></label>
+          <label>Método de pago<select id="modalVentaMetodo" class="pc-select"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option></select></label>
+        </div>
+        <h4 style="margin:1rem 0 .5rem;">Artículos</h4>
+        <div id="bizContainerItemsVenta"></div>
+        <button type="button" class="btn-pc-secondary" style="margin-top:.5rem;" onclick="pcApp.agregarFilaItemVenta()">+ Agregar artículo</button>
+        <p><strong>Total: <span id="lblModalVentaTotal">0 COP</span></strong></p>
+        <label>Notas<textarea id="modalVentaNotas" class="pc-input" rows="2"></textarea></label>
+      </div>
+      <div class="pc-modal-footer"><button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalBiz('modalBizNuevaVenta')">Cancelar</button><button type="submit" class="btn-pc-primary">Guardar venta</button></div>
+    </form>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalBizNuevaCompra" role="dialog" aria-modal="true" aria-labelledby="modalCompraTitulo">
+    <form class="pc-modal-window wide" onsubmit="pcApp.handleCompraSubmit(event)">
+      <div class="pc-modal-header"><h3 id="modalCompraTitulo">Registrar compra</h3><button class="btn-close-modal" type="button" aria-label="Cerrar" onclick="pcApp.closeModalBiz('modalBizNuevaCompra')">×</button></div>
+      <div class="pc-modal-body">
+        <div class="pc-form-grid">
+          <label>Proveedor<select id="modalCompraProveedor" class="pc-select"></select></label>
+          <label>Fecha<input id="modalCompraFecha" class="pc-input" type="date" required></label>
+        </div>
+        <h4 style="margin:1rem 0 .5rem;">Artículos</h4>
+        <div id="bizContainerItemsCompra"></div>
+        <button type="button" class="btn-pc-secondary" style="margin-top:.5rem;" onclick="pcApp.agregarFilaItemCompra()">+ Agregar artículo</button>
+        <p><strong>Total: <span id="lblModalCompraTotal">0 COP</span></strong></p>
+        <label>Observaciones<textarea id="modalCompraObservaciones" class="pc-input" rows="2"></textarea></label>
+      </div>
+      <div class="pc-modal-footer"><button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalBiz('modalBizNuevaCompra')">Cancelar</button><button type="submit" class="btn-pc-primary">Guardar compra</button></div>
+    </form>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalBizNuevoProducto" role="dialog" aria-modal="true" aria-labelledby="modalBizProdTitulo">
+    <form class="pc-modal-window" onsubmit="pcApp.handleCrearProductoSubmit(event)">
+      <div class="pc-modal-header"><h3 id="modalBizProdTitulo">Agregar producto</h3><button class="btn-close-modal" type="button" aria-label="Cerrar" onclick="pcApp.closeModalBiz('modalBizNuevoProducto')">×</button></div>
+      <div class="pc-modal-body pc-form-grid">
+        <input id="modalBizProdTipo" type="hidden" value="PRODUCTO">
+        <label>Nombre<input id="modalBizProdNombre" class="pc-input" required></label>
+        <label>Unidad<input id="modalBizProdUnidad" class="pc-input" value="unidades" required></label>
+        <label>Descripción<input id="modalBizProdDesc" class="pc-input"></label>
+        <label>Costo unitario<input id="modalBizProdPrecioCompra" class="pc-input" type="number" min="0" step="0.01" value="0" required></label>
+        <label id="grpModalBizPrecioVenta">Precio de venta<input id="modalBizProdPrecioVenta" class="pc-input" type="number" min="0" step="0.01" value="0"></label>
+        <label>Stock inicial<input id="modalBizProdStockInit" class="pc-input" type="number" min="0" step="0.01" value="0"></label>
+        <label>Stock mínimo<input id="modalBizProdStockMin" class="pc-input" type="number" min="0" step="0.01" value="0"></label>
+      </div>
+      <div class="pc-modal-footer"><button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalBiz('modalBizNuevoProducto')">Cancelar</button><button type="submit" class="btn-pc-primary">Guardar</button></div>
+    </form>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalBizAjustarInventario" role="dialog" aria-modal="true" aria-labelledby="modalAjusteTitulo">
+    <form class="pc-modal-window" onsubmit="pcApp.handleAjusteInventarioSubmit(event)">
+      <div class="pc-modal-header"><h3 id="modalAjusteTitulo">Movimiento de inventario</h3><button class="btn-close-modal" type="button" aria-label="Cerrar" onclick="pcApp.closeModalBiz('modalBizAjustarInventario')">×</button></div>
+      <div class="pc-modal-body pc-form-grid">
+        <label>Artículo<select id="modalAjusteProducto" class="pc-select" onchange="pcApp.actualizarStockActualAjuste(this.value)" required></select></label>
+        <p>Existencias actuales: <strong id="modalAjusteStockActual">0</strong></p>
+        <label>Nueva existencia<input id="modalAjusteNuevoStock" class="pc-input" type="number" min="0" step="0.01" required></label>
+        <label>Motivo<input id="modalAjusteMotivo" class="pc-input" required></label>
+      </div>
+      <div class="pc-modal-footer"><button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalBiz('modalBizAjustarInventario')">Cancelar</button><button type="submit" class="btn-pc-primary">Guardar ajuste</button></div>
+    </form>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalBizNuevoGasto" role="dialog" aria-modal="true" aria-labelledby="modalGastoTitulo">
+    <form class="pc-modal-window" onsubmit="pcApp.handleGastoNegocioSubmit(event)">
+      <div class="pc-modal-header"><h3 id="modalGastoTitulo">Registrar gasto</h3><button class="btn-close-modal" type="button" aria-label="Cerrar" onclick="pcApp.closeModalBiz('modalBizNuevoGasto')">×</button></div>
+      <div class="pc-modal-body pc-form-grid">
+        <label>Categoría<input id="modalGastoNegCategoria" class="pc-input" required></label>
+        <label>Valor<input id="modalGastoNegMonto" class="pc-input" type="number" min="1" step="0.01" required></label>
+        <label>Fecha<input id="modalGastoNegFecha" class="pc-input" type="date" required></label>
+        <label>Descripción<input id="modalGastoNegDesc" class="pc-input" required></label>
+      </div>
+      <div class="pc-modal-footer"><button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalBiz('modalBizNuevoGasto')">Cancelar</button><button type="submit" class="btn-pc-primary">Guardar gasto</button></div>
+    </form>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalBizNuevoIngreso" role="dialog" aria-modal="true" aria-labelledby="modalIngresoTitulo">
+    <form class="pc-modal-window" onsubmit="pcApp.handleIngresoNegocioSubmit(event)">
+      <div class="pc-modal-header"><h3 id="modalIngresoTitulo">Registrar ingreso</h3><button class="btn-close-modal" type="button" aria-label="Cerrar" onclick="pcApp.closeModalBiz('modalBizNuevoIngreso')">×</button></div>
+      <div class="pc-modal-body pc-form-grid">
+        <label>Categoría<input id="modalIngresoNegCategoria" class="pc-input" value="Otros ingresos" required></label>
+        <label>Valor<input id="modalIngresoNegMonto" class="pc-input" type="number" min="1" step="0.01" required></label>
+        <label>Fecha<input id="modalIngresoNegFecha" class="pc-input" type="date" required></label>
+        <label>Descripción<input id="modalIngresoNegDesc" class="pc-input" required></label>
+      </div>
+      <div class="pc-modal-footer"><button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalBiz('modalBizNuevoIngreso')">Cancelar</button><button type="submit" class="btn-pc-primary">Guardar ingreso</button></div>
+    </form>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalBizNuevoCliente" role="dialog" aria-modal="true" aria-labelledby="modalClienteTitulo">
+    <form class="pc-modal-window" onsubmit="pcApp.handleCrearClienteSubmit(event)">
+      <div class="pc-modal-header"><h3 id="modalClienteTitulo">Nuevo cliente</h3><button class="btn-close-modal" type="button" aria-label="Cerrar" onclick="pcApp.closeModalBiz('modalBizNuevoCliente')">×</button></div>
+      <div class="pc-modal-body pc-form-grid">
+        <label>Nombre<input id="modalCliNombre" class="pc-input" required></label>
+        <label>Teléfono<input id="modalCliTel" class="pc-input" type="tel"></label>
+        <label>Email<input id="modalCliMail" class="pc-input" type="email"></label>
+        <label>Dirección<input id="modalCliDir" class="pc-input"></label>
+      </div>
+      <div class="pc-modal-footer"><button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalBiz('modalBizNuevoCliente')">Cancelar</button><button type="submit" class="btn-pc-primary">Guardar cliente</button></div>
+    </form>
+  </div>
+
+  <div class="pc-modal-backdrop hidden" id="modalBizNuevoProveedor" role="dialog" aria-modal="true" aria-labelledby="modalProveedorTitulo">
+    <form class="pc-modal-window" onsubmit="pcApp.handleCrearProveedorSubmit(event)">
+      <div class="pc-modal-header"><h3 id="modalProveedorTitulo">Nuevo proveedor</h3><button class="btn-close-modal" type="button" aria-label="Cerrar" onclick="pcApp.closeModalBiz('modalBizNuevoProveedor')">×</button></div>
+      <div class="pc-modal-body pc-form-grid">
+        <label>Nombre<input id="modalProvNombre" class="pc-input" required></label>
+        <label>Teléfono<input id="modalProvTel" class="pc-input" type="tel"></label>
+        <label>Email<input id="modalProvMail" class="pc-input" type="email"></label>
+        <label>Dirección<input id="modalProvDir" class="pc-input"></label>
+      </div>
+      <div class="pc-modal-footer"><button type="button" class="btn-pc-secondary" onclick="pcApp.closeModalBiz('modalBizNuevoProveedor')">Cancelar</button><button type="submit" class="btn-pc-primary">Guardar proveedor</button></div>
+    </form>
+  </div>
+
   <!-- SCRIPTS -->
-  <script src="shared.js?v=20261103-5"></script>
-  <script src="desktop.js?v=20261103-5"></script>
+  <script src="src/utils/formatters.js?v=20261104-1"></script>
+  <script src="src/utils/dates.js?v=20261104-1"></script>
+  <script src="src/utils/security.js?v=20261104-1"></script>
+  <script src="src/utils/validators.js?v=20261104-1"></script>
+  <script src="src/storage/seedData.js?v=20261104-1"></script>
+  <script src="src/storage/demoData.js?v=20261104-1"></script>
+  <script src="src/storage/localStorage.js?v=20261104-1"></script>
+  <script src="src/domains/personal/movementsDomain.js?v=20261104-1"></script>
+  <script src="src/domains/personal/budgetDomain.js?v=20261104-1"></script>
+  <script src="src/domains/personal/goalsDomain.js?v=20261104-1"></script>
+  <script src="src/domains/personal/debtsDomain.js?v=20261104-1"></script>
+  <script src="src/domains/business/businessDomain.js?v=20261104-1"></script>
+  <script src="src/domains/business/productsDomain.js?v=20261104-1"></script>
+  <script src="src/domains/business/inventoryDomain.js?v=20261104-1"></script>
+  <script src="src/domains/business/purchasesDomain.js?v=20261104-1"></script>
+  <script src="src/domains/business/salesDomain.js?v=20261104-1"></script>
+  <script src="src/domains/business/creditsDomain.js?v=20261104-1"></script>
+  <script src="src/domains/business/productionDomain.js?v=20261104-1"></script>
+  <script src="src/domains/business/employeesDomain.js?v=20261104-1"></script>
+  <script src="src/domains/business/expensesDomain.js?v=20261104-1"></script>
+  <script src="src/domains/business/metricsDomain.js?v=20261104-1"></script>
+  <script src="src/domains/business/cashFlowDomain.js?v=20261104-1"></script>
+  <script src="src/domains/user/userService.js?v=20261104-1"></script>
+  <script src="src/services/finanzasCore.js?v=20261104-1"></script>
+  <script src="src/utils/shared.js?v=20261104-1"></script>
+  <script src="src/utils/desktop.js?v=20261104-1"></script>
 </body>
 </html>

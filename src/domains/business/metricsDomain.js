@@ -18,6 +18,7 @@
      */
     calcularMetricasEmpresariales(negocioId, datasets = {}, filtroPeriodo = 'MES_ACTUAL') {
       const ventas = (datasets.ventas || []).filter(v => v.negocioId === negocioId);
+      const ingresosNegocio = (datasets.ingresosNegocio || []).filter(i => i.negocioId === negocioId);
       const gastos = (datasets.gastosNegocio || []).filter(g => g.negocioId === negocioId);
       const nomina = (datasets.pagosEmpleado || []).filter(p => p.negocioId === negocioId);
       const clientes = (datasets.clientes || []).filter(c => c.negocioId === negocioId);
@@ -52,6 +53,9 @@
           const cant = Number(d.cantidad) || 0;
           const costo = Number(d.costoUnitario) || 0;
           costoProductosVendidos += (cant * costo);
+        });
+        ingresosNegocio.filter(i => coincidePeriodo(i.fecha)).forEach(i => {
+          ventasTotales += Number(i.monto) || 0;
         });
       });
 

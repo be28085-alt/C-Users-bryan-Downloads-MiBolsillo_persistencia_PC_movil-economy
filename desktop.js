@@ -978,6 +978,8 @@ class DesktopApp {
     if (chkPres) chkPres.checked = u.alertasPresupuesto !== false;
     const chkDeudas = document.getElementById('chkRecordatoriosDeudasPerfil');
     if (chkDeudas) chkDeudas.checked = u.recordatoriosDeudas !== false;
+    const saldoInicial = document.getElementById('lblPerfilSaldoInicial');
+    if (saldoInicial) saldoInicial.textContent = formatCOP(Finanzas.state.saldoInicial || 0);
 
     // Saldo inicial configurable
     const inpSaldoIni = document.getElementById('inputPerfilSaldoInicial');

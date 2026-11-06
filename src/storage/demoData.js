@@ -293,6 +293,8 @@
       }
     ],
 
+    ingresosNegocio: [],
+
     pagosVenta: [
       { id: 'pago-v-1', negocioId: 'neg-1', ventaId: 'vent-201', clienteId: 'cli-1', clienteNombre: 'Cafetería del Parque', monto: 500000, fecha: '2026-10-18', metodoPago: 'Transferencia Bancolombia', notas: 'Abono anticipado factura mayorista' }
     ],

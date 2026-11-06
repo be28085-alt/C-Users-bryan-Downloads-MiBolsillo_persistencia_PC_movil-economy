@@ -51,7 +51,7 @@
       }
     };
 
-    ['movimientos', 'metas', 'deudas', 'negocios', 'productos', 'proveedores', 'empleados', 'clientes', 'ventas', 'compras', 'gastos', 'cuentas'].forEach((key) => {
+    ['movimientos', 'metas', 'deudas', 'negocios', 'productos', 'proveedores', 'empleados', 'clientes', 'ventas', 'compras', 'gastos', 'cuentas', 'ingresosNegocio'].forEach((key) => {
       merged[key] = ensureArray(source[key], fallback[key]);
     });
 
