@@ -21,6 +21,14 @@
       if (detalles.length === 0) {
         return { venta: null, kardexEntries: [], error: 'La venta debe incluir al menos un producto.' };
       }
+      const clienteNombre = String(datos.clienteNombre || '').trim();
+      const clienteCedula = String(datos.clienteCedula || '').trim();
+      if (!clienteNombre) {
+        return { venta: null, kardexEntries: [], error: 'El nombre del cliente es obligatorio para la factura.' };
+      }
+      if (!clienteCedula) {
+        return { venta: null, kardexEntries: [], error: 'La cédula del cliente es obligatoria para la factura.' };
+      }
 
       // Regla 3: Validación previa estricta de stock disponible
       for (const d of detalles) {
@@ -42,6 +50,8 @@
       let costoTotalVenta = 0;
       const detallesValidados = [];
       const kardexEntries = [];
+      const fecha = datos.fecha || (window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0]);
+      const id = datos.id || `vent-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
       detalles.forEach(d => {
         const prod = (productosActuales || []).find(p => p.id === d.productoId && p.negocioId === negocioId);
@@ -75,8 +85,8 @@
           cantidad,
           stockAnterior,
           stockPosterior: prod.stock,
-          motivo: `Venta facturada #${datos.id || ''}`,
-          fecha: datos.fecha || (window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0])
+          motivo: `Venta facturada #${id}`,
+          fecha
         });
       });
 
@@ -84,13 +94,20 @@
       // Regla 4: Ventas a crédito generan saldo pendiente
       const saldoPendiente = tipoPago === 'CREDITO' ? totalVenta : 0;
       const estado = tipoPago === 'CREDITO' ? 'PENDIENTE' : 'PAGADA';
+      const numeroFactura = datos.numeroFactura || `FV-${fecha.replace(/-/g, '')}-${id.replace(/^vent-/, '').toUpperCase()}`;
 
       const venta = {
-        id: datos.id || `vent-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id,
+        numeroFactura,
+        tipoDocumento: 'FACTURA_VENTA',
         negocioId,
         clienteId: datos.clienteId || null,
-        clienteNombre: (datos.clienteNombre || 'Cliente Mostrador').trim(),
-        fecha: datos.fecha || (window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0]),
+        clienteNombre,
+        clienteCedula,
+        clienteTelefono: String(datos.clienteTelefono || '').trim(),
+        clienteEmail: String(datos.clienteEmail || '').trim(),
+        clienteDireccion: String(datos.clienteDireccion || '').trim(),
+        fecha,
         tipoPago,
         metodoPago: (datos.metodoPago || (tipoPago === 'CREDITO' ? 'Crédito' : 'Efectivo')).trim(),
         subtotal: totalVenta,

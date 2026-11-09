@@ -54,11 +54,12 @@
      */
     exportarVentasCSV(ventas = []) {
       const escape = window.escaparCSV || (v => `"${String(v || '').replace(/"/g, '""')}"`);
-      const encabezados = ['ID Factura', 'Fecha', 'Cliente', 'Tipo Pago', 'Método', 'Total COP', 'Saldo Pendiente COP', 'Estado'].map(escape).join(';');
+      const encabezados = ['No. Factura', 'Fecha', 'Cliente', 'Cédula', 'Tipo Pago', 'Método', 'Total COP', 'Saldo Pendiente COP', 'Estado'].map(escape).join(';');
       const filas = (ventas || []).map(v => [
-        escape(v.id),
+        escape(v.numeroFactura || v.id),
         escape(v.fecha),
         escape(v.clienteNombre),
+        escape(v.clienteCedula),
         escape(v.tipoPago),
         escape(v.metodoPago),
         escape(v.total),

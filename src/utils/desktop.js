@@ -222,7 +222,6 @@ class DesktopApp {
       'negocio-compras': 'Compras & Abastecimiento',
       'negocio-proveedores': 'Directorio de Proveedores',
       'negocio-ventas': 'Ventas & Facturación',
-      'negocio-clientes': 'Clientes y proveedores',
       'negocio-informes': 'Informes del negocio'
     };
     const titleEl = document.getElementById('lblBreadcrumbTitle');
@@ -1630,7 +1629,6 @@ class DesktopApp {
     this.renderBusinessCompras(negActivo);
     this.renderBusinessProveedores(negActivo);
     this.renderBusinessVentas(negActivo);
-    this.renderBusinessClientes(negActivo);
     this.renderBusinessMovimientos(negActivo);
     this.renderBusinessReportes(negActivo);
   }
@@ -2545,7 +2543,11 @@ class DesktopApp {
 
     if (this.textoFiltroVentas) {
       const q = this.textoFiltroVentas.toLowerCase();
-      ventas = ventas.filter(v => v.clienteNombre.toLowerCase().includes(q) || v.id.toLowerCase().includes(q));
+      ventas = ventas.filter(v =>
+        String(v.clienteNombre || '').toLowerCase().includes(q) ||
+        String(v.clienteCedula || '').toLowerCase().includes(q) ||
+        String(v.numeroFactura || v.id || '').toLowerCase().includes(q)
+      );
     }
 
     const tbody = document.getElementById('bizTbodyVentas');
@@ -2555,8 +2557,8 @@ class DesktopApp {
       } else {
         tbody.innerHTML = ventas.map(v => `
           <tr>
-            <td><strong>#${v.id.substring(v.id.length - 6)}</strong></td>
-            <td><strong>${escapeHTML(v.clienteNombre)}</strong></td>
+            <td><strong>${escapeHTML(v.numeroFactura || `#${String(v.id).replace(/^vent-/, '')}`)}</strong></td>
+            <td><strong>${escapeHTML(v.clienteNombre || 'Cliente')}</strong><br><small>CC: ${escapeHTML(v.clienteCedula || '-')}</small></td>
             <td>${v.fecha}</td>
             <td><span class="badge-stock ${v.tipoPago === 'CREDITO' ? 'badge-stock-low' : 'badge-stock-ok'}">${v.tipoPago}</span></td>
             <td><strong>${formatCOP(v.total)}</strong></td>
@@ -2589,15 +2591,10 @@ class DesktopApp {
     const negActivo = Finanzas.getNegocioActivo();
     if (!negActivo) return;
 
-    const clis = Finanzas.getClientes(negActivo.id);
-    const selCli = document.getElementById('modalVentaCliente');
-    if (selCli) {
-      if (clis.length === 0) {
-        selCli.innerHTML = '<option value="">-- No hay clientes registrados (Regístrelos primero) --</option>';
-      } else {
-        selCli.innerHTML = clis.map(c => `<option value="${c.id}">${escapeHTML(c.nombre)} (Saldo deudor: ${formatCOP(c.saldoPendiente)})</option>`).join('');
-      }
-    }
+    const form = document.querySelector('#modalBizNuevaVenta form');
+    if (form) form.reset();
+    const fechaEl = document.getElementById('modalVentaFecha');
+    if (fechaEl) fechaEl.value = window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0];
 
     const container = document.getElementById('bizContainerItemsVenta');
     if (container) {
@@ -2674,12 +2671,14 @@ class DesktopApp {
     const negActivo = Finanzas.getNegocioActivo();
     if (!negActivo) return;
 
-    const clienteId = document.getElementById('modalVentaCliente').value;
-    const tipoPago = document.getElementById('modalVentaTipoPago').value;
-    if (tipoPago === 'CREDITO' && !clienteId) {
-      alert('Selecciona un cliente para registrar una venta a crédito.');
+    const clienteNombre = document.getElementById('modalVentaClienteNombre').value.trim();
+    const clienteCedula = document.getElementById('modalVentaClienteCedula').value.trim();
+    if (!clienteNombre || !clienteCedula) {
+      alert('Ingresa el nombre y la cédula del cliente para generar la factura.');
       return;
     }
+
+    const tipoPago = document.getElementById('modalVentaTipoPago').value;
 
     const detalles = [];
     document.querySelectorAll('#bizContainerItemsVenta .biz-item-row').forEach(row => {
@@ -2700,10 +2699,11 @@ class DesktopApp {
 
     const res = Finanzas.registrarVenta({
       negocioId: negActivo.id,
-      clienteId,
-      clienteNombre: clienteId
-        ? document.getElementById('modalVentaCliente').selectedOptions[0].textContent.split(' (')[0]
-        : 'Cliente Mostrador',
+      clienteNombre,
+      clienteCedula,
+      clienteTelefono: document.getElementById('modalVentaClienteTelefono').value.trim(),
+      clienteEmail: document.getElementById('modalVentaClienteEmail').value.trim(),
+      clienteDireccion: document.getElementById('modalVentaClienteDireccion').value.trim(),
       fecha: document.getElementById('modalVentaFecha').value,
       tipoPago,
       metodoPago,
@@ -2714,64 +2714,10 @@ class DesktopApp {
     if (res.error) {
       alert(res.error);
     } else {
+      e.target.reset();
       this.closeModalBiz('modalBizNuevaVenta');
-      this.showToast(`✓ Venta por ${formatCOP(res.venta.total)} confirmada.`);
-    }
-  }
-
-  // 10. CLIENTES
-  renderBusinessClientes(negActivo) {
-    const clis = Finanzas.getClientes(negActivo.id);
-    const tbody = document.getElementById('bizTbodyClientes');
-    if (tbody) {
-      if (clis.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--pc-text-muted); padding: 2rem;">No hay clientes registrados.</td></tr>`;
-      } else {
-        tbody.innerHTML = clis.map(c => `
-          <tr>
-            <td><strong>${escapeHTML(c.nombre)}</strong></td>
-            <td>${escapeHTML(c.telefono || '-')}</td>
-            <td>${escapeHTML(c.email || '-')}</td>
-            <td>${escapeHTML(c.direccion || '-')}</td>
-            <td>
-              <strong style="color: ${c.saldoPendiente > 0 ? '#d97706' : '#059669'}; font-size: 0.95rem;">${formatCOP(c.saldoPendiente)}</strong>
-              ${c.saldoPendiente > 0 ? '<span class="badge-stock badge-stock-low" style="margin-left: 6px;">Con Deuda</span>' : '<span class="badge-stock badge-stock-ok" style="margin-left: 6px;">Al Día</span>'}
-            </td>
-            <td>
-              <button class="btn-pc-secondary" style="font-size: 0.75rem; color: var(--pc-red); border-color: #fecdd3;" onclick="pcApp.eliminarCliente('${c.id}')">🗑️</button>
-            </td>
-          </tr>
-        `).join('');
-      }
-    }
-  }
-
-  openModalNuevoCliente() {
-    this.openModalBiz('modalBizNuevoCliente');
-  }
-
-  handleCrearClienteSubmit(e) {
-    e.preventDefault();
-    const negActivo = Finanzas.getNegocioActivo();
-    if (!negActivo) return;
-
-    const res = Finanzas.agregarCliente({
-      negocioId: negActivo.id,
-      nombre: document.getElementById('modalCliNombre').value,
-      telefono: document.getElementById('modalCliTel').value,
-      email: document.getElementById('modalCliMail').value,
-      direccion: document.getElementById('modalCliDir').value
-    });
-
-    this.closeModalBiz('modalBizNuevoCliente');
-    e.target.reset();
-    this.showToast(`✓ Cliente "${res.nombre}" registrado.`);
-  }
-
-  eliminarCliente(id) {
-    if (confirm('¿Eliminar este cliente?')) {
-      Finanzas.eliminarCliente(id);
-      this.showToast('Cliente eliminado.');
+      this.renderBusinessModule();
+      this.showToast(`✓ Factura ${res.venta.numeroFactura} guardada por ${formatCOP(res.venta.total)}.`);
     }
   }
 

@@ -638,6 +638,7 @@
         id: `cli-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         negocioId: datos.negocioId || this.state.negocioActivoId,
         nombre: (datos.nombre || '').trim(),
+        cedula: (datos.cedula || '').trim(),
         telefono: (datos.telefono || '').trim(),
         email: (datos.email || '').trim(),
         direccion: (datos.direccion || '').trim(),
@@ -726,6 +727,37 @@
 
       const res = domain.procesarVenta(nId, datos, this.state.productos);
       if (res.error) return res;
+
+      if (!Array.isArray(this.state.clientes)) this.state.clientes = [];
+      const cedulaNormalizada = String(res.venta.clienteCedula).replace(/[.\s-]/g, '').toLocaleLowerCase();
+      let cliente = this.state.clientes.find(c =>
+        c.negocioId === nId &&
+        String(c.cedula || '').replace(/[.\s-]/g, '').toLocaleLowerCase() === cedulaNormalizada
+      );
+      if (!cliente && datos.clienteId) {
+        cliente = this.state.clientes.find(c => c.id === datos.clienteId && c.negocioId === nId);
+      }
+      if (cliente) {
+        cliente.nombre = res.venta.clienteNombre;
+        cliente.cedula = res.venta.clienteCedula;
+        ['telefono', 'email', 'direccion'].forEach(campo => {
+          const datoVenta = res.venta[`cliente${campo.charAt(0).toUpperCase()}${campo.slice(1)}`];
+          if (datoVenta) cliente[campo] = datoVenta;
+        });
+      } else {
+        cliente = {
+          id: `cli-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          negocioId: nId,
+          nombre: res.venta.clienteNombre,
+          cedula: res.venta.clienteCedula,
+          telefono: res.venta.clienteTelefono,
+          email: res.venta.clienteEmail,
+          direccion: res.venta.clienteDireccion,
+          saldoPendiente: 0
+        };
+        this.state.clientes.push(cliente);
+      }
+      res.venta.clienteId = cliente.id;
 
       if (!Array.isArray(this.state.ventas)) this.state.ventas = [];
       this.state.ventas.unshift(res.venta);

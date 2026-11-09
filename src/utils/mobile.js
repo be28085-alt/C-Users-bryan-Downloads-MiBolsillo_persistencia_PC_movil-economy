@@ -321,7 +321,6 @@ class MobileApp {
     const gastosNegocio = Finanzas.getGastosNegocio(negocio.id);
     const pagosEmpleado = Finanzas.getPagosEmpleado(negocio.id);
     const productos = Finanzas.getProductos(negocio.id, 'ALL');
-    const clientes = Finanzas.getClientes(negocio.id);
     const proveedores = Finanzas.getProveedores(negocio.id);
 
     const ventasTotal = ventas.reduce((sum, item) => sum + Number(item.total || 0), 0)
@@ -432,27 +431,31 @@ class MobileApp {
       }).join('') || '<div class="business-list-item"><div><strong>Sin actividad</strong></div></div>';
     }
 
-    const clientContainer = document.getElementById('mobileBusinessClientList');
-    if (clientContainer) {
-      const customerItems = clientes.slice(0, 4).map(client => `
+    const salesContainer = document.getElementById('mobileBusinessSalesList');
+    if (salesContainer) {
+      salesContainer.innerHTML = ventas.slice(0, 5).map(venta => `
         <div class="business-list-item">
           <div>
-            <strong>${escapeHTML(client.nombre || 'Cliente')}</strong>
-            <small>${escapeHTML(client.telefono || 'Sin teléfono')}</small>
+            <strong>${escapeHTML(venta.numeroFactura || `#${String(venta.id).replace(/^vent-/, '')}`)}</strong>
+            <small>${escapeHTML(venta.clienteNombre || 'Cliente')} · CC: ${escapeHTML(venta.clienteCedula || '-')}</small>
+            <small>${escapeHTML(venta.fecha || 'Sin fecha')} · ${escapeHTML(venta.tipoPago || 'CONTADO')}</small>
           </div>
-          <span class="value ${Number(client.saldoPendiente || 0) > 0 ? 'negative' : 'positive'}">${formatCOP(Number(client.saldoPendiente || 0))}</span>
+          <span class="value positive">${formatCOP(Number(venta.total || 0))}</span>
         </div>
-      `);
-      const supplierItems = proveedores.slice(0, 2).map(prov => `
+      `).join('') || '<div class="business-list-item"><div><strong>Aún no hay facturas registradas</strong></div></div>';
+    }
+
+    const supplierContainer = document.getElementById('mobileBusinessSupplierList');
+    if (supplierContainer) {
+      supplierContainer.innerHTML = proveedores.map(proveedor => `
         <div class="business-list-item">
           <div>
-            <strong>${escapeHTML(prov.nombre || 'Proveedor')}</strong>
-            <small>${escapeHTML(prov.email || 'Sin contacto')}</small>
+            <strong>${escapeHTML(proveedor.nombre || 'Proveedor')}</strong>
+            <small>${escapeHTML(proveedor.telefono || proveedor.email || 'Sin contacto')}</small>
+            <small>${escapeHTML(proveedor.direccion || '')}</small>
           </div>
-          <span class="value positive">Activo</span>
         </div>
-      `);
-      clientContainer.innerHTML = [...customerItems, ...supplierItems].join('') || '<div class="business-list-item"><div><strong>Sin registros</strong></div></div>';
+      `).join('') || '<div class="business-list-item"><div><strong>No hay proveedores registrados</strong></div></div>';
     }
 
     const reportContainer = document.getElementById('mobileBusinessReportList');
@@ -1131,8 +1134,11 @@ class MobileApp {
     const module = this.currentModule || 'PERSONAL';
 
     if (module === 'EMPRESARIAL') {
+      if (action === 'business-sale') {
+        this.openModalBusinessSale();
+        return;
+      }
       const messages = {
-        'business-sale': 'Venta registrada en el entorno empresarial.',
         'business-purchase': 'Compra registrada en el entorno empresarial.',
         'business-product': 'Producto agregado al inventario empresarial.',
         'business-expense': 'Gasto empresarial registrado.',
@@ -1150,6 +1156,116 @@ class MobileApp {
       'personal-debt': 'Deuda personal registrada.'
     };
     this.mostrarToast(messages[action] || 'Acción personal registrada.');
+  }
+
+  openModalBusinessSale() {
+    const form = document.querySelector('#modalMobileBusinessSale form');
+    if (form) form.reset();
+    const dateInput = document.getElementById('mobSaleDate');
+    if (dateInput) dateInput.value = obtenerFechaHoyISO();
+    const lines = document.getElementById('mobileBusinessSaleLines');
+    if (lines) {
+      lines.innerHTML = '';
+      this.addBusinessSaleLine();
+    }
+    this.updateBusinessSaleTotal();
+    document.getElementById('modalMobileBusinessSale')?.classList.remove('hidden');
+  }
+
+  closeModalBusinessSale() {
+    document.getElementById('modalMobileBusinessSale')?.classList.add('hidden');
+  }
+
+  addBusinessSaleLine() {
+    const negocio = Finanzas.getNegocioActivo();
+    const container = document.getElementById('mobileBusinessSaleLines');
+    if (!negocio || !container) return;
+
+    const productos = Finanzas.getProductos(negocio.id, 'PRODUCTO');
+    const row = document.createElement('div');
+    row.className = 'business-list-item';
+    row.innerHTML = `
+      <div style="width:100%; display:grid; gap:.5rem;">
+        <div class="form-row-custom">
+          <label>Artículo</label>
+          <select class="sel-mobile-sale-product" required onchange="mobileApp.updateBusinessSalePrice(this)">
+            <option value="">Seleccione artículo...</option>
+            ${productos.map(producto => `<option value="${escapeHTML(producto.id)}" data-price="${Number(producto.precioVenta) || 0}">${escapeHTML(producto.nombre)} (Disp: ${escapeHTML(String(producto.stock || 0))})</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row-custom">
+          <label>Cantidad</label>
+          <input aria-label="Cantidad" class="inp-mobile-sale-quantity" type="number" min="1" step="0.01" value="1" required oninput="mobileApp.updateBusinessSaleTotal()">
+        </div>
+        <div class="form-row-custom">
+          <label>Precio unitario</label>
+          <input aria-label="Precio unitario" class="inp-mobile-sale-price" type="number" min="0" step="0.01" value="0" required oninput="mobileApp.updateBusinessSaleTotal()">
+        </div>
+        <button class="link-btn" type="button" onclick="this.closest('.business-list-item').remove(); mobileApp.updateBusinessSaleTotal()">Quitar artículo</button>
+      </div>
+    `;
+    container.appendChild(row);
+  }
+
+  updateBusinessSalePrice(select) {
+    const row = select.closest('.business-list-item');
+    const priceInput = row?.querySelector('.inp-mobile-sale-price');
+    if (priceInput) priceInput.value = select.selectedOptions[0]?.dataset.price || '0';
+    this.updateBusinessSaleTotal();
+  }
+
+  updateBusinessSaleTotal() {
+    const total = Array.from(document.querySelectorAll('#mobileBusinessSaleLines .business-list-item'))
+      .reduce((sum, row) => {
+        const quantity = Number(row.querySelector('.inp-mobile-sale-quantity')?.value) || 0;
+        const price = Number(row.querySelector('.inp-mobile-sale-price')?.value) || 0;
+        return sum + quantity * price;
+      }, 0);
+    const totalElement = document.getElementById('mobileBusinessSaleTotal');
+    if (totalElement) totalElement.textContent = formatCOP(total);
+  }
+
+  handleBusinessSaleSubmit(event) {
+    event.preventDefault();
+    const negocio = Finanzas.getNegocioActivo();
+    if (!negocio) return;
+
+    const detalles = Array.from(document.querySelectorAll('#mobileBusinessSaleLines .business-list-item'))
+      .map(row => ({
+        productoId: row.querySelector('.sel-mobile-sale-product')?.value,
+        cantidad: Number(row.querySelector('.inp-mobile-sale-quantity')?.value) || 0,
+        precioUnitario: Number(row.querySelector('.inp-mobile-sale-price')?.value) || 0
+      }))
+      .filter(detalle => detalle.productoId && detalle.cantidad > 0);
+
+    if (detalles.length === 0) {
+      this.mostrarToast('Agrega al menos un artículo a la factura.');
+      return;
+    }
+
+    const result = Finanzas.registrarVenta({
+      negocioId: negocio.id,
+      clienteNombre: document.getElementById('mobSaleCustomerName').value.trim(),
+      clienteCedula: document.getElementById('mobSaleCustomerCedula').value.trim(),
+      clienteTelefono: document.getElementById('mobSaleCustomerPhone').value.trim(),
+      clienteEmail: document.getElementById('mobSaleCustomerEmail').value.trim(),
+      clienteDireccion: document.getElementById('mobSaleCustomerAddress').value.trim(),
+      fecha: document.getElementById('mobSaleDate').value,
+      tipoPago: document.getElementById('mobSalePaymentType').value,
+      metodoPago: document.getElementById('mobSalePaymentMethod').value,
+      notas: document.getElementById('mobSaleNotes').value.trim(),
+      detalles
+    });
+
+    if (result.error) {
+      this.mostrarToast(`No se pudo guardar la factura: ${result.error}`);
+      return;
+    }
+
+    event.target.reset();
+    this.closeModalBusinessSale();
+    this.renderNegocio();
+    this.mostrarToast(`Factura ${result.venta.numeroFactura} guardada por ${formatCOP(result.venta.total)}.`);
   }
 
   openModalRegistrar() {

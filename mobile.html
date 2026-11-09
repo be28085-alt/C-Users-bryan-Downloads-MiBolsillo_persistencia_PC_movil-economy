@@ -434,6 +434,14 @@
               </div>
               <div id="mobileBusinessActivityList" class="compact-list"></div>
             </div>
+
+            <div class="section-card">
+              <div class="section-card-header">
+                <h3>Facturas recientes</h3>
+                <button class="link-btn" onclick="mobileApp.openModalBusinessSale()">+ Registrar</button>
+              </div>
+              <div id="mobileBusinessSalesList" class="compact-list"></div>
+            </div>
           </div>
 
           <div class="business-panel" data-business-panel="inventario">
@@ -454,12 +462,12 @@
             </div>
           </div>
 
-          <div class="business-panel" data-business-panel="clientes">
+          <div class="business-panel" data-business-panel="proveedores">
             <div class="section-card">
               <div class="section-card-header">
-                <h3>Clientes y proveedores</h3>
+                <h3>Proveedores</h3>
               </div>
-              <div id="mobileBusinessClientList" class="compact-list"></div>
+              <div id="mobileBusinessSupplierList" class="compact-list"></div>
             </div>
           </div>
 
@@ -652,9 +660,9 @@
         <button class="nav-center-action-btn" onclick="mobileApp.openQuickActionMenu('EMPRESARIAL')" title="Acciones empresariales">
           +
         </button>
-        <button class="nav-btn" data-business-tab="clientes" onclick="mobileApp.switchBusinessTab('clientes')">
-          <span style="font-size: 1.25rem;">👥</span>
-          <span>Clientes</span>
+        <button class="nav-btn" data-business-tab="proveedores" onclick="mobileApp.switchBusinessTab('proveedores')">
+          <span style="font-size: 1.25rem;">🚚</span>
+          <span>Proveedores</span>
         </button>
         <button class="nav-btn" data-business-tab="informes" onclick="mobileApp.switchBusinessTab('informes')">
           <span style="font-size: 1.25rem;">📊</span>
@@ -681,6 +689,77 @@
         <button class="btn-close-circle" onclick="mobileApp.closeQuickActionMenu()">✕</button>
       </div>
       <div class="quick-actions-list" id="mobileQuickActionsList"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRAR VENTA / FACTURA -->
+  <div class="bottom-sheet-backdrop hidden" id="modalMobileBusinessSale">
+    <div class="bottom-sheet-container">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">Registrar venta</h2>
+        <button class="btn-close-circle" onclick="mobileApp.closeModalBusinessSale()">✕</button>
+      </div>
+      <form onsubmit="mobileApp.handleBusinessSaleSubmit(event)">
+        <div class="form-inputs-group">
+          <div class="form-row-custom">
+            <label for="mobSaleCustomerName">Nombre del cliente</label>
+            <input id="mobSaleCustomerName" autocomplete="name" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobSaleCustomerCedula">Cédula del cliente</label>
+            <input id="mobSaleCustomerCedula" autocomplete="off" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobSaleCustomerPhone">Teléfono</label>
+            <input id="mobSaleCustomerPhone" autocomplete="tel" type="tel">
+          </div>
+          <div class="form-row-custom">
+            <label for="mobSaleCustomerEmail">Email</label>
+            <input id="mobSaleCustomerEmail" autocomplete="email" type="email">
+          </div>
+          <div class="form-row-custom">
+            <label for="mobSaleCustomerAddress">Dirección</label>
+            <input id="mobSaleCustomerAddress" autocomplete="street-address">
+          </div>
+          <div class="form-row-custom">
+            <label for="mobSaleDate">Fecha</label>
+            <input id="mobSaleDate" type="date" required>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobSalePaymentType">Tipo de pago</label>
+            <select id="mobSalePaymentType">
+              <option value="CONTADO">Contado</option>
+              <option value="CREDITO">Crédito</option>
+            </select>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobSalePaymentMethod">Método de pago</label>
+            <select id="mobSalePaymentMethod">
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Tarjeta">Tarjeta</option>
+            </select>
+          </div>
+          <div>
+            <div class="section-card-header">
+              <h3>Artículos</h3>
+              <button class="link-btn" onclick="mobileApp.addBusinessSaleLine()" type="button">+ Agregar</button>
+            </div>
+            <div id="mobileBusinessSaleLines" class="compact-list"></div>
+          </div>
+          <div class="business-list-item">
+            <strong>Total</strong>
+            <strong id="mobileBusinessSaleTotal">0 COP</strong>
+          </div>
+          <div class="form-row-custom">
+            <label for="mobSaleNotes">Notas</label>
+            <input id="mobSaleNotes">
+          </div>
+          <small>Los datos se guardan en la factura digital del historial. No reemplaza la emisión electrónica ante la DIAN.</small>
+        </div>
+        <button type="submit" class="btn-action-primary">Guardar factura</button>
+      </form>
     </div>
   </div>
 
@@ -941,7 +1020,7 @@
   <script src="src/domains/business/productsDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/inventoryDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/purchasesDomain.js?v=20261103-6"></script>
-  <script src="src/domains/business/salesDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/salesDomain.js?v=20261106-1"></script>
   <script src="src/domains/business/creditsDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/productionDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/employeesDomain.js?v=20261103-6"></script>
@@ -949,8 +1028,8 @@
   <script src="src/domains/business/metricsDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/cashFlowDomain.js?v=20261103-6"></script>
   <script src="src/domains/user/userService.js?v=20261103-6"></script>
-  <script src="src/services/finanzasCore.js?v=20261103-6"></script>
+  <script src="src/services/finanzasCore.js?v=20261106-1"></script>
   <script src="src/utils/shared.js?v=20261103-6"></script>
-  <script src="src/utils/mobile.js?v=20261104-1"></script>
+  <script src="src/utils/mobile.js?v=20261106-1"></script>
 </body>
 </html>
