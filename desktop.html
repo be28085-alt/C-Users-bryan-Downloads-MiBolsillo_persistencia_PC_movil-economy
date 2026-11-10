@@ -30,6 +30,8 @@
   </script>
   <!-- Estilos de Escritorio -->
   <link href="desktop.css?v=20261104-2" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles/invoicing.css?v=20261109-1">
+  <link rel="stylesheet" href="styles/businessReports.css?v=20261109-2">
  </head>
  <body>
   <!-- BARRA SUPERIOR INFORMATIVA: CONMUTADOR DE VERSIONES SEPARADAS -->
@@ -1673,6 +1675,7 @@
       </div>
      </section>
      <section class="pc-view" id="view-negocio-ventas">
+      <button type="button" class="btn-pc-primary" data-invoice-open>Facturación electrónica simulada</button>
       <div class="view-top-banner">
        <div class="view-heading">
         <h1>
@@ -1782,88 +1785,7 @@
       </div>
      </section>
      <section class="pc-view" id="view-negocio-informes">
-      <div class="view-top-banner">
-       <div class="view-heading">
-        <h1>
-         Informes
-        </h1>
-        <p>
-         Resultados y rentabilidad del negocio activo.
-        </p>
-       </div>
-       <div class="view-controls-bar">
-        <select aria-label="Período del informe" class="pc-select" onchange="pcApp.cambiarFiltroReportesPeriodo(this.value)">
-         <option value="MES_ACTUAL">
-          Mes actual
-         </option>
-         <option value="ANIO_ACTUAL">
-          Año actual
-         </option>
-         <option value="TODOS">
-          Histórico
-         </option>
-        </select>
-       </div>
-      </div>
-      <div class="pc-card">
-       <h3 class="pc-card-title" id="bizReportePeriodoTitulo">
-        Resultados del negocio
-       </h3>
-       <div class="pc-kpi-row">
-        <div class="kpi-card">
-         <span class="kpi-label">
-          Ingresos
-         </span>
-         <strong class="kpi-amount" id="repVentasTotales">
-          0 COP
-         </strong>
-        </div>
-        <div class="kpi-card">
-         <span class="kpi-label">
-          Costo de ventas
-         </span>
-         <strong class="kpi-amount" id="repCostoVentas">
-          0 COP
-         </strong>
-        </div>
-        <div class="kpi-card">
-         <span class="kpi-label">
-          Utilidad bruta
-         </span>
-         <strong class="kpi-amount" id="repUtilidadBruta">
-          0 COP
-         </strong>
-         <small>
-          Margen
-          <span id="repMargenBruto">
-           0%
-          </span>
-         </small>
-        </div>
-        <div class="kpi-card">
-         <span class="kpi-label">
-          Gastos operativos
-         </span>
-         <strong class="kpi-amount" id="repGastosOperativos">
-          0 COP
-         </strong>
-        </div>
-        <div class="kpi-card">
-         <span class="kpi-label">
-          Utilidad neta
-         </span>
-         <strong class="kpi-amount" id="repUtilidadNeta">
-          0 COP
-         </strong>
-         <small>
-          Margen
-          <span id="repMargenNeto">
-           0%
-          </span>
-         </small>
-        </div>
-       </div>
-      </div>
+      <div class="business-reports" data-business-report></div>
      </section>
      <!-- ============================================================
              PERFIL Y CONFIGURACIÓN GENERAL DEL USUARIO
@@ -2884,19 +2806,29 @@
   </script>
   <script src="src/domains/business/expensesDomain.js?v=20261104-1">
   </script>
-  <script src="src/domains/business/metricsDomain.js?v=20261104-1">
+  <script src="src/domains/business/metricsDomain.js?v=20261109-1">
   </script>
-  <script src="src/domains/business/cashFlowDomain.js?v=20261104-1">
+  <script src="src/domains/business/cashFlowDomain.js?v=20261109-1">
   </script>
   <script src="src/domains/user/userService.js?v=20261104-1">
   </script>
-  <script src="src/services/finanzasCore.js?v=20261108-1">
+  <script src="src/services/finanzasCore.js?v=20261109-1">
   </script>
   <script src="src/utils/shared.js?v=20261104-1">
   </script>
-  <script src="src/utils/desktop.js?v=20261108-1">
+  <script src="src/utils/desktop.js?v=20261109-2">
   </script>
-   <script src="src/services/exportService.js?v=20261108-1"></script>
+   <script src="src/services/exportService.js?v=20261109-1"></script>
   <script src="src/ui/shared/persistenceStatus.js?v=20261108-1"></script>
+  <script src="src/vendor/qrcode.js?v=20261109-1"></script>
+  <script src="src/invoicing/money.js?v=20261109-1"></script>
+  <script src="src/invoicing/schema.js?v=20261109-1"></script>
+  <script src="src/invoicing/providers.js?v=20261109-1"></script>
+  <script src="src/invoicing/repository.js?v=20261109-1"></script>
+  <script src="src/invoicing/service.js?v=20261109-1"></script>
+  <script src="src/invoicing/exports.js?v=20261109-1"></script>
+  <script src="src/invoicing/ui.js?v=20261109-1"></script>
+  <script src="src/domains/business/reportsDomain.js?v=20261109-2"></script>
+  <script src="src/ui/views/business/businessReportsView.js?v=20261109-2"></script>
 </body>
 </html>

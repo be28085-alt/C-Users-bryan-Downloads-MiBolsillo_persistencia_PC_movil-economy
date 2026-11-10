@@ -15,6 +15,8 @@
 
   <!-- Estilos dedicados para la versión móvil -->
   <link rel="stylesheet" href="styles/mobile.css?v=20261108-menu">
+  <link rel="stylesheet" href="styles/invoicing.css?v=20261109-1">
+  <link rel="stylesheet" href="styles/businessReports.css?v=20261109-2">
 </head>
 <body>
 
@@ -370,6 +372,7 @@
           </div>
 
           <div class="business-panel active" data-business-panel="negocio">
+            <button type="button" class="link-btn" data-invoice-open>Facturación electrónica simulada</button>
             <div class="business-summary-card">
               <div class="business-summary-topbar">
                 <span>Balance del negocio</span>
@@ -475,20 +478,7 @@
           </div>
 
           <div class="business-panel" data-business-panel="informes">
-            <div class="section-card">
-              <div class="section-card-header">
-                <h3>Informes del negocio</h3>
-              </div>
-              <div id="mobileBusinessReportList" class="compact-list"></div>
-            </div>
-            <div class="section-card">
-              <div class="section-card-header">
-                <h3>Flujo de ventas y compras</h3>
-              </div>
-              <div style="height: 200px; position: relative;">
-                <canvas id="mobileBusinessChartReports"></canvas>
-              </div>
-            </div>
+            <div class="business-reports" data-business-report></div>
           </div>
         </section>
 
@@ -1007,13 +997,23 @@
   <script src="src/domains/business/productionDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/employeesDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/expensesDomain.js?v=20261103-6"></script>
-  <script src="src/domains/business/metricsDomain.js?v=20261103-6"></script>
-  <script src="src/domains/business/cashFlowDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/metricsDomain.js?v=20261109-1"></script>
+  <script src="src/domains/business/cashFlowDomain.js?v=20261109-1"></script>
   <script src="src/domains/user/userService.js?v=20261103-6"></script>
-  <script src="src/services/finanzasCore.js?v=20261108-1"></script>
+  <script src="src/services/finanzasCore.js?v=20261109-1"></script>
   <script src="src/utils/shared.js?v=20261103-6"></script>
-  <script src="src/utils/mobile.js?v=20261108-menu"></script>
-  <script src="src/services/exportService.js?v=20261108-1"></script>
+  <script src="src/utils/mobile.js?v=20261109-2"></script>
+  <script src="src/services/exportService.js?v=20261109-1"></script>
   <script src="src/ui/shared/persistenceStatus.js?v=20261108-1"></script>
+  <script src="src/vendor/qrcode.js?v=20261109-1"></script>
+  <script src="src/invoicing/money.js?v=20261109-1"></script>
+  <script src="src/invoicing/schema.js?v=20261109-1"></script>
+  <script src="src/invoicing/providers.js?v=20261109-1"></script>
+  <script src="src/invoicing/repository.js?v=20261109-1"></script>
+  <script src="src/invoicing/service.js?v=20261109-1"></script>
+  <script src="src/invoicing/exports.js?v=20261109-1"></script>
+  <script src="src/invoicing/ui.js?v=20261109-1"></script>
+  <script src="src/domains/business/reportsDomain.js?v=20261109-2"></script>
+  <script src="src/ui/views/business/businessReportsView.js?v=20261109-2"></script>
 </body>
 </html>

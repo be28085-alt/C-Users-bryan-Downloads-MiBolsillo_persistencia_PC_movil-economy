@@ -38,6 +38,7 @@
             ids.add(item.id);
           }
         }
+        window.InvoiceSchema?.validateState(state);
         return { state, error: null };
       } catch (error) { return { state: null, error: error.message }; }
     },

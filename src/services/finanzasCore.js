@@ -545,6 +545,7 @@
 
     eliminarNegocio(id) {
       if (!Array.isArray(this.state.negocios) || this.state.negocios.length <= 1) return false;
+      if (this.state.facturacion?.documents?.some(d => d.businessId === id)) return false;
       this.state.negocios = this.state.negocios.filter(n => n.id !== id);
       if (this.state.negocioActivoId === id) {
         this.state.negocioActivoId = this.state.negocios[0].id;
@@ -662,6 +663,7 @@
     }
 
     eliminarCliente(id) {
+      if (this.state.ventas?.some(v => v.clienteId === id && v.invoiceDocumentId)) return false;
       if (!Array.isArray(this.state.clientes)) return false;
       this.state.clientes = this.state.clientes.filter(c => c.id !== id);
       this.guardarEstado();
@@ -791,6 +793,7 @@
       const venta = (this.state.ventas || []).find(v => v.id === ventaId);
       const cliente = (this.state.clientes || []).find(c => c.id === clienteId);
       if (!venta) return { error: 'Venta no encontrada.' };
+      if (venta.invoiceDocumentId) return { error: 'Registre este cobro en Facturación simulada para conservar precisión, auditoría e idempotencia.' };
       if (clienteId && (!cliente || clienteId !== venta.clienteId)) return { error: 'El cliente no corresponde a la factura.' };
 
       const domain = window.BusinessCreditsDomain;

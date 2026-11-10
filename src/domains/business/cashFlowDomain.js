@@ -33,12 +33,23 @@
         { fecha: '2026-10-24', cuenta: 'Bancolombia Negocio', concepto: 'Transferencia ventas datáfono del día', tipo: 'ENTRADA', monto: 1650000, saldoPosterior: 10250000 }
       ];
 
+      // Preserve the existing demo cash view and add the actual simulated invoice ledger once.
+      const invoicePayments = (datasets.pagosVenta || []).filter(p => p.negocioId === negocioId && p.invoiceDocumentId);
+      const invoiceRefunds = (datasets.facturacion?.refunds || []).filter(r => r.businessId === negocioId);
+      const M = window.InvoiceMoney;
+      const receipts = M ? invoicePayments.reduce((s, p) => s + M.units(p.monto), 0n) : 0n;
+      const refunds = M ? invoiceRefunds.reduce((s, p) => s + M.units(p.amount), 0n) : 0n;
+      const invoiceNet = M ? Number(M.decimal(receipts - refunds)) : 0;
+      if (invoicePayments.length || invoiceRefunds.length) {
+        cuentas.push({ id: 'invoice-local-ledger', nombre: 'Flujo de facturación simulada', tipo: 'SIMULACION', saldo: invoiceNet, numero: 'Registro interno' });
+        movimientosCaja.push(...invoicePayments.map(p => ({ fecha: p.fecha, cuenta: 'Facturación simulada', concepto: `Cobro ${p.ventaId}`, tipo: 'ENTRADA', monto: p.monto })), ...invoiceRefunds.map(r => ({ fecha: r.date, cuenta: 'Facturación simulada', concepto: `Devolución ${r.documentId}`, tipo: 'SALIDA', monto: Number(r.amount) })));
+      }
       return {
-        saldoDisponible,
+        saldoDisponible: saldoDisponible + invoiceNet,
         cuentas,
-        totalEntradas,
-        totalSalidas,
-        flujoNeto,
+        totalEntradas: totalEntradas + (M ? Number(M.decimal(receipts)) : 0),
+        totalSalidas: totalSalidas + (M ? Number(M.decimal(refunds)) : 0),
+        flujoNeto: flujoNeto + invoiceNet,
         movimientosCaja
       };
     }

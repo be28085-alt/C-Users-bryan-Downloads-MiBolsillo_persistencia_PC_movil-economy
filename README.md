@@ -1,5 +1,21 @@
 # MiBolsillo — organización y correcciones de lógica
 
+## Informes de Mi Negocio en PC y móvil (09-11-2026)
+
+- Ambas versiones comparten el informe **Tu negocio, en perspectiva**: utilidad neta, ingresos, costos y gastos, ticket promedio, ventas y cartera actual, evolución de seis meses, distribución y desglose por rubro y estado de resultados.
+- Filtros reales de mes actual, mes anterior, año actual e histórico, con comparación frente al período anterior. Los gráficos funcionan sin conexión a Chart.js. Se conserva una tabla accesible con los valores mensuales.
+- Se calcula el resultado con costo histórico de ventas, gastos y nómina. Las compras de inventario y los abonos de cartera no duplican gastos o ingresos. Las facturas simuladas usan la base sin impuestos y los valores ajustados de la venta. La cartera se identifica como saldo actual de todos los períodos.
+- Los importes del informe se acumulan en centavos enteros; no se altera ningún registro al consultar o exportar. Hay descarga CSV del filtro y una vista de impresión independiente para **Guardar como PDF**.
+- Pruebas específicas: `node --test tests/business-reports.test.cjs`. Pruebas opcionales de navegador: `node tests/business-reports.browser.cjs`, con Playwright instalado o las variables `PLAYWRIGHT_MODULE` y `PLAYWRIGHT_CHROME`. Cubren PC de 1440/820 px y móvil de 390/360 px, filtros, igualdad de resultados, gráficos sin red, CSV, impresión y aislamiento de datos personales.
+
+## Facturación simulada (09-11-2026)
+
+Mi Negocio incluye **Facturación electrónica simulada**: en PC se abre desde Ventas; en móvil, desde el inicio empresarial. Incluye motor decimal `BigInt`, borradores, validación interna, PDF con aviso fiscal, XML experimental UBL 2.1, QR interno, notas, cobros, historial, snapshots y auditoría. Finanzas Personales conserva sus flujos.
+
+Use localhost/HTTPS y un navegador con Web Locks/Web Crypto. La integración real está deshabilitada. Los roles y la persistencia son locales; no se garantiza concurrencia global con escritores heredados ni operación multiusuario. XML, CUFE/CUDE, firma y habilitación oficial requieren la fase de backend y pruebas DIAN.
+
+Consulte [el análisis, fases, reglas, alcance y migración](docs/FACTURACION_SIMULADA.md). Ejecute `node --test tests/*.test.cjs`, `node test_shared.js` y `node test_dates.js`; la suite opcional de navegador es `node tests/invoicing.browser.cjs` y requiere Playwright.
+
 ## Mejoras de confiabilidad (08-11-2026)
 
 - Ventas: validación de cantidades, precios, fechas e importes finitos; comprobación acumulada del stock cuando un producto aparece en varias líneas. El documento se valida completo antes de modificar inventario.

@@ -48,15 +48,20 @@
       const ventasFiltradas = ventas.filter(v => coincidePeriodo(v.fecha));
 
       ventasFiltradas.forEach(v => {
-        ventasTotales += Number(v.total) || 0;
-        (v.detalles || []).forEach(d => {
-          const cant = Number(d.cantidad) || 0;
-          const costo = Number(d.costoUnitario) || 0;
-          costoProductosVendidos += (cant * costo);
-        });
-        ingresosNegocio.filter(i => coincidePeriodo(i.fecha)).forEach(i => {
-          ventasTotales += Number(i.monto) || 0;
-        });
+        // Invoice taxes are liabilities, not sales revenue; legacy sales preserve their existing basis.
+        ventasTotales += Number(v.invoiceDocumentId ? v.subtotal : v.total) || 0;
+        if (v.invoiceDocumentId) {
+          costoProductosVendidos += Number(v.costoTotalVenta) || 0;
+        } else {
+          (v.detalles || []).forEach(d => {
+            const cant = Number(d.cantidad) || 0;
+            const costo = Number(d.costoUnitario) || 0;
+            costoProductosVendidos += (cant * costo);
+          });
+        }
+      });
+      ingresosNegocio.filter(i => coincidePeriodo(i.fecha)).forEach(i => {
+        ventasTotales += Number(i.monto) || 0;
       });
 
       // 2. Gastos Operativos (Gastos negocio + Nómina de empleados)

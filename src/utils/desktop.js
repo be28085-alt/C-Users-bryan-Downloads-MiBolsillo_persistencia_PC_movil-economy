@@ -1891,10 +1891,10 @@ class DesktopApp {
   eliminarNegocio(id) {
     if (confirm('¿Estás seguro de eliminar este negocio? Esta acción no se puede deshacer.')) {
       const res = Finanzas.eliminarNegocio(id);
-      if (res.ok) {
+      if (res === true || res.ok) {
         this.showToast('Negocio eliminado.');
       } else {
-        alert(res.error);
+        alert(res.error || 'No se puede eliminar el único negocio ni un negocio con documentos de facturación.');
       }
     }
   }
@@ -3006,38 +3006,14 @@ class DesktopApp {
   // 14. GANANCIAS Y REPORTES FINANCIEROS (Regla 9)
   cambiarFiltroReportesPeriodo(periodo) {
     this.filtroPeriodoReportes = periodo;
+    const report = document.querySelector('[data-business-report]');
+    if (report) report.dataset.reportPeriod = periodo;
     const negActivo = Finanzas.getNegocioActivo();
     if (negActivo) this.renderBusinessReportes(negActivo);
   }
 
   renderBusinessReportes(negActivo) {
-    const periodo = this.filtroPeriodoReportes || 'MES_ACTUAL';
-    const metricas = Finanzas.calcularMetricasEmpresariales(negActivo.id, periodo);
-
-    const periodosLabelMap = {
-      'MES_ACTUAL': 'Mes en Curso',
-      'ANIO_ACTUAL': 'Año Fiscal en Curso',
-      'TODOS': 'Histórico Consolidado'
-    };
-
-    const elPeriodo = document.getElementById('bizReportePeriodoTitulo');
-    if (elPeriodo) elPeriodo.textContent = `Período: ${periodosLabelMap[periodo] || periodo} · ${negActivo.nombre}`;
-
-    const elVentas = document.getElementById('repVentasTotales');
-    const elCosto = document.getElementById('repCostoVentas');
-    const elBruta = document.getElementById('repUtilidadBruta');
-    const elGastos = document.getElementById('repGastosOperativos');
-    const elNeta = document.getElementById('repUtilidadNeta');
-    const elMargenBruto = document.getElementById('repMargenBruto');
-    const elMargenNeto = document.getElementById('repMargenNeto');
-
-    if (elVentas) elVentas.textContent = formatCOP(metricas.ventasTotales);
-    if (elCosto) elCosto.textContent = `- ${formatCOP(metricas.costoProductosVendidos)}`;
-    if (elBruta) elBruta.textContent = formatCOP(metricas.utilidadBruta);
-    if (elGastos) elGastos.textContent = `- ${formatCOP(metricas.gastosOperativos)}`;
-    if (elNeta) elNeta.textContent = formatCOP(metricas.utilidadNeta);
-    if (elMargenBruto) elMargenBruto.textContent = `${metricas.margenBrutoPct.toFixed(1)}%`;
-    if (elMargenNeto) elMargenNeto.textContent = `${metricas.margenNetoPct.toFixed(1)}%`;
+    window.BusinessReportsView?.render(Finanzas, negActivo, this.filtroPeriodoReportes || 'MES_ACTUAL');
   }
 }
 

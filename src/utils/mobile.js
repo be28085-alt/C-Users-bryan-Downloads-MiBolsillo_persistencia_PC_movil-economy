@@ -458,24 +458,7 @@ class MobileApp {
       `).join('') || '<div class="business-list-item"><div><strong>No hay proveedores registrados</strong></div></div>';
     }
 
-    const reportContainer = document.getElementById('mobileBusinessReportList');
-    if (reportContainer) {
-      const margen = ventasTotal > 0 ? ((utilidad / ventasTotal) * 100) : 0;
-      const reportItems = [
-        { label: 'Ingresos', value: formatCOP(ventasTotal), type: 'positive' },
-        { label: 'Gastos totales', value: `-${formatCOP(comprasTotal + gastosTotal + nominaTotal)}`, type: 'negative' },
-        { label: 'Utilidad neta', value: formatCOP(utilidad), type: utilidad >= 0 ? 'positive' : 'negative' },
-        { label: 'Margen', value: `${margen.toFixed(1)}%`, type: margen >= 0 ? 'positive' : 'negative' }
-      ];
-      reportContainer.innerHTML = reportItems.map(item => `
-        <div class="business-list-item">
-          <div>
-            <strong>${escapeHTML(item.label)}</strong>
-          </div>
-          <span class="value ${item.type}">${escapeHTML(item.value)}</span>
-        </div>
-      `).join('');
-    }
+    window.BusinessReportsView?.render(Finanzas, negocio);
 
     this.renderBusinessChart();
   }
@@ -978,8 +961,7 @@ class MobileApp {
 
   renderBusinessChart() {
     const chartConfigs = [
-      { id: 'mobileBusinessChart', instanceKey: 'businessChart' },
-      { id: 'mobileBusinessChartReports', instanceKey: 'businessChartReports' }
+      { id: 'mobileBusinessChart', instanceKey: 'businessChart' }
     ];
 
     if (typeof Chart === 'undefined') return;
