@@ -18,7 +18,7 @@ const server = http.createServer((req, res) => {
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHROME ? { executablePath: process.env.PLAYWRIGHT_CHROME } : {}) });
   try {
     const results = [];
-    for (const [name, width, height] of [['desktop.html', 1440, 1100], ['mobile.html', 390, 844], ['desktop.html', 820, 1180], ['mobile.html', 360, 800]]) {
+    for (const [name, width, height] of ['desktop.html', 'mobile.html'].flatMap(name => [320, 375, 390, 768, 1024, 1366, 1920].map(width => [name, width, width < 500 ? 900 : 1100]))) {
       const context = await browser.newContext({ viewport: { width, height }, acceptDownloads: true });
       context.setDefaultTimeout(10000);
       await context.route('https://**/*', route => route.abort());
@@ -58,9 +58,29 @@ const server = http.createServer((req, res) => {
       });
       const report = page.locator('[data-business-report]');
       await report.getByRole('heading', { name: 'Tu negocio, en perspectiva' }).waitFor();
-      const values = await report.locator('[data-report-value]').allTextContents();
+      const values = await Promise.all(['netProfit', 'income', 'expenses', 'salesCount'].map(field => report.locator(`[data-report-value="${field}"]`).innerText()));
       assert.deepEqual(values, ['+2.000.000 COP', '7.000.000 COP', '5.000.000 COP', '2']); results.push(values);
       assert.equal(await report.locator('svg.br-bars').count(), 1);
+      assert.equal(await report.locator('[data-report-value="sales"]').innerText(), '6.800.000 COP');
+      assert.equal(await report.locator('[data-report-value="grossProfit"]').innerText(), '4.200.000 COP');
+      assert.equal(await report.locator('[data-report-value="businessExpenses"]').innerText(), '1.400.000 COP');
+      assert.equal(await report.locator('[data-report-value="employeePayments"]').innerText(), '1.000.000 COP');
+      assert.equal(await report.locator('[data-report-detail="sales"] tbody tr').count(), 2);
+      assert.equal(await report.locator('[data-report-detail="expenses"] tbody tr').count(), 5);
+      await report.locator('[data-report-period]').selectOption('PERSONALIZADO');
+      await report.locator('[data-report-from]').fill('2026-11-03'); await report.locator('[data-report-to]').fill('2026-11-05');
+      await report.locator('[data-report-action="range"]').click();
+      assert.equal(await report.locator('[data-report-value="netProfit"]').innerText(), '-1.350.000 COP');
+      assert.equal(await report.locator('[data-report-detail="expenses"] tbody tr').count(), 4);
+      assert.equal(await report.locator('[data-report-detail="sales"]').getByText('No hay registros en el período seleccionado.').count(), 1);
+      await report.locator('[data-report-from]').fill('2026-11-10'); await report.locator('[data-report-action="range"]').click();
+      assert.match(await report.locator('.br-feedback').innerText(), /Desde/);
+      assert.equal(await report.locator('[data-report-value="netProfit"]').innerText(), '-1.350.000 COP');
+      const customDownload = page.waitForEvent('download'); await report.locator('[data-report-action="csv"]').click();
+      const customCSV = await customDownload, customPath = path.join(output, `${name}-${width}-custom.csv`); await customCSV.saveAs(customPath);
+      assert.match(fs.readFileSync(customPath, 'utf8'), /"Desde";"2026-11-03"/);
+      assert.match(fs.readFileSync(customPath, 'utf8'), /"Utilidad neta";"-1350000.00"/);
+      await report.locator('[data-report-period]').selectOption('MES_ACTUAL');
       assert.equal(await report.locator('.br-results tr').count(), 7);
       const dataBefore = await page.evaluate(() => JSON.stringify(Finanzas.state));
       await page.screenshot({ path: path.join(output, `${width}-overview.png`) });
@@ -79,12 +99,17 @@ const server = http.createServer((req, res) => {
       assert.match(await popup.locator('body').innerText(), /octubre de 2026/);
       assert.notEqual(await popup.locator('.br-hero').evaluate(el => getComputedStyle(el).backgroundImage), 'none', 'print CSS must be applied');
       assert.equal(await popup.locator('[data-report-action]').count(), 0);
-      if (width === 1440) await popup.pdf({ path: path.join(output, 'business-report.pdf'), format: 'A4', printBackground: true });
+      assert.equal(await popup.locator('[data-report-detail="sales"] tbody tr').count(), 1);
+      assert.match(await popup.locator('body').innerText(), /Detalle de gastos y pagos al personal/);
+      if (name === 'desktop.html' && width === 1366) await popup.pdf({ path: path.join(output, 'business-report.pdf'), format: 'A4', printBackground: true });
       await popup.close();
       await report.locator('[data-report-period]').selectOption('MES_ACTUAL');
       assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state)), dataBefore);
       await report.locator('.br-detail-grid').scrollIntoViewIfNeeded(); await page.screenshot({ path: path.join(output, `${width}-breakdown.png`) });
-      assert.equal(await report.evaluate(el => el.scrollWidth > el.clientWidth + 2), false, `${width}: report overflow`);
+      await report.locator('[data-report-detail="sales"]').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(output, `${name}-${width}-sales-detail.png`) });
+      const layout = await report.evaluate(el => ({ width: el.clientWidth, scroll: el.scrollWidth, overflowing: [...el.querySelectorAll('*')].filter(child => child.getBoundingClientRect().right > el.getBoundingClientRect().right + 2 && !child.closest('.br-table-wrap')).map(child => ({ tag: child.tagName, cls: child.className, width: child.getBoundingClientRect().width, text: child.textContent.slice(0, 50) })).slice(0, 10) }));
+      assert.ok(layout.scroll <= layout.width + 2, `${name} ${width}: report overflow ${JSON.stringify(layout)}`);
       assert.ok(await report.evaluate(el => el.getBoundingClientRect().right <= innerWidth + 2), `${width}: report must fit viewport`);
       const previousPersonal = await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos));
       await page.evaluate(() => { if (typeof pcApp !== 'undefined') pcApp.setModulo('PERSONAL', 'informes'); else mobileApp.setModulo('PERSONAL', 'informes'); });

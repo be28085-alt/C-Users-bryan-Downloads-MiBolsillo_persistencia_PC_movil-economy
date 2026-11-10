@@ -136,6 +136,7 @@ class MobileApp {
   actualizarModuloVisual(modulo) {
     const normalizedModulo = modulo === 'EMPRESARIAL' ? 'EMPRESARIAL' : 'PERSONAL';
     const isBusiness = normalizedModulo === 'EMPRESARIAL';
+    document.querySelectorAll('a[href*="desktop.html"]').forEach(a => { a.href = `desktop.html${isBusiness ? '?modulo=EMPRESARIAL' : ''}`; });
     document.querySelectorAll('.module-toggle-btn').forEach((button) => {
       const active = button.dataset.module === normalizedModulo;
       button.classList.toggle('active', active);
@@ -253,7 +254,6 @@ class MobileApp {
       panel.classList.toggle('active', isActive);
     });
 
-    this.mostrarToast(`Vista de negocio: ${tabId === 'negocio' ? 'Inicio' : tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
     const targetView = document.getElementById('view-negocio');
     if (targetView) {
       document.querySelectorAll('.screen-view').forEach(view => view.classList.remove('active'));
@@ -313,154 +313,9 @@ class MobileApp {
   }
 
   renderNegocio() {
+    window.BusinessUI?.renderAll();
     const negocio = Finanzas.getNegocioActivo();
-    if (!negocio) return;
-    const ventas = Finanzas.getVentas(negocio.id);
-    const ingresosNegocio = Finanzas.getIngresosNegocio(negocio.id);
-    const compras = Finanzas.getCompras(negocio.id);
-    const gastosNegocio = Finanzas.getGastosNegocio(negocio.id);
-    const pagosEmpleado = Finanzas.getPagosEmpleado(negocio.id);
-    const productos = Finanzas.getProductos(negocio.id, 'ALL');
-    const proveedores = Finanzas.getProveedores(negocio.id);
-
-    const ventasTotal = ventas.reduce((sum, item) => sum + Number(item.total || 0), 0)
-      + ingresosNegocio.reduce((sum, item) => sum + Number(item.monto || 0), 0);
-    const comprasTotal = compras.reduce((sum, item) => sum + Number(item.total || 0), 0);
-    const gastosTotal = gastosNegocio.reduce((sum, item) => sum + Number(item.monto || 0), 0);
-    const nominaTotal = pagosEmpleado.reduce((sum, item) => sum + Number(item.monto || 0), 0);
-    const utilidad = ventasTotal - comprasTotal - gastosTotal - nominaTotal;
-    const balance = ventasTotal - (comprasTotal + gastosTotal + nominaTotal);
-    const stockBajo = productos.filter(item => Number(item.stock || 0) <= Number(item.stockMinimo || 0)).length;
-
-    const ids = {
-      ingresos: document.getElementById('lblMobileBusinessIngresos'),
-      balance: document.getElementById('lblMobileBusinessBalance'),
-      gastos: document.getElementById('lblMobileBusinessGastos'),
-      ventas: document.getElementById('lblMobileBusinessVentas'),
-      compras: document.getElementById('lblMobileBusinessCompras'),
-      utilidad: document.getElementById('lblMobileBusinessUtilidad'),
-      stock: document.getElementById('lblMobileBusinessStockBajo')
-    };
-
-    if (ids.ingresos) ids.ingresos.textContent = formatCOP(ventasTotal);
-    if (ids.balance) ids.balance.textContent = formatCOP(balance);
-    if (ids.gastos) ids.gastos.textContent = `-${formatCOP(comprasTotal + gastosTotal + nominaTotal)}`;
-    if (ids.ventas) ids.ventas.textContent = formatCOP(ventasTotal);
-    if (ids.compras) ids.compras.textContent = formatCOP(comprasTotal + gastosTotal + nominaTotal);
-    if (ids.utilidad) ids.utilidad.textContent = formatCOP(utilidad);
-    if (ids.stock) ids.stock.textContent = String(stockBajo);
-
-    const inventoryContainer = document.getElementById('mobileBusinessInventoryList');
-    if (inventoryContainer) {
-      const lowStockItems = productos.slice(0, 4).map(item => {
-        const isLow = Number(item.stock || 0) <= Number(item.stockMinimo || 0);
-        return `
-          <div class="business-list-item">
-            <div>
-              <strong>${escapeHTML(item.nombre || 'Producto')}</strong>
-              <small>${escapeHTML(item.unidadMedida || 'und')} · ${escapeHTML(String(item.stock || 0))} en stock</small>
-            </div>
-            <span class="value ${isLow ? 'negative' : 'positive'}">${isLow ? 'Bajo' : 'OK'}</span>
-          </div>
-        `;
-      }).join('');
-      inventoryContainer.innerHTML = lowStockItems || '<div class="business-list-item"><div><strong>Sin inventario</strong></div></div>';
-    }
-
-    const inventoryPanelContainer = document.getElementById('mobileBusinessInventoryPanelList');
-    if (inventoryPanelContainer) {
-      inventoryPanelContainer.innerHTML = productos.length
-        ? productos.map(item => {
-            const isLow = Number(item.stock || 0) <= Number(item.stockMinimo || 0);
-            return `
-              <div class="business-list-item">
-                <div>
-                  <strong>${escapeHTML(item.nombre || 'Producto')}</strong>
-                  <small>${escapeHTML(item.unidadMedida || 'und')} · ${escapeHTML(String(item.stock || 0))} en stock · min ${escapeHTML(String(item.stockMinimo || 0))}</small>
-                </div>
-                <span class="value ${isLow ? 'negative' : 'positive'}">${isLow ? 'Bajo' : 'OK'}</span>
-              </div>
-            `;
-          }).join('')
-        : '<div class="business-list-item"><div><strong>Sin inventario</strong></div></div>';
-    }
-
-    const movementContainer = document.getElementById('mobileBusinessMovementList');
-    if (movementContainer) {
-      const activity = [
-        ...ventas.map(item => ({ ...item, actividadTipo: 'VENTA' })),
-        ...ingresosNegocio.map(item => ({ ...item, actividadTipo: 'INGRESO' })),
-        ...compras.map(item => ({ ...item, actividadTipo: 'COMPRA' }))
-      ].sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0))
-        .slice(0, 6);
-      movementContainer.innerHTML = activity.map(item => {
-        const isIncome = item.actividadTipo === 'VENTA' || item.actividadTipo === 'INGRESO';
-        const label = item.clienteNombre || item.proveedorNombre || item.descripcion || (isIncome ? 'Ingreso' : 'Compra');
-        return `
-          <div class="business-list-item">
-            <div>
-              <strong>${escapeHTML(label)}</strong>
-              <small>${escapeHTML(item.fecha || 'Sin fecha')}</small>
-            </div>
-            <span class="value ${isIncome ? 'positive' : 'negative'}">${isIncome ? '+' : '-'}${formatCOP(Number(item.total || item.monto || 0))}</span>
-          </div>
-        `;
-      }).join('') || '<div class="business-list-item"><div><strong>Sin actividad</strong></div></div>';
-    }
-
-    const activityContainer = document.getElementById('mobileBusinessActivityList');
-    if (activityContainer) {
-      const activity = [
-        ...ventas.slice(-2).map(item => ({ ...item, actividadTipo: 'VENTA' })),
-        ...ingresosNegocio.slice(-2).map(item => ({ ...item, actividadTipo: 'INGRESO' })),
-        ...compras.slice(-2).map(item => ({ ...item, actividadTipo: 'COMPRA' }))
-      ].sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0))
-        .slice(0, 4);
-      activityContainer.innerHTML = activity.map(item => {
-        const isIncome = item.actividadTipo === 'VENTA' || item.actividadTipo === 'INGRESO';
-        const label = item.clienteNombre || item.proveedorNombre || item.descripcion || (isIncome ? 'Ingreso' : 'Compra');
-        return `
-          <div class="business-list-item">
-            <div>
-              <strong>${escapeHTML(label)}</strong>
-              <small>${escapeHTML(item.fecha || 'Sin fecha')}</small>
-            </div>
-            <span class="value ${isIncome ? 'positive' : 'negative'}">${isIncome ? '+' : '-'}${formatCOP(Number(item.total || item.monto || 0))}</span>
-          </div>
-        `;
-      }).join('') || '<div class="business-list-item"><div><strong>Sin actividad</strong></div></div>';
-    }
-
-    const salesContainer = document.getElementById('mobileBusinessSalesList');
-    if (salesContainer) {
-      salesContainer.innerHTML = ventas.slice(0, 5).map(venta => `
-        <div class="business-list-item">
-          <div>
-            <strong>${escapeHTML(venta.numeroFactura || `#${String(venta.id).replace(/^vent-/, '')}`)}</strong>
-            <small>${escapeHTML(venta.clienteNombre || 'Cliente')} · CC: ${escapeHTML(venta.clienteCedula || '-')}</small>
-            <small>${escapeHTML(venta.fecha || 'Sin fecha')} · ${escapeHTML(venta.tipoPago || 'CONTADO')}</small>
-          </div>
-          <span class="value positive">${formatCOP(Number(venta.total || 0))}</span>
-        </div>
-      `).join('') || '<div class="business-list-item"><div><strong>Aún no hay facturas registradas</strong></div></div>';
-    }
-
-    const supplierContainer = document.getElementById('mobileBusinessSupplierList');
-    if (supplierContainer) {
-      supplierContainer.innerHTML = proveedores.map(proveedor => `
-        <div class="business-list-item">
-          <div>
-            <strong>${escapeHTML(proveedor.nombre || 'Proveedor')}</strong>
-            <small>${escapeHTML(proveedor.telefono || proveedor.email || 'Sin contacto')}</small>
-            <small>${escapeHTML(proveedor.direccion || '')}</small>
-          </div>
-        </div>
-      `).join('') || '<div class="business-list-item"><div><strong>No hay proveedores registrados</strong></div></div>';
-    }
-
-    window.BusinessReportsView?.render(Finanzas, negocio);
-
-    this.renderBusinessChart();
+    if (negocio) window.BusinessReportsView?.render(Finanzas, negocio);
   }
 
   // PANTALLA INICIO (DASHBOARD MÓVIL)
@@ -959,88 +814,7 @@ class MobileApp {
     });
   }
 
-  renderBusinessChart() {
-    const chartConfigs = [
-      { id: 'mobileBusinessChart', instanceKey: 'businessChart' }
-    ];
 
-    if (typeof Chart === 'undefined') return;
-
-    chartConfigs.forEach(({ id, instanceKey }) => {
-      const canvas = document.getElementById(id);
-      if (!canvas) return;
-      if (this[instanceKey]) this[instanceKey].destroy();
-
-      const negocio = Finanzas.getNegocioActivo();
-      const ventas = negocio ? Finanzas.getVentas(negocio.id) : [];
-      const ingresos = negocio ? Finanzas.getIngresosNegocio(negocio.id) : [];
-      const compras = negocio ? Finanzas.getCompras(negocio.id) : [];
-      const labels = [];
-      const ventasSeries = [];
-      const comprasSeries = [];
-      const today = new Date();
-
-      for (let index = 3; index >= 0; index -= 1) {
-        const monthDate = new Date(today.getFullYear(), today.getMonth() - index, 1);
-        const label = monthDate.toLocaleDateString('es-CO', { month: 'short' });
-        labels.push(label.charAt(0).toUpperCase() + label.slice(1));
-        const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
-        ventasSeries.push([...ventas, ...ingresos].reduce((sum, item) => {
-          const fecha = item?.fecha ? new Date(item.fecha) : null;
-          const entryKey = fecha && !Number.isNaN(fecha.getTime())
-            ? `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`
-            : null;
-          return sum + (entryKey === monthKey ? Number(item.total || item.monto || 0) : 0);
-        }, 0));
-        comprasSeries.push(compras.reduce((sum, item) => {
-          const fecha = item?.fecha ? new Date(item.fecha) : null;
-          const entryKey = fecha && !Number.isNaN(fecha.getTime())
-            ? `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`
-            : null;
-          return sum + (entryKey === monthKey ? Number(item.total || 0) : 0);
-        }, 0));
-      }
-
-      this[instanceKey] = new Chart(canvas, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: 'Ingresos',
-              data: ventasSeries,
-              borderColor: '#0f8b65',
-              backgroundColor: 'rgba(15, 139, 101, 0.12)',
-              fill: true,
-              tension: 0.35,
-              pointRadius: 3,
-              pointBackgroundColor: '#0f8b65'
-            },
-            {
-              label: 'Compras',
-              data: comprasSeries,
-              borderColor: '#d9383a',
-              backgroundColor: 'rgba(217, 56, 58, 0.12)',
-              fill: true,
-              tension: 0.35,
-              pointRadius: 3,
-              pointBackgroundColor: '#d9383a'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom' } },
-          scales: {
-            y: {
-              ticks: { callback: (value) => formatCOP(value, true) }
-            }
-          }
-        }
-      });
-    });
-  }
 
   // PANTALLA PERFIL
   renderPerfil() {
@@ -1095,7 +869,12 @@ class MobileApp {
           { label: 'Registrar gasto', action: 'business-expense' },
           { label: 'Registrar ingreso', action: 'business-income' },
           { label: 'Movimiento de inventario', action: 'business-inventory' },
-          { label: 'Informes', action: 'business-reports' }
+          { label: 'Clientes y proveedores', action: 'business-contacts' },
+          { label: 'Compras, cuentas y empleados', action: 'business-management' },
+          { label: 'Cobros y pagos', action: 'business-movements' },
+          { label: 'Facturación simulada', action: 'business-invoicing' },
+          { label: 'Informes', action: 'business-reports' },
+          { label: 'Alertas y vencimientos', action: 'business-alerts' }
         ]
       : [
           { label: 'Registrar ingreso personal', action: 'personal-income' },
@@ -1149,22 +928,15 @@ class MobileApp {
     const module = this.currentModule || 'PERSONAL';
 
     if (module === 'EMPRESARIAL') {
-      if (action === 'business-reports') {
-        this.switchBusinessTab('informes');
-        return;
-      }
-      if (action === 'business-sale') {
-        this.openModalBusinessSale();
-        return;
-      }
-      const messages = {
-        'business-purchase': 'Compra registrada en el entorno empresarial.',
-        'business-product': 'Producto agregado al inventario empresarial.',
-        'business-expense': 'Gasto empresarial registrado.',
-        'business-income': 'Ingreso empresarial registrado.',
-        'business-inventory': 'Movimiento de inventario procesado.'
-      };
-      this.mostrarToast(messages[action] || 'Acción empresarial registrada.');
+      const forms = { 'business-sale': 'sale', 'business-purchase': 'purchase', 'business-product': 'product', 'business-expense': 'expense', 'business-income': 'income', 'business-inventory': 'stock' };
+      if (forms[action]) { window.BusinessUI.form(forms[action]); return; }
+      if (action === 'business-reports') this.switchBusinessTab('informes');
+      else if (action === 'business-contacts') this.switchBusinessTab('proveedores');
+      else if (action === 'business-management') this.switchBusinessTab('gestion');
+      else if (action === 'business-movements') this.switchBusinessTab('movimientos');
+      else if (action === 'business-invoicing') window.InvoiceUI.open();
+      else if (action === 'business-alerts') window.BusinessUI.alerts();
+      else this.mostrarToast('Selecciona una acción disponible.');
       return;
     }
 
@@ -1177,114 +949,7 @@ class MobileApp {
     this.mostrarToast(messages[action] || 'Acción personal registrada.');
   }
 
-  openModalBusinessSale() {
-    const form = document.querySelector('#modalMobileBusinessSale form');
-    if (form) form.reset();
-    const dateInput = document.getElementById('mobSaleDate');
-    if (dateInput) dateInput.value = obtenerFechaHoyISO();
-    const lines = document.getElementById('mobileBusinessSaleLines');
-    if (lines) {
-      lines.innerHTML = '';
-      this.addBusinessSaleLine();
-    }
-    this.updateBusinessSaleTotal();
-    document.getElementById('modalMobileBusinessSale')?.classList.remove('hidden');
-  }
-
-  closeModalBusinessSale() {
-    document.getElementById('modalMobileBusinessSale')?.classList.add('hidden');
-  }
-
-  addBusinessSaleLine() {
-    const negocio = Finanzas.getNegocioActivo();
-    const container = document.getElementById('mobileBusinessSaleLines');
-    if (!negocio || !container) return;
-
-    const productos = Finanzas.getProductos(negocio.id, 'PRODUCTO');
-    const row = document.createElement('div');
-    row.className = 'business-list-item';
-    row.innerHTML = `
-      <div style="width:100%; display:grid; gap:.5rem;">
-        <div class="form-row-custom">
-          <label>Artículo</label>
-          <select aria-label="Artículo" class="sel-mobile-sale-product" required onchange="mobileApp.updateBusinessSalePrice(this)">
-            <option value="">Seleccione artículo...</option>
-            ${productos.map(producto => `<option value="${escapeHTML(producto.id)}" data-price="${Number(producto.precioVenta) || 0}">${escapeHTML(producto.nombre)} (Disp: ${escapeHTML(String(producto.stock || 0))})</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-row-custom">
-          <label>Cantidad</label>
-          <input aria-label="Cantidad" class="inp-mobile-sale-quantity" type="number" min="0.01" step="0.01" value="1" required oninput="mobileApp.updateBusinessSaleTotal()">
-        </div>
-        <div class="form-row-custom">
-          <label>Precio unitario</label>
-          <input aria-label="Precio unitario" class="inp-mobile-sale-price" type="number" min="0.01" step="0.01" value="0" required oninput="mobileApp.updateBusinessSaleTotal()">
-        </div>
-        <button class="link-btn" type="button" onclick="this.closest('.business-list-item').remove(); mobileApp.updateBusinessSaleTotal()">Quitar artículo</button>
-      </div>
-    `;
-    container.appendChild(row);
-  }
-
-  updateBusinessSalePrice(select) {
-    const row = select.closest('.business-list-item');
-    const priceInput = row?.querySelector('.inp-mobile-sale-price');
-    if (priceInput) priceInput.value = select.selectedOptions[0]?.dataset.price || '0';
-    this.updateBusinessSaleTotal();
-  }
-
-  updateBusinessSaleTotal() {
-    const total = Array.from(document.querySelectorAll('#mobileBusinessSaleLines .business-list-item'))
-      .reduce((sum, row) => {
-        const quantity = Number(row.querySelector('.inp-mobile-sale-quantity')?.value) || 0;
-        const price = Number(row.querySelector('.inp-mobile-sale-price')?.value) || 0;
-        return sum + quantity * price;
-      }, 0);
-    const totalElement = document.getElementById('mobileBusinessSaleTotal');
-    if (totalElement) totalElement.textContent = formatCOP(total);
-  }
-
-  handleBusinessSaleSubmit(event) {
-    event.preventDefault();
-    const negocio = Finanzas.getNegocioActivo();
-    if (!negocio) return;
-
-    const detalles = Array.from(document.querySelectorAll('#mobileBusinessSaleLines .business-list-item'))
-      .map(row => ({
-        productoId: row.querySelector('.sel-mobile-sale-product')?.value,
-        cantidad: Number(row.querySelector('.inp-mobile-sale-quantity')?.value) || 0,
-        precioUnitario: Number(row.querySelector('.inp-mobile-sale-price')?.value) || 0
-      }));
-
-    if (detalles.length === 0) {
-      this.mostrarToast('Agrega al menos un artículo a la factura.');
-      return;
-    }
-
-    const result = Finanzas.registrarVenta({
-      negocioId: negocio.id,
-      clienteNombre: document.getElementById('mobSaleCustomerName').value.trim(),
-      clienteCedula: document.getElementById('mobSaleCustomerCedula').value.trim(),
-      clienteTelefono: document.getElementById('mobSaleCustomerPhone').value.trim(),
-      clienteEmail: document.getElementById('mobSaleCustomerEmail').value.trim(),
-      clienteDireccion: document.getElementById('mobSaleCustomerAddress').value.trim(),
-      fecha: document.getElementById('mobSaleDate').value,
-      tipoPago: document.getElementById('mobSalePaymentType').value,
-      metodoPago: document.getElementById('mobSalePaymentMethod').value,
-      notas: document.getElementById('mobSaleNotes').value.trim(),
-      detalles
-    });
-
-    if (result.error) {
-      this.mostrarToast(`No se pudo guardar la factura: ${result.error}`);
-      return;
-    }
-
-    event.target.reset();
-    this.closeModalBusinessSale();
-    this.renderNegocio();
-    this.mostrarToast(`Factura ${result.venta.numeroFactura} guardada por ${formatCOP(result.venta.total)}.`);
-  }
+  openModalBusinessSale() { window.BusinessUI.form('sale'); }
 
   openModalRegistrar() {
     const mode = this.currentModule || 'PERSONAL';
@@ -1700,6 +1365,7 @@ class MobileApp {
     }
     const container = document.getElementById('mobileToastContainer');
     if (!container) return;
+    if (this.currentModule === 'EMPRESARIAL') container.replaceChildren();
     const toast = document.createElement('div');
     toast.className = 'mobile-toast';
     toast.textContent = mensaje;

@@ -71,6 +71,8 @@
       }
     }
 
+    if (window.BusinessSchema) window.BusinessSchema.migrate(migrated);
+    if (Array.isArray(migrated.negocios) && !migrated.negocios.some(n => n.id === migrated.negocioActivoId)) migrated.negocioActivoId = migrated.negocios[0]?.id || null;
     return migrated;
   }
 

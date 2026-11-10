@@ -16,7 +16,8 @@
   <!-- Estilos dedicados para la versión móvil -->
   <link rel="stylesheet" href="styles/mobile.css?v=20261108-menu">
   <link rel="stylesheet" href="styles/invoicing.css?v=20261109-1">
-  <link rel="stylesheet" href="styles/businessReports.css?v=20261109-2">
+  <link rel="stylesheet" href="styles/businessReports.css?v=20261110-1">
+  <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261109-3">
 </head>
 <body>
 
@@ -356,130 +357,14 @@
              PANTALLA 3B: MÓDULO NEGOCIO (MÓVIL)
              ============================================================ -->
         <section class="screen-view" id="view-negocio">
-          <div class="view-header">
-            <div class="header-titles">
-              <span class="sub-label">GESTOR PRO</span>
-              <h1 class="screen-title">Mi bolsillo negocio</h1>
-            </div>
-            <div style="display: flex; gap: 0.4rem;">
-              <button class="btn-icon-pill" onclick="mobileApp.switchBusinessTab('perfil')" title="Tu espacio y ajustes" aria-label="Tu espacio y ajustes">⚙️</button>
-                        <!--boton radio-->
-
-              <button type="button" class="nav-btn business-options-toggle" data-business-tab="informes" id="mobileBusinessOptionsToggle" onclick="mobileApp.openQuickActionMenu('EMPRESARIAL')" title="Opciones del negocio" aria-label="Opciones del negocio" aria-haspopup="dialog" aria-controls="mobileBusinessOptions" aria-expanded="false">
-              <span class="business-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
-              </button>
-            </div>
-          </div>
-
-          <div class="business-panel active" data-business-panel="negocio">
-            <button type="button" class="link-btn" data-invoice-open>Facturación electrónica simulada</button>
-            <div class="business-summary-card">
-              <div class="business-summary-topbar">
-                <span>Balance del negocio</span>
-
-              </div>
-              <div class="business-summary-grid">
-                <div class="business-metric-box income">
-                  <span>Ingresos</span>
-                  <strong id="lblMobileBusinessIngresos">0 COP</strong>
-                </div>
-                <div class="business-metric-box balance">
-                  <span>Balance</span>
-                  <strong id="lblMobileBusinessBalance">0 COP</strong>
-                </div>
-                <div class="business-metric-box expense">
-                  <span>Gastos</span>
-                  <strong id="lblMobileBusinessGastos">0 COP</strong>
-                </div>
-              </div>
-            </div>
-
-            <div class="section-card">
-              <div class="section-card-header">
-                <h3>Resumen de operación</h3>
-              </div>
-              <div class="business-kpi-grid">
-                <div class="business-kpi-item">
-                  <span>Ventas</span>
-                  <strong id="lblMobileBusinessVentas">0 COP</strong>
-                </div>
-                <div class="business-kpi-item">
-                  <span>Compras</span>
-                  <strong id="lblMobileBusinessCompras">0 COP</strong>
-                </div>
-                <div class="business-kpi-item">
-                  <span>Utilidad</span>
-                  <strong id="lblMobileBusinessUtilidad">0 COP</strong>
-                </div>
-                <div class="business-kpi-item warning">
-                  <span>Inventario bajo</span>
-                  <strong id="lblMobileBusinessStockBajo">0</strong>
-                </div>
-              </div>
-            </div>
-
-            <div class="section-card">
-              <div class="section-card-header">
-                <h3>Inventario</h3>
-              </div>
-              <div id="mobileBusinessInventoryList" class="compact-list"></div>
-            </div>
-
-            <div class="section-card">
-              <div class="section-card-header">
-                <h3>Flujo de ventas y compras</h3>
-              </div>
-              <div style="height: 200px; position: relative;">
-                <canvas id="mobileBusinessChart"></canvas>
-              </div>
-            </div>
-
-            <div class="section-card">
-              <div class="section-card-header">
-                <h3>Actividad reciente</h3>
-              </div>
-              <div id="mobileBusinessActivityList" class="compact-list"></div>
-            </div>
-
-            <div class="section-card">
-              <div class="section-card-header">
-                <h3>Facturas recientes</h3>
-                <button class="link-btn" onclick="mobileApp.openModalBusinessSale()">+ Registrar</button>
-              </div>
-              <div id="mobileBusinessSalesList" class="compact-list"></div>
-            </div>
-          </div>
-
-          <div class="business-panel" data-business-panel="inventario">
-            <div class="section-card">
-              <div class="section-card-header">
-                <h3>Inventario</h3>
-              </div>
-              <div id="mobileBusinessInventoryPanelList" class="compact-list"></div>
-            </div>
-          </div>
-
-          <div class="business-panel" data-business-panel="movimientos">
-            <div class="section-card">
-              <div class="section-card-header">
-                <h3>Movimientos del negocio</h3>
-              </div>
-              <div id="mobileBusinessMovementList" class="compact-list"></div>
-            </div>
-          </div>
-
-          <div class="business-panel" data-business-panel="proveedores">
-            <div class="section-card">
-              <div class="section-card-header">
-                <h3>Proveedores</h3>
-              </div>
-              <div id="mobileBusinessSupplierList" class="compact-list"></div>
-            </div>
-          </div>
-
-          <div class="business-panel" data-business-panel="informes">
-            <div class="business-reports" data-business-report></div>
-          </div>
+          <div class="view-header"><div class="header-titles"><span class="sub-label">GESTIÓN EMPRESARIAL</span><h1 class="screen-title">Mi Negocio</h1></div><button type="button" class="nav-btn business-options-toggle" id="mobileBusinessOptionsToggle" onclick="mobileApp.openQuickActionMenu('EMPRESARIAL')" aria-label="Opciones del negocio" aria-haspopup="dialog" aria-controls="mobileBusinessOptions" aria-expanded="false"><span class="business-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span></button></div>
+          <div class="business-panel active" data-business-panel="negocio"><div data-business-section="dashboard"></div></div>
+          <div class="business-panel" data-business-panel="inventario"><div data-business-section="inventory"></div></div>
+          <div class="business-panel" data-business-panel="movimientos"><div data-business-section="movements"></div></div>
+          <div class="business-panel" data-business-panel="ventas"><div data-business-section="sales"></div></div>
+          <div class="business-panel" data-business-panel="proveedores"><div data-business-section="contacts"></div></div>
+          <div class="business-panel" data-business-panel="gestion"><div data-business-section="management"></div></div>
+          <div class="business-panel" data-business-panel="informes"><div class="business-reports" data-business-report></div></div>
         </section>
 
         <!-- ============================================================
@@ -630,24 +515,11 @@
       </nav>
 
       <nav class="bottom-nav-bar bottom-nav-business" id="mobileBusinessNav" style="display: none;">
-        <button class="nav-btn active" data-business-tab="negocio" onclick="mobileApp.switchBusinessTab('negocio')">
-          <span style="font-size: 1.25rem;">🏢</span>
-          <span>Inicio</span>
-        </button>
-        <button class="nav-btn" data-business-tab="inventario" onclick="mobileApp.switchBusinessTab('inventario')">
-          <span style="font-size: 1.25rem;">📦</span>
-          <span>Inventario</span>
-        </button>
-        <button class="nav-btn" data-business-tab="movimientos" onclick="mobileApp.switchBusinessTab('movimientos')">
-          <span style="font-size: 1.25rem;">⇋</span>
-          <span>Movs</span>
-        </button>
-        <button class="nav-btn" data-business-tab="proveedores" onclick="mobileApp.switchBusinessTab('proveedores')">
-          <span style="font-size: 1.25rem;">🚚</span>
-          <span>Proveedores</span>
-        </button>
-
-
+        <button class="nav-btn" data-business-tab="negocio" onclick="mobileApp.switchBusinessTab('negocio')"><span style="font-size:1.25rem">🏢</span><span>Inicio</span></button>
+        <button class="nav-btn" data-business-tab="inventario" onclick="mobileApp.switchBusinessTab('inventario')"><span style="font-size:1.25rem">📦</span><span>Inventario</span></button>
+        <button class="nav-btn" data-business-tab="ventas" onclick="mobileApp.switchBusinessTab('ventas')"><span style="font-size:1.25rem">🧾</span><span>Ventas</span></button>
+        <button class="nav-btn" data-business-tab="proveedores" onclick="mobileApp.switchBusinessTab('proveedores')"><span style="font-size:1.25rem">👥</span><span>Contactos</span></button>
+        <button class="nav-btn" data-business-tab="gestion" onclick="mobileApp.switchBusinessTab('gestion')"><span style="font-size:1.25rem">🗂️</span><span>Gestión</span></button>
       </nav>
 
       <div class="business-options-backdrop hidden" id="mobileBusinessOptions" onclick="if (event.target === this) mobileApp.closeQuickActionMenu()">
@@ -679,77 +551,6 @@
   </div>
 
   <!-- MODAL: REGISTRAR VENTA / FACTURA -->
-  <div class="bottom-sheet-backdrop hidden" id="modalMobileBusinessSale">
-    <div class="bottom-sheet-container">
-      <div class="sheet-drag-handle"></div>
-      <div class="sheet-header">
-        <h2 class="sheet-title">Registrar venta</h2>
-        <button class="btn-close-circle" onclick="mobileApp.closeModalBusinessSale()">✕</button>
-      </div>
-      <form onsubmit="mobileApp.handleBusinessSaleSubmit(event)">
-        <div class="form-inputs-group">
-          <div class="form-row-custom">
-            <label for="mobSaleCustomerName">Nombre del cliente</label>
-            <input id="mobSaleCustomerName" autocomplete="name" required>
-          </div>
-          <div class="form-row-custom">
-            <label for="mobSaleCustomerCedula">Cédula del cliente</label>
-            <input id="mobSaleCustomerCedula" autocomplete="off" required>
-          </div>
-          <div class="form-row-custom">
-            <label for="mobSaleCustomerPhone">Teléfono</label>
-            <input id="mobSaleCustomerPhone" autocomplete="tel" type="tel">
-          </div>
-          <div class="form-row-custom">
-            <label for="mobSaleCustomerEmail">Email</label>
-            <input id="mobSaleCustomerEmail" autocomplete="email" type="email">
-          </div>
-          <div class="form-row-custom">
-            <label for="mobSaleCustomerAddress">Dirección</label>
-            <input id="mobSaleCustomerAddress" autocomplete="street-address">
-          </div>
-          <div class="form-row-custom">
-            <label for="mobSaleDate">Fecha</label>
-            <input id="mobSaleDate" type="date" required>
-          </div>
-          <div class="form-row-custom">
-            <label for="mobSalePaymentType">Tipo de pago</label>
-            <select id="mobSalePaymentType">
-              <option value="CONTADO">Contado</option>
-              <option value="CREDITO">Crédito</option>
-            </select>
-          </div>
-          <div class="form-row-custom">
-            <label for="mobSalePaymentMethod">Método de pago</label>
-            <select id="mobSalePaymentMethod">
-              <option value="Efectivo">Efectivo</option>
-              <option value="Transferencia">Transferencia</option>
-              <option value="Tarjeta">Tarjeta</option>
-            </select>
-          </div>
-          <div>
-            <div class="section-card-header">
-              <h3>Artículos</h3>
-              <button class="link-btn" onclick="mobileApp.addBusinessSaleLine()" type="button">+ Agregar</button>
-            </div>
-            <div id="mobileBusinessSaleLines" class="compact-list"></div>
-          </div>
-          <div class="business-list-item">
-            <strong>Total</strong>
-            <strong id="mobileBusinessSaleTotal">0 COP</strong>
-          </div>
-          <div class="form-row-custom">
-            <label for="mobSaleNotes">Notas</label>
-            <input id="mobSaleNotes">
-          </div>
-          <small>Los datos se guardan en la factura digital del historial. No reemplaza la emisión electrónica ante la DIAN.</small>
-        </div>
-        <button type="submit" class="btn-action-primary">Guardar factura</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL 1: REGISTRAR MOVIMIENTO -->
   <div class="bottom-sheet-backdrop hidden" id="modalMobileRegistrar">
     <div class="bottom-sheet-container">
       <div class="sheet-drag-handle"></div>
@@ -982,38 +783,42 @@
   <script src="src/utils/security.js?v=20261103-6"></script>
   <script src="src/utils/validators.js?v=20261103-6"></script>
   <script src="src/storage/seedData.js?v=20261103-6"></script>
-  <script src="src/storage/demoData.js?v=20261103-6"></script>
-  <script src="src/storage/localStorage.js?v=20261108-1"></script>
+  <script src="src/storage/demoData.js?v=20261109-3"></script>
+  <script src="src/domains/business/businessSchema.js?v=20261109-3"></script>
+  <script src="src/storage/migrations.js?v=20261109-3"></script>
+  <script src="src/storage/localStorage.js?v=20261109-3"></script>
   <script src="src/domains/personal/movementsDomain.js?v=20261103-6"></script>
   <script src="src/domains/personal/budgetDomain.js?v=20261103-6"></script>
   <script src="src/domains/personal/goalsDomain.js?v=20261103-6"></script>
   <script src="src/domains/personal/debtsDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/businessDomain.js?v=20261103-6"></script>
-  <script src="src/domains/business/productsDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/productsDomain.js?v=20261109-3"></script>
   <script src="src/domains/business/inventoryDomain.js?v=20261103-6"></script>
-  <script src="src/domains/business/purchasesDomain.js?v=20261108-1"></script>
-  <script src="src/domains/business/salesDomain.js?v=20261108-1"></script>
-  <script src="src/domains/business/creditsDomain.js?v=20261108-1"></script>
-  <script src="src/domains/business/productionDomain.js?v=20261103-6"></script>
-  <script src="src/domains/business/employeesDomain.js?v=20261103-6"></script>
-  <script src="src/domains/business/expensesDomain.js?v=20261103-6"></script>
-  <script src="src/domains/business/metricsDomain.js?v=20261109-1"></script>
-  <script src="src/domains/business/cashFlowDomain.js?v=20261109-1"></script>
+<script src="src/domains/business/salesDomain.js?v=20261108-1"></script>
+<script src="src/domains/business/productionDomain.js?v=20261103-6"></script>
+<script src="src/domains/business/expensesDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/metricsDomain.js?v=20261110-1"></script>
+  <script src="src/domains/business/cashFlowDomain.js?v=20261109-3"></script>
   <script src="src/domains/user/userService.js?v=20261103-6"></script>
-  <script src="src/services/finanzasCore.js?v=20261109-1"></script>
+  <script src="src/services/finanzasCore.js?v=20261109-3"></script>
   <script src="src/utils/shared.js?v=20261103-6"></script>
-  <script src="src/utils/mobile.js?v=20261109-2"></script>
-  <script src="src/services/exportService.js?v=20261109-1"></script>
+  <script src="src/utils/mobile.js?v=20261109-3"></script>
+  <script src="src/services/exportService.js?v=20261109-3"></script>
   <script src="src/ui/shared/persistenceStatus.js?v=20261108-1"></script>
   <script src="src/vendor/qrcode.js?v=20261109-1"></script>
   <script src="src/invoicing/money.js?v=20261109-1"></script>
   <script src="src/invoicing/schema.js?v=20261109-1"></script>
   <script src="src/invoicing/providers.js?v=20261109-1"></script>
-  <script src="src/invoicing/repository.js?v=20261109-1"></script>
-  <script src="src/invoicing/service.js?v=20261109-1"></script>
+  <script src="src/storage/businessRepository.js?v=20261109-3"></script>
+  <script src="src/invoicing/repository.js?v=20261109-3"></script>
+  <script src="src/invoicing/service.js?v=20261109-3"></script>
   <script src="src/invoicing/exports.js?v=20261109-1"></script>
-  <script src="src/invoicing/ui.js?v=20261109-1"></script>
-  <script src="src/domains/business/reportsDomain.js?v=20261109-2"></script>
-  <script src="src/ui/views/business/businessReportsView.js?v=20261109-2"></script>
+  <script src="src/invoicing/ui.js?v=20261109-3"></script>
+  <script src="src/domains/business/businessCommands.js?v=20261109-3"></script>
+  <script src="src/services/businessService.js?v=20261109-3"></script>
+  <script src="src/domains/business/reportsDomain.js?v=20261110-1"></script>
+  <script src="src/ui/views/business/businessReportsView.js?v=20261110-1"></script>
+  <script src="src/domains/business/readModel.js?v=20261109-3"></script>
+  <script src="src/ui/views/business/businessWorkspace.js?v=20261109-3"></script>
 </body>
 </html>

@@ -28,7 +28,7 @@ const server = http.createServer((req, res) => {
         Finanzas.state.moduloActivo = 'EMPRESARIAL';
         Finanzas.state.productos = [{ id: 'qa-p', negocioId: Finanzas.state.negocioActivoId, nombre: 'Café colombiano especial', stock: 30, costoUnitario: 4500, precioVenta: 10000, unidadMedida: 'UND' }];
         Finanzas.guardarEstado();
-        if (typeof pcApp !== 'undefined') pcApp.switchView('negocio-ventas');
+        BusinessUI.navigate('sales');
       });
       await page.locator('[data-invoice-open]').click();
       await page.locator('[data-inv="new"]').click();

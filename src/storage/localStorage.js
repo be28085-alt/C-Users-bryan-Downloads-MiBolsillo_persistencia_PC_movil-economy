@@ -103,6 +103,7 @@
         expectedRaw = raw;
         if (!raw) {
           const seeded = { ...fallback, version: fallback.version || STORAGE_VERSION };
+          window.BusinessSchema?.migrate(seeded);
           this.saveState(seeded);
           return seeded;
         }
@@ -150,6 +151,7 @@
         };
         const serialized = JSON.stringify(envelope);
         localStorage.setItem(STORAGE_KEY, serialized);
+        if (localStorage.getItem(STORAGE_KEY) !== serialized) return report(false, 'conflict');
         expectedRaw = serialized;
         pendingState = null;
         if (!applyingRemoteState && syncChannel) {

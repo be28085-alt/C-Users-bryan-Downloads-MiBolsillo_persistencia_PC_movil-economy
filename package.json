@@ -2,6 +2,8 @@
   "name": "mibolsillo",
   "private": true,
   "scripts": {
-    "test": "node --test tests/*.test.cjs && node test_shared.js && node test_dates.js"
+    "test": "node --test tests/*.test.cjs && node test_shared.js && node test_dates.js",
+    "test:business": "node --test tests/business-workspace.test.cjs",
+    "test:browser": "node tests/business-workspace.browser.cjs && node tests/invoicing.browser.cjs && node tests/business-reports.browser.cjs"
   }
 }

@@ -24,12 +24,14 @@
     function render() {
       const status = storage.getPersistenceStatus();
       panel.hidden = status.ok;
-      retry.hidden = status.status === 'conflict' || status.status === 'read-error';
+      retry.hidden = !storage.hasPendingChanges() || status.status === 'conflict' || status.status === 'read-error';
       message.textContent = status.status === 'conflict'
         ? 'Hay cambios de otra pestaña. Los cambios de esta ventana no se han guardado. Descarga una copia antes de recargar y revisar ambas versiones.'
         : status.status === 'read-error'
           ? 'No se pudieron leer los datos guardados. Se bloqueó la escritura para protegerlos. Descarga lo visible antes de revisar el almacenamiento o recargar.'
-          : 'Los cambios están solo en memoria y se perderán al cerrar. Libera espacio o habilita el almacenamiento y pulsa Reintentar guardado. No vuelvas a registrar la operación.';
+          : !storage.hasPendingChanges()
+            ? 'La operación no se guardó y no se aplicaron sus cambios. Libera espacio o habilita el almacenamiento y reintenta desde el formulario que quedó abierto.'
+            : 'Los cambios están solo en memoria y se perderán al cerrar. Libera espacio o habilita el almacenamiento y pulsa Reintentar guardado. No vuelvas a registrar la operación.';
     }
     window.addEventListener('mibolsillo:persistence', render);
     render();

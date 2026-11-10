@@ -19,6 +19,7 @@
       if (!Array.isArray(productos)) return [];
       return productos.filter(p => {
         if (p.negocioId !== negocioId) return false;
+        if (p.estado === 'ARCHIVADO') return false;
         if (filtroTipo === 'ALL') return true;
         return p.tipo === filtroTipo;
       });

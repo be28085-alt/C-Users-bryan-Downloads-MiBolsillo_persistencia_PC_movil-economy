@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 function context() {
   const c = vm.createContext({ document: { readyState: 'loading', addEventListener() {} }, URL, location: { href: 'http://localhost:5500/desktop.html' } }); c.window = c;
-  for (const f of ['src/utils/dates.js', 'src/domains/business/reportsDomain.js', 'src/ui/views/business/businessReportsView.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), c);
+  for (const f of ['src/utils/dates.js', 'src/domains/business/reportsDomain.js', 'src/domains/business/cashFlowDomain.js', 'src/ui/views/business/businessReportsView.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), c);
   return c;
 }
 function fixture() {
@@ -32,7 +32,7 @@ const options = { today: '2026-11-09', period: 'MES_ACTUAL' };
 test('reporte empresarial: concilia estado de resultados, categorías y comparación sin duplicar compras ni cobros', () => {
   const c = context(), state = fixture(), before = JSON.stringify(state), m = c.BusinessReportsDomain.build(state, 'n', options);
   assert.equal(m.totals.income, '170.00'); assert.equal(m.totals.sales, '150.00'); assert.equal(m.totals.cogs, '50.00');
-  assert.equal(m.totals.operatingExpenses, '20.00'); assert.equal(m.totals.expenses, '70.00'); assert.equal(m.totals.netProfit, '100.00'); assert.equal(m.totals.grossProfit, '120.00');
+  assert.equal(m.totals.operatingExpenses, '20.00'); assert.equal(m.totals.expenses, '70.00'); assert.equal(m.totals.netProfit, '100.00'); assert.equal(m.totals.grossProfit, '100.00');
   assert.equal(m.totals.salesCount, 2); assert.equal(m.totals.ticket, '75.00'); assert.equal(m.receivables, '42.25'); assert.equal(m.comparison.incomeDelta, '90.00'); assert.equal(m.comparison.netProfitDelta, '40.00');
   assert.equal(m.categories.reduce((sum, cat) => sum + c.BusinessReportsDomain.cents(cat.amount), 0n), 7000n);
   assert.equal(m.monthly.at(-1).income, m.totals.income); assert.equal(m.monthly.at(-1).expenses, m.totals.expenses);
@@ -67,4 +67,48 @@ test('CSV y vista imprimible corresponden al filtro, escapan texto y protegen f�
   const current = c.BusinessReportsDomain.build(s, 'n', options), print = c.BusinessReportsView.printDocument(current);
   assert.match(print, /&lt;img/); assert.doesNotMatch(print, /<img src=x|data-report-action/); assert.match(print, /businessReports.css/);
   assert.match(c.BusinessReportsView.markup(current), /Ver datos mensuales/);
+});
+
+
+test('detalle de ventas y gastos concilia con el resumen y distingue impuestos, costo y personal', () => {
+  const c = context(), s = fixture();
+  s.gastosNegocio.push({ negocioId: 'n', fecha: options.today, monto: '999', estado: 'ANULADA' });
+  s.ventas[0].impuestos = '19'; s.ventas[0].clienteNombre = '<Cliente>';
+  const m = c.BusinessReportsDomain.build(s, 'n', options), sum = rows => c.BusinessReportsDomain.decimal(rows.reduce((total, row) => total + c.BusinessReportsDomain.cents(row.amount), 0n));
+  assert.equal(sum(m.details.filter(r => r.type === 'SALE')), m.totals.sales);
+  assert.equal(sum(m.details.filter(r => ['EXPENSE', 'PAYROLL'].includes(r.type))), m.totals.operatingExpenses);
+  assert.equal(m.totals.businessExpenses, '15.00'); assert.equal(m.totals.employeePayments, '5.00');
+  assert.equal(m.totals.salesTax, '19.00'); assert.equal(m.totals.billedTotal, '169.00');
+  assert.equal(m.details.filter(r => r.type === 'SALE').map(r => r.profit).sort().join(','), '40.00,60.00');
+  const html = c.BusinessReportsView.markup(m), csv = c.BusinessReportsView.csv(m);
+  assert.match(html, /Detalle de ventas y ganancia bruta/); assert.match(html, /&lt;Cliente&gt;/); assert.doesNotMatch(html, /<Cliente>/);
+  assert.match(csv, /Detalle de gastos y pagos al personal/); assert.match(csv, /"100.00";"40.00";"60.00";"19.00";"119.00"/);
+});
+
+test('rango personalizado es inclusivo, valida fechas y exporta exactamente el período aplicado', () => {
+  const c = context(), s = fixture(), opts = { ...options, period: 'PERSONALIZADO', from: '2026-11-09', to: '2026-11-09' };
+  const m = c.BusinessReportsDomain.build(s, 'n', opts);
+  assert.equal(m.totals.sales, '50.00'); assert.equal(m.totals.netProfit, '40.00');
+  assert.ok(m.details.every(r => r.date === '2026-11-09')); assert.equal(m.comparison, null);
+  const csv = c.BusinessReportsView.csv(m); assert.match(csv, /"Desde";"2026-11-09"/); assert.match(csv, /"Ingresos totales";"70.00"/);
+  assert.throws(() => c.BusinessReportsDomain.build(s, 'n', { ...opts, from: '2026-11-10' }), /Desde/);
+  assert.throws(() => c.BusinessReportsDomain.build(s, 'n', { ...opts, to: '2026-02-30' }), /fechas/);
+  const print = c.BusinessReportsView.printDocument(m); assert.match(print, /2026-11-09 al 2026-11-09/); assert.doesNotMatch(print, /data-report-from|Aplicar fechas/);
+});
+
+test('flujo usa fechas de cobro y pago sin duplicarlos y separa saldos actuales del resultado', () => {
+  const c = context(), s = { negocios: [{ id: 'n', nombre: 'Caja' }],
+    ventas: [{ id: 'v', negocioId: 'n', fecha: '2026-10-31', total: '100', montoPagado: '40', saldoPendiente: '60', costoTotalVenta: '20' }],
+    pagosVenta: [{ id: 'pv', negocioId: 'n', ventaId: 'v', fecha: options.today, monto: '40' }],
+    compras: [{ id: 'p', negocioId: 'n', fecha: options.today, total: '80', montoPagado: '30', saldoPendiente: '50' }],
+    pagosCompra: [{ id: 'pc', negocioId: 'n', compraId: 'p', fecha: options.today, monto: '30' }],
+    gastosNegocio: [{ id: 'g', negocioId: 'n', fecha: options.today, monto: '10', montoPagado: '0', saldoPendiente: '10' }],
+    clientes: [{ negocioId: 'n', saldoPendiente: '60' }], productos: [{ negocioId: 'n', stock: '2.5', costoUnitario: '4.25', stockMinimo: '3' }, { negocioId: 'other', stock: 99, costoUnitario: 99 }]
+  };
+  const m = c.BusinessReportsDomain.build(s, 'n', options);
+  assert.equal(m.totals.sales, '0.00'); assert.equal(m.totals.netProfit, '-10.00');
+  assert.equal(m.cash.incoming, '40.00'); assert.equal(m.cash.outgoing, '30.00'); assert.equal(m.cash.net, '10.00');
+  assert.equal(m.receivables, '60.00'); assert.equal(m.payables, '60.00'); assert.equal(m.inventoryValue, '10.63'); assert.equal(m.lowStockCount, 1);
+  const previous = c.BusinessReportsDomain.build(s, 'n', { ...options, period: 'MES_ANTERIOR' });
+  assert.equal(previous.cash.incoming, '0.00'); assert.equal(previous.receivables, m.receivables); assert.equal(previous.payables, m.payables);
 });

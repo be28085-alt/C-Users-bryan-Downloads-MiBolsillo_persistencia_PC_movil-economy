@@ -115,6 +115,7 @@
       next.negocioActivoId = next.negocioActivoId || (next.negocios[0] ? next.negocios[0].id : null);
       next.presupuestoMensual = Math.max(Number(next.presupuestoMensual) || 0, 0);
 
+      window.BusinessSchema?.migrate(next);
       return next;
     }
 
@@ -514,44 +515,38 @@
       return this.state.negocios || [];
     }
 
+    getBusinessService() {
+      if (!this._businessService) this._businessService = new window.BusinessService(this);
+      return this._businessService;
+    }
+
+    async businessWrite(action, data, operationKey) {
+      try {
+        const out = await this.getBusinessService().execute(action, data, operationKey);
+        const r = out.record;
+        return { ...r, ...out, ok: true, error: null, venta: out.collection === 'ventas' ? r : undefined, compra: out.collection === 'compras' ? r : undefined, ingreso: out.collection === 'ingresosNegocio' ? r : undefined, empleado: out.collection === 'empleados' ? r : undefined, formula: out.collection === 'formulas' ? r : undefined, produccion: out.collection === 'producciones' ? r : undefined, pago: out.collection.startsWith('pagos') ? r : undefined, pagoRegistro: out.collection === 'pagosVenta' ? r : undefined };
+      } catch (error) { return { ok: false, error: error.message, persistence: { ok: false, status: 'rejected' } }; }
+    }
+
     getNegocioActivo() {
       const domain = window.BusinessDomain;
       return domain ? domain.getNegocioActivo(this.state.negocios, this.state.negocioActivoId) : (this.state.negocios[0] || null);
     }
 
-    setNegocioActivo(id) {
-      this.state.negocioActivoId = id;
-      this.guardarEstado();
+    setNegocioActivo(id, operationKey = undefined) {
+      return this.businessWrite('selectBusiness', { id }, operationKey);
     }
 
-    agregarNegocio(datos) {
-      const domain = window.BusinessDomain;
-      const nuevo = domain ? domain.crearNegocio(datos) : { id: `neg-${Date.now()}`, ...datos };
-      if (!Array.isArray(this.state.negocios)) this.state.negocios = [];
-      this.state.negocios.push(nuevo);
-      this.state.negocioActivoId = nuevo.id;
-      this.guardarEstado();
-      return nuevo;
+    agregarNegocio(datos, operationKey = undefined) {
+      return this.businessWrite('saveBusiness', datos, operationKey);
     }
 
-    actualizarNegocio(id, datos) {
-      const n = (this.state.negocios || []).find(item => item.id === id);
-      if (n) {
-        Object.assign(n, datos);
-        this.guardarEstado();
-      }
-      return n;
+    actualizarNegocio(id, datos, operationKey = undefined) {
+      return this.businessWrite('saveBusiness', { ...datos, id }, operationKey);
     }
 
-    eliminarNegocio(id) {
-      if (!Array.isArray(this.state.negocios) || this.state.negocios.length <= 1) return false;
-      if (this.state.facturacion?.documents?.some(d => d.businessId === id)) return false;
-      this.state.negocios = this.state.negocios.filter(n => n.id !== id);
-      if (this.state.negocioActivoId === id) {
-        this.state.negocioActivoId = this.state.negocios[0].id;
-      }
-      this.guardarEstado();
-      return true;
+    eliminarNegocio(id, operationKey = undefined) {
+      return this.businessWrite('deleteBusiness', { id }, operationKey);
     }
 
     // Productos y Materias Primas
@@ -562,33 +557,19 @@
     }
 
     getProductoById(id) {
-      return (this.state.productos || []).find(producto => producto.id === id) || null;
+      return (this.state.productos || []).find(producto => producto.id === id && producto.negocioId === this.state.negocioActivoId) || null;
     }
 
-    agregarProducto(datos) {
-      const nId = datos.negocioId || this.state.negocioActivoId;
-      const domain = window.BusinessProductsDomain;
-      const prod = domain ? domain.crearProducto(nId, datos) : { id: `prod-${Date.now()}`, ...datos };
-      if (!Array.isArray(this.state.productos)) this.state.productos = [];
-      this.state.productos.push(prod);
-      this.guardarEstado();
-      return prod;
+    agregarProducto(datos, operationKey = undefined) {
+      return this.businessWrite('saveProduct', datos, operationKey);
     }
 
-    actualizarProducto(id, datos) {
-      const prod = (this.state.productos || []).find(p => p.id === id);
-      if (prod) {
-        Object.assign(prod, datos);
-        this.guardarEstado();
-      }
-      return prod;
+    actualizarProducto(id, datos, operationKey = undefined) {
+      return this.businessWrite('saveProduct', { ...datos, id }, operationKey);
     }
 
-    eliminarProducto(id) {
-      if (!Array.isArray(this.state.productos)) return false;
-      this.state.productos = this.state.productos.filter(p => p.id !== id);
-      this.guardarEstado();
-      return true;
+    eliminarProducto(id, operationKey = undefined) {
+      return this.businessWrite('archive', { collection: 'productos', id }, operationKey);
     }
 
     // Proveedores
@@ -597,37 +578,16 @@
       return (this.state.proveedores || []).filter(p => p.negocioId === nId);
     }
 
-    agregarProveedor(datos) {
-      const prov = {
-        id: `prov-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        negocioId: datos.negocioId || this.state.negocioActivoId,
-        nombre: (datos.nombre || '').trim(),
-        telefono: (datos.telefono || '').trim(),
-        email: (datos.email || '').trim(),
-        direccion: (datos.direccion || '').trim(),
-        comprasAnio: 0,
-        saldoPendiente: 0
-      };
-      if (!Array.isArray(this.state.proveedores)) this.state.proveedores = [];
-      this.state.proveedores.push(prov);
-      this.guardarEstado();
-      return prov;
+    agregarProveedor(datos, operationKey = undefined) {
+      return this.businessWrite('saveSupplier', datos, operationKey);
     }
 
-    actualizarProveedor(id, datos) {
-      const prov = (this.state.proveedores || []).find(p => p.id === id);
-      if (prov) {
-        Object.assign(prov, datos);
-        this.guardarEstado();
-      }
-      return prov;
+    actualizarProveedor(id, datos, operationKey = undefined) {
+      return this.businessWrite('saveSupplier', { ...datos, id }, operationKey);
     }
 
-    eliminarProveedor(id) {
-      if (!Array.isArray(this.state.proveedores)) return false;
-      this.state.proveedores = this.state.proveedores.filter(p => p.id !== id);
-      this.guardarEstado();
-      return true;
+    eliminarProveedor(id, operationKey = undefined) {
+      return this.businessWrite('archive', { collection: 'proveedores', id }, operationKey);
     }
 
     // Clientes
@@ -636,38 +596,16 @@
       return (this.state.clientes || []).filter(c => c.negocioId === nId);
     }
 
-    agregarCliente(datos) {
-      const cli = {
-        id: `cli-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        negocioId: datos.negocioId || this.state.negocioActivoId,
-        nombre: (datos.nombre || '').trim(),
-        cedula: (datos.cedula || '').trim(),
-        telefono: (datos.telefono || '').trim(),
-        email: (datos.email || '').trim(),
-        direccion: (datos.direccion || '').trim(),
-        saldoPendiente: 0
-      };
-      if (!Array.isArray(this.state.clientes)) this.state.clientes = [];
-      this.state.clientes.push(cli);
-      this.guardarEstado();
-      return cli;
+    agregarCliente(datos, operationKey = undefined) {
+      return this.businessWrite('saveCustomer', datos, operationKey);
     }
 
-    actualizarCliente(id, datos) {
-      const cli = (this.state.clientes || []).find(c => c.id === id);
-      if (cli) {
-        Object.assign(cli, datos);
-        this.guardarEstado();
-      }
-      return cli;
+    actualizarCliente(id, datos, operationKey = undefined) {
+      return this.businessWrite('saveCustomer', { ...datos, id }, operationKey);
     }
 
-    eliminarCliente(id) {
-      if (this.state.ventas?.some(v => v.clienteId === id && v.invoiceDocumentId)) return false;
-      if (!Array.isArray(this.state.clientes)) return false;
-      this.state.clientes = this.state.clientes.filter(c => c.id !== id);
-      this.guardarEstado();
-      return true;
+    eliminarCliente(id, operationKey = undefined) {
+      return this.businessWrite('archive', { collection: 'clientes', id }, operationKey);
     }
 
     // Compras (Regla 1)
@@ -676,23 +614,8 @@
       return (this.state.compras || []).filter(c => c.negocioId === nId);
     }
 
-    registrarCompra(datos) {
-      const nId = datos.negocioId || this.state.negocioActivoId;
-      const domain = window.BusinessPurchasesDomain;
-      if (!domain) return { compra: null, error: 'Módulo de compras no inicializado.' };
-
-      const res = domain.procesarCompra(nId, datos, this.state.productos);
-      if (res.error) return res;
-
-      if (!Array.isArray(this.state.compras)) this.state.compras = [];
-      this.state.compras.unshift(res.compra);
-
-      if (!Array.isArray(this.state.movimientosInventario)) this.state.movimientosInventario = [];
-      res.kardexEntries.forEach(k => this.state.movimientosInventario.push(k));
-
-      this.guardarEstado();
-      res.persistence = { ...this.lastPersistence };
-      return res;
+    registrarCompra(datos, operationKey = undefined) {
+      return this.businessWrite('purchase', datos, operationKey);
     }
 
     // Ventas (Regla 2, 3, 4, 9)
@@ -706,81 +629,12 @@
       return (this.state.ingresosNegocio || []).filter(i => i.negocioId === nId);
     }
 
-    registrarIngresoNegocio(datos = {}) {
-      const monto = Number(datos.monto);
-      const descripcion = (datos.descripcion || '').trim();
-      if (!Number.isFinite(monto) || monto <= 0) return { error: 'El monto debe ser mayor que cero.' };
-      if (!descripcion) return { error: 'La descripción es obligatoria.' };
-
-      const ingreso = {
-        id: `ing-neg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        negocioId: datos.negocioId || this.state.negocioActivoId,
-        categoria: (datos.categoria || 'Otros ingresos').trim(),
-        descripcion,
-        monto,
-        fecha: datos.fecha || (window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0])
-      };
-      this.state.ingresosNegocio.unshift(ingreso);
-      this.guardarEstado();
-      return { ingreso };
+    registrarIngresoNegocio(datos = {}, operationKey = undefined) {
+      return this.businessWrite('saveIncome', datos, operationKey);
     }
 
-    registrarVenta(datos) {
-      const nId = datos.negocioId || this.state.negocioActivoId;
-      const domain = window.BusinessSalesDomain;
-      if (!domain) return { venta: null, error: 'Módulo de ventas no inicializado.' };
-
-      const res = domain.procesarVenta(nId, datos, this.state.productos);
-      if (res.error) return res;
-
-      if (!Array.isArray(this.state.clientes)) this.state.clientes = [];
-      const cedulaNormalizada = String(res.venta.clienteCedula).replace(/[.\s-]/g, '').toLocaleLowerCase();
-      let cliente = this.state.clientes.find(c =>
-        c.negocioId === nId &&
-        String(c.cedula || '').replace(/[.\s-]/g, '').toLocaleLowerCase() === cedulaNormalizada
-      );
-      if (!cliente && datos.clienteId) {
-        cliente = this.state.clientes.find(c => c.id === datos.clienteId && c.negocioId === nId);
-      }
-      if (cliente) {
-        cliente.nombre = res.venta.clienteNombre;
-        cliente.cedula = res.venta.clienteCedula;
-        ['telefono', 'email', 'direccion'].forEach(campo => {
-          const datoVenta = res.venta[`cliente${campo.charAt(0).toUpperCase()}${campo.slice(1)}`];
-          if (datoVenta) cliente[campo] = datoVenta;
-        });
-      } else {
-        cliente = {
-          id: `cli-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          negocioId: nId,
-          nombre: res.venta.clienteNombre,
-          cedula: res.venta.clienteCedula,
-          telefono: res.venta.clienteTelefono,
-          email: res.venta.clienteEmail,
-          direccion: res.venta.clienteDireccion,
-          saldoPendiente: 0
-        };
-        this.state.clientes.push(cliente);
-      }
-      res.venta.clienteId = cliente.id;
-
-      if (!Array.isArray(this.state.ventas)) this.state.ventas = [];
-      this.state.ventas.unshift(res.venta);
-
-      // Si es a crédito, actualizar cartera de cliente
-      if (res.venta.tipoPago === 'CREDITO' && res.venta.clienteId) {
-        const cli = (this.state.clientes || []).find(c => c.id === res.venta.clienteId);
-        if (cli) {
-          cli.saldoPendiente = (Number(cli.saldoPendiente) || 0) + res.venta.total;
-        }
-      }
-
-      if (!Array.isArray(this.state.movimientosInventario)) this.state.movimientosInventario = [];
-      res.kardexEntries.forEach(k => this.state.movimientosInventario.push(k));
-
-      this.guardarEstado();
-      res.persistence = { ...this.lastPersistence };
-      return res;
+    registrarVenta(datos, operationKey = undefined) {
+      return this.businessWrite('sale', datos, operationKey);
     }
 
     getVentasCredito(negocioId = null) {
@@ -788,30 +642,8 @@
     }
 
     // Abonos de Crédito (Regla 5)
-    registrarAbonoCliente(ventaId, clienteId, monto, metodoPago = 'Efectivo', notas = '') {
-      const nId = this.state.negocioActivoId;
-      const venta = (this.state.ventas || []).find(v => v.id === ventaId);
-      const cliente = (this.state.clientes || []).find(c => c.id === clienteId);
-      if (!venta) return { error: 'Venta no encontrada.' };
-      if (venta.invoiceDocumentId) return { error: 'Registre este cobro en Facturación simulada para conservar precisión, auditoría e idempotencia.' };
-      if (clienteId && (!cliente || clienteId !== venta.clienteId)) return { error: 'El cliente no corresponde a la factura.' };
-
-      const domain = window.BusinessCreditsDomain;
-      if (!domain) return { error: 'Módulo de créditos no inicializado.' };
-
-      const res = domain.registrarAbono(nId, venta, cliente, monto, metodoPago, notas);
-      if (res.error) return res;
-      Object.assign(venta, res.ventaActualizada);
-      if (cliente && res.clienteActualizado) {
-        Object.assign(cliente, res.clienteActualizado);
-      }
-
-      if (!Array.isArray(this.state.pagosVenta)) this.state.pagosVenta = [];
-      this.state.pagosVenta.push(res.pagoRegistro);
-
-      this.guardarEstado();
-      res.persistence = { ...this.lastPersistence };
-      return res;
+    registrarAbonoCliente(ventaId, clienteId, monto, metodoPago = 'Efectivo', notas = '', operationKey = undefined) {
+      return this.businessWrite('paySale', { ventaId, clienteId, monto, metodoPago, notas }, operationKey);
     }
 
     getPagosVenta(negocioId = null) {
@@ -825,28 +657,12 @@
       return (this.state.formulas || []).filter(f => f.negocioId === nId);
     }
 
-    agregarFormula(datos) {
-      const formula = {
-        id: `form-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        negocioId: datos.negocioId || this.state.negocioActivoId,
-        productoId: datos.productoId,
-        productoNombre: datos.productoNombre || '',
-        nombre: (datos.nombre || '').trim(),
-        cantidadBase: Math.max(Number(datos.cantidadBase) || 1, 1),
-        descripcion: (datos.descripcion || '').trim(),
-        ingredientes: Array.isArray(datos.ingredientes) ? datos.ingredientes : []
-      };
-      if (!Array.isArray(this.state.formulas)) this.state.formulas = [];
-      this.state.formulas.push(formula);
-      this.guardarEstado();
-      return formula;
+    agregarFormula(datos, operationKey = undefined) {
+      return this.businessWrite('saveFormula', datos, operationKey);
     }
 
-    eliminarFormula(id) {
-      if (!Array.isArray(this.state.formulas)) return false;
-      this.state.formulas = this.state.formulas.filter(f => f.id !== id);
-      this.guardarEstado();
-      return true;
+    eliminarFormula(id, operationKey = undefined) {
+      return this.businessWrite('archive', { collection: 'formulas', id }, operationKey);
     }
 
     getProducciones(negocioId = null) {
@@ -854,26 +670,8 @@
       return (this.state.producciones || []).filter(p => p.negocioId === nId);
     }
 
-    registrarProduccion(formulaId, cantidad, notas = '') {
-      const nId = this.state.negocioActivoId;
-      const formula = (this.state.formulas || []).find(f => f.id === formulaId && f.negocioId === nId);
-      if (!formula) return { produccion: null, error: 'Fórmula no encontrada.' };
-
-      const domain = window.BusinessProductionDomain;
-      if (!domain) return { produccion: null, error: 'Módulo de producción no inicializado.' };
-
-      const res = domain.fabricarLote(nId, formula, cantidad, this.state.productos, notas);
-      if (res.error) return res;
-
-      if (!Array.isArray(this.state.producciones)) this.state.producciones = [];
-      this.state.producciones.unshift(res.produccion);
-
-      if (!Array.isArray(this.state.movimientosInventario)) this.state.movimientosInventario = [];
-      res.kardexEntries.forEach(k => this.state.movimientosInventario.push(k));
-
-      this.guardarEstado();
-      res.persistence = { ...this.lastPersistence };
-      return res;
+    registrarProduccion(formulaId, cantidad, notas = '', operationKey = undefined) {
+      return this.businessWrite('production', { formulaId, cantidad, notas }, operationKey);
     }
 
     // Inventario y Kardex
@@ -894,29 +692,8 @@
       return (this.state.movimientosInventario || []).filter(m => m.negocioId === nId);
     }
 
-    ajustarStockProducto(productoId, nuevoStock, motivo = 'Ajuste manual') {
-      const prod = (this.state.productos || []).find(p => p.id === productoId);
-      if (!prod) return false;
-      const anterior = Number(prod.stock) || 0;
-      prod.stock = Math.max(Number(nuevoStock) || 0, 0);
-
-      const domain = window.BusinessInventoryDomain;
-      if (domain) {
-        const kardex = domain.crearMovimientoKardex(
-          prod.negocioId,
-          prod,
-          'AJUSTE',
-          Math.abs(prod.stock - anterior),
-          anterior,
-          prod.stock,
-          motivo
-        );
-        if (!Array.isArray(this.state.movimientosInventario)) this.state.movimientosInventario = [];
-        this.state.movimientosInventario.push(kardex);
-      }
-
-      this.guardarEstado();
-      return true;
+    ajustarStockProducto(productoId, nuevoStock, motivo = 'Ajuste manual', operationKey = undefined) {
+      return this.businessWrite('adjustStock', { productoId, nuevoStock, motivo }, operationKey);
     }
 
     // Empleados y Nómina
@@ -925,23 +702,12 @@
       return (this.state.empleados || []).filter(e => e.negocioId === nId);
     }
 
-    agregarEmpleado(datos) {
-      const nId = datos.negocioId || this.state.negocioActivoId;
-      const domain = window.BusinessEmployeesDomain;
-      const emp = domain ? domain.crearEmpleado(nId, datos) : { id: `emp-${Date.now()}`, ...datos };
-      if (!Array.isArray(this.state.empleados)) this.state.empleados = [];
-      this.state.empleados.push(emp);
-      this.guardarEstado();
-      return emp;
+    agregarEmpleado(datos, operationKey = undefined) {
+      return this.businessWrite('saveEmployee', datos, operationKey);
     }
 
-    actualizarEmpleado(id, datos) {
-      const emp = (this.state.empleados || []).find(e => e.id === id);
-      if (emp) {
-        Object.assign(emp, datos);
-        this.guardarEstado();
-      }
-      return emp;
+    actualizarEmpleado(id, datos, operationKey = undefined) {
+      return this.businessWrite('saveEmployee', { ...datos, id }, operationKey);
     }
 
     getPagosEmpleado(negocioId = null) {
@@ -949,17 +715,8 @@
       return (this.state.pagosEmpleado || []).filter(p => p.negocioId === nId);
     }
 
-    registrarPagoNomina(empleadoId, monto, concepto, periodo, metodo = 'Transferencia') {
-      const nId = this.state.negocioActivoId;
-      const emp = (this.state.empleados || []).find(e => e.id === empleadoId && e.negocioId === nId);
-      if (!emp) return null;
-
-      const domain = window.BusinessEmployeesDomain;
-      const pago = domain ? domain.crearPagoNomina(nId, emp, monto, concepto, periodo, metodo) : { id: `pago-emp-${Date.now()}`, monto };
-      if (!Array.isArray(this.state.pagosEmpleado)) this.state.pagosEmpleado = [];
-      this.state.pagosEmpleado.push(pago);
-      this.guardarEstado();
-      return pago;
+    registrarPagoNomina(empleadoId, monto, concepto, periodo, metodo = 'Transferencia', operationKey = undefined) {
+      return this.businessWrite('payroll', { empleadoId, monto, concepto, periodo, metodoPago: metodo }, operationKey);
     }
 
     // Gastos Empresariales (Regla 7)
@@ -968,21 +725,12 @@
       return (this.state.gastosNegocio || []).filter(g => g.negocioId === nId);
     }
 
-    registrarGastoNegocio(datos) {
-      const nId = datos.negocioId || this.state.negocioActivoId;
-      const domain = window.BusinessExpensesDomain;
-      const gasto = domain ? domain.crearGastoNegocio(nId, datos) : { id: `gast-${Date.now()}`, ...datos };
-      if (!Array.isArray(this.state.gastosNegocio)) this.state.gastosNegocio = [];
-      this.state.gastosNegocio.unshift(gasto);
-      this.guardarEstado();
-      return gasto;
+    registrarGastoNegocio(datos, operationKey = undefined) {
+      return this.businessWrite('saveExpense', datos, operationKey);
     }
 
-    eliminarGastoNegocio(id) {
-      if (!Array.isArray(this.state.gastosNegocio)) return false;
-      this.state.gastosNegocio = this.state.gastosNegocio.filter(g => g.id !== id);
-      this.guardarEstado();
-      return true;
+    eliminarGastoNegocio(id, operationKey = undefined) {
+      return this.businessWrite('cancel', { collection: 'gastosNegocio', id, motivo: 'Anulación solicitada' }, operationKey);
     }
 
     // Métricas P&L y Estado de Resultados (Regla 9)

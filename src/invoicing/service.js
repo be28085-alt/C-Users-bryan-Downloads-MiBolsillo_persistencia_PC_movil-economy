@@ -93,6 +93,7 @@
         const lines = cancellation ? clone(original.totals.lines) : (input.lines || []).map(l => {
           const product = l.productId ? state.productos.find(p => p.id === l.productId && p.negocioId === business.id) : null;
           if (l.productId && !product) throw new Error('El producto no pertenece al negocio.');
+          if (product?.estado === 'ARCHIVADO') throw new Error('El producto está archivado.');
           if (kind === 'INVOICE' && !product) throw new Error('Seleccione productos del catálogo del negocio.');
           const description = text(l.description || product?.nombre);
           if (!description) throw new Error('Descripción obligatoria.');
@@ -164,12 +165,13 @@
       for (const line of doc.totals.lines) stock.set(line.productId, (stock.get(line.productId) || 0n) + M.units(line.quantity, 4));
       for (const [id, qty] of stock) {
         const product = state.productos.find(p => p.id === id && p.negocioId === doc.businessId);
-        if (!product || M.units(product.stock, 4) < qty) throw new Error('Stock insuficiente o producto eliminado; no se registró la venta.');
-        const before = M.units(product.stock, 4); product.stock = Number(M.decimal(before - qty, 4));
+        if (!product || product.estado === 'ARCHIVADO' || M.units(product.stock, 4) < qty) throw new Error('Stock insuficiente o producto archivado; no se registró la venta.');
+        const before = M.units(product.stock, 4); product.stock = Number(M.decimal(before - qty, 4)); product.revision = (product.revision || 0) + 1;
         state.movimientosInventario.push({ id: `inv-${doc.id}-${id}`, negocioId: doc.businessId, invoiceDocumentId: doc.id, productoId: id, productoNombre: product.nombre, tipo: 'SALIDA', cantidad: Number(M.decimal(qty, 4)), stockAnterior: Number(M.decimal(before, 4)), stockPosterior: product.stock, motivo: doc.number, fecha: doc.date });
       }
       const c = doc.customer;
       let client = state.clientes.find(v => v.negocioId === doc.businessId && String(v.cedula).replace(/[.\s-]/g, '').toUpperCase() === c.document.replace(/-/g, '').toUpperCase() && (v.tipoDocumento || 'CC') === c.documentType);
+      if (client?.estado === 'ARCHIVADO') throw new Error('El cliente está archivado. Reactívelo antes de facturar.');
       if (!client) { client = { id: uuid(), negocioId: doc.businessId, nombre: c.name, cedula: c.document, tipoDocumento: c.documentType, email: c.email, direccion: c.address, telefono: c.phone, saldoPendiente: 0 }; state.clientes.push(client); }
       const balance = doc.paymentTerms === 'CREDITO' ? amount(doc.totals.total) : 0n;
       client.saldoPendiente = legacy(amount(client.saldoPendiente) + balance);
@@ -201,7 +203,9 @@
           const product = state.productos.find(p => p.id === line.productId && p.negocioId === doc.businessId);
           if (!product) throw new Error('No se puede devolver inventario: producto eliminado.');
           const before = M.units(product.stock, 4), qty = M.units(line.quantity, 4);
+          product.costoUnitario = Number(M.decimal(M.round(before * M.units(product.costoUnitario || '0', 4) + qty * M.units(line.unitCost, 4), before + qty), 4));
           product.stock = Number(M.decimal(before + qty, 4));
+          product.revision = (product.revision || 0) + 1;
           state.movimientosInventario.push({ id: `return-${doc.id}-${state.movimientosInventario.length}`, negocioId: doc.businessId, invoiceDocumentId: doc.id, productoId: product.id, productoNombre: product.nombre, tipo: 'ENTRADA', cantidad: Number(line.quantity), stockAnterior: Number(M.decimal(before, 4)), stockPosterior: product.stock, motivo: `Anulación simulada ${original.number}`, fecha: doc.date });
         }
         sale.detalles = []; sale.costoTotalVenta = 0; sale.estado = 'ANULADA';

@@ -1,5 +1,13 @@
 # MiBolsillo — organización y correcciones de lógica
 
+## Mi Negocio: operaciones conectadas y persistentes (09-11-2026)
+
+PC y móvil comparten ahora los formularios y lecturas de Inicio, Inventario, Movimientos, Ventas, Contactos, Gestión e Informes. Gestión incluye compras, cuentas por cobrar/pagar, empleados, recetas/producción y configuración de negocios.
+
+Las escrituras empresariales usan `BusinessService` y un repositorio común con facturación: validan un candidato, lo guardan y verifican, y solo entonces actualizan la interfaz. Los errores conservan el formulario y no anuncian éxito. El negocio nuevo empieza sin ventas, contactos, inventario ni caja de demostración; los datos existentes se conservan. Las llamadas empresariales de `FinanzasCore` ahora requieren **await**.
+
+Consulte [la auditoría, archivos, reglas, pruebas y límites](docs/MI_NEGOCIO_AUDITORIA.md). La persistencia sigue siendo local; MySQL, autenticación remota, sincronización entre equipos, DIAN real y nómina legal son ampliaciones pendientes explícitas.
+
 ## Informes de Mi Negocio en PC y móvil (09-11-2026)
 
 - Ambas versiones comparten el informe **Tu negocio, en perspectiva**: utilidad neta, ingresos, costos y gastos, ticket promedio, ventas y cartera actual, evolución de seis meses, distribución y desglose por rubro y estado de resultados.

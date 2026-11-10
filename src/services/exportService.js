@@ -39,6 +39,7 @@
           }
         }
         window.InvoiceSchema?.validateState(state);
+        window.BusinessSchema?.validate(state);
         return { state, error: null };
       } catch (error) { return { state: null, error: error.message }; }
     },

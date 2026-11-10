@@ -107,14 +107,14 @@ test('notas parciales, débito, pago idempotente y devolución al reducir import
   const a = setup(), d = await issue(a);
   const paymentKey = randomUUID(); await a.service.pay(d.id, '5.00', 'Efectivo', paymentKey); await a.service.pay(d.id, '5.00', 'Efectivo', paymentKey);
   assert.equal(a.core.state.pagosVenta.length, 1); assert.equal(a.core.state.ventas[0].saldoPendiente, 5.72);
-  assert.ok(a.core.registrarAbonoCliente(a.core.state.ventas[0].id, a.core.state.clientes[0].id, 1).error);
+  assert.ok((await a.core.registrarAbonoCliente(a.core.state.ventas[0].id, a.core.state.clientes[0].id, 1)).error);
   let note = await adjustment(a, d); note = await a.service.submit(note.id, randomUUID()); assert.equal(note.status, 'VALIDADA_INTERNA');
   assert.equal(a.core.state.ventas[0].total, 9.53); assert.equal(a.core.state.productos[0].stock, 9);
   let debit = await adjustment(a, d, { kind: 'DEBIT_NOTE' }); debit = await a.service.submit(debit.id, randomUUID()); assert.equal(debit.status, 'VALIDADA_INTERNA'); assert.equal(a.core.state.ventas[0].total, 10.72);
   await a.service.pay(d.id, '5.72', 'Tarjeta', randomUUID());
   let credit = await adjustment(a, d); await a.service.submit(credit.id, randomUUID());
   assert.equal(a.core.state.facturacion.refunds[0].amount, '1.19'); assert.equal(a.core.state.ventas[0].saldoPendiente, 0);
-  assert.equal(a.core.getCajaYFlujo().totalEntradas, 21600010.72); assert.equal(a.core.getCajaYFlujo().totalSalidas, 14240001.19);
+  assert.equal(a.core.getCajaYFlujo().totalEntradas, 10.72); assert.equal(a.core.getCajaYFlujo().totalSalidas, 1.19);
   const retry = await adjustment(a, d, { lines: [line({ productId: null, description: 'exceso', unitPrice: '100' })] });
   assert.equal((await a.service.submit(retry.id, randomUUID())).status, 'RECHAZADA_INTERNA');
   assert.equal(a.core.state.ventas[0].total, 9.53);
@@ -145,7 +145,7 @@ test('copias de facturación: restaura todo el agregado y rechaza importes, clav
   assert.equal(exp.restaurarCopiaSeguridadJSON(backup).error, null);
   assert.equal(a.core.state.ventas[0].saldoPendiente, 10.72); assert.equal(a.core.state.pagosVenta.length, 0);
   a.core.state.negocios.push({ id: 'second', nombre: 'Segundo' }); a.core.guardarEstado();
-  assert.equal(a.core.eliminarNegocio('n'), false); assert.equal(a.core.eliminarCliente(a.core.state.clientes[0].id), false);
+  assert.ok((await a.core.eliminarNegocio('n')).error); const archived = await a.core.eliminarCliente(a.core.state.clientes[0].id); assert.equal(archived.record.estado, 'ARCHIVADO');
   assert.throws(() => a.service.list({ min: '50', max: '1' }), /límite/);
   assert.throws(() => a.service.list({ from: '2026-12-01', to: '2026-01-01' }), /límite/);
 });
