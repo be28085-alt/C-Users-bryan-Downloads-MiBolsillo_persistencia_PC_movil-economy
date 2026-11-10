@@ -1549,13 +1549,8 @@ class DesktopApp {
   }
 
   exportarJSON() {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(Finanzas.state, null, 2));
-    const a = document.createElement('a');
-    a.href = dataStr;
-    const periodoLabel = `${Finanzas.state.periodoAnio}_${String(Finanzas.state.periodoMes + 1).padStart(2, '0')}`;
-    a.download = `mibolsillo_backup_${periodoLabel}.json`;
-    a.click();
-    this.showToast('💾 Copia de seguridad JSON descargada.');
+    window.FinanzasExportService.descargarCopiaSeguridadJSON(Finanzas.state);
+    this.showToast('Copia JSON descargada.');
   }
 
   imprimirPDF() {
@@ -1571,6 +1566,10 @@ class DesktopApp {
   }
 
   showToast(mensaje) {
+    if (window.FinanzasStorage?.hasPendingChanges()) {
+      mensaje = mensaje.replace(/guardada/g, 'registrada en memoria').replace(/guardado/g, 'registrado en memoria');
+      mensaje += ' ⚠ Hay cambios sin guardar. Revisa el aviso de almacenamiento.';
+    }
     const existing = document.querySelector('.toast-notice');
     if (existing) existing.remove();
 
@@ -2244,9 +2243,7 @@ class DesktopApp {
       const prodId = row.querySelector('.sel-compra-prod').value;
       const cant = Number(row.querySelector('.inp-compra-cant').value) || 0;
       const precio = Number(row.querySelector('.inp-compra-precio').value) || 0;
-      if (prodId && cant > 0) {
-        detalles.push({ productoId: prodId, cantidad: cant, precioUnitario: precio });
-      }
+      detalles.push({ productoId: prodId, cantidad: cant, precioUnitario: precio });
     });
 
     if (detalles.length === 0) {
@@ -2622,13 +2619,13 @@ class DesktopApp {
     const row = document.createElement('div');
     row.className = 'biz-item-row';
     row.innerHTML = `
-      <select class="pc-select sel-venta-prod" onchange="pcApp.actualizarPrecioFilaVenta(this)" style="font-size: 0.82rem;">
+      <select aria-label="Artículo" class="pc-select sel-venta-prod" required onchange="pcApp.actualizarPrecioFilaVenta(this)" style="font-size: 0.82rem;">
         ${prods.map(p => `<option value="${p.id}" data-precio="${p.precioVenta}" data-stock="${p.stock}" data-unidad="${p.unidadMedida}">${escapeHTML(p.nombre)} (Disp: ${p.stock} ${p.unidadMedida})</option>`).join('')}
       </select>
-      <input type="number" class="pc-input inp-venta-cant" value="1" min="1" step="0.01" placeholder="Cant" oninput="pcApp.recalcularTotalVentaModal()">
-      <input type="number" class="pc-input inp-venta-precio" value="${prods[0] ? prods[0].precioVenta : 0}" step="0.01" placeholder="Precio" oninput="pcApp.recalcularTotalVentaModal()">
+      <input type="number" aria-label="Cantidad" class="pc-input inp-venta-cant" value="1" min="0.01" required step="0.01" placeholder="Cant" oninput="pcApp.recalcularTotalVentaModal()">
+      <input type="number" aria-label="Precio unitario" min="0.01" required class="pc-input inp-venta-precio" value="${prods[0] ? prods[0].precioVenta : 0}" step="0.01" placeholder="Precio" oninput="pcApp.recalcularTotalVentaModal()">
       <div class="lbl-venta-subtotal" style="font-weight: 700; font-size: 0.85rem; text-align: right; color: #059669;">$ 0</div>
-      <button type="button" class="btn-pc-secondary" style="padding: 4px; color: var(--pc-red); border-color: #fecdd3;" onclick="pcApp.eliminarFilaItemVenta(this)">✕</button>
+      <button type="button" class="btn-pc-secondary" style="padding: 4px; color: var(--pc-red); border-color: #fecdd3;" aria-label="Quitar artículo" onclick="pcApp.eliminarFilaItemVenta(this)">✕</button>
     `;
     container.appendChild(row);
     this.recalcularTotalVentaModal();
@@ -2685,9 +2682,7 @@ class DesktopApp {
       const prodId = row.querySelector('.sel-venta-prod').value;
       const cant = Number(row.querySelector('.inp-venta-cant').value) || 0;
       const precio = Number(row.querySelector('.inp-venta-precio').value) || 0;
-      if (prodId && cant > 0) {
-        detalles.push({ productoId: prodId, cantidad: cant, precioUnitario: precio });
-      }
+      detalles.push({ productoId: prodId, cantidad: cant, precioUnitario: precio });
     });
 
     if (detalles.length === 0) {

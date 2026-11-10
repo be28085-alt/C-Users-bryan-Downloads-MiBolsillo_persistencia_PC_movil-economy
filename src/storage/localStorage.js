@@ -16,6 +16,20 @@
     : `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   let applyingRemoteState = false;
   let syncChannel = null;
+  let expectedRaw = null;
+  let pendingState = null;
+  let readBlocked = false;
+  let lastResult = { ok: true, status: 'ready' };
+  let localRevision = 0;
+
+  function report(ok, status) {
+    lastResult = { ok, status };
+    if (window.Finanzas) window.Finanzas.lastPersistence = { ...lastResult };
+    if (typeof window.CustomEvent === 'function') {
+      window.dispatchEvent(new window.CustomEvent('mibolsillo:persistence', { detail: lastResult }));
+    }
+    return ok;
+  }
 
   try {
     if ('BroadcastChannel' in window) syncChannel = new BroadcastChannel(SYNC_CHANNEL);
@@ -86,6 +100,7 @@
       const fallback = clone(defaultState || {});
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
+        expectedRaw = raw;
         if (!raw) {
           const seeded = { ...fallback, version: fallback.version || STORAGE_VERSION };
           this.saveState(seeded);
@@ -93,7 +108,9 @@
         }
 
         const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') {
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || (parsed.data && (typeof parsed.data !== 'object' || Array.isArray(parsed.data)))) {
+          readBlocked = true;
+          report(false, 'read-error');
           return fallback;
         }
 
@@ -106,34 +123,48 @@
           merged = migrateLegacyState(merged, fallback);
         }
 
-        this.saveState(merged);
+        report(true, 'saved');
         return merged;
       } catch (err) {
         console.warn('Advertencia al leer localStorage, cargando datos iniciales:', err);
+        readBlocked = true;
+        report(false, 'read-error');
         return fallback;
       }
     },
 
-    saveState(state) {
+    saveState(state, { keepPending = true } = {}) {
       if (!state || typeof state !== 'object') return false;
+      if (keepPending) pendingState = clone(state);
+      if (readBlocked) return report(false, 'read-error');
       try {
+        // Evitar que una pestaña con una copia antigua sobrescriba cambios ajenos.
+        if (localStorage.getItem(STORAGE_KEY) !== expectedRaw) return report(false, 'conflict');
         const normalized = mergeState({}, state);
         const envelope = {
           version: STORAGE_VERSION,
           updatedAt: new Date().toISOString(),
           updatedBy: CLIENT_ID,
+          revision: `${CLIENT_ID}:${++localRevision}`,
           data: normalized
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
+        const serialized = JSON.stringify(envelope);
+        localStorage.setItem(STORAGE_KEY, serialized);
+        expectedRaw = serialized;
+        pendingState = null;
         if (!applyingRemoteState && syncChannel) {
           try { syncChannel.postMessage({ type: 'STATE_UPDATED', ...envelope }); } catch (error) {}
         }
-        return true;
+        return report(true, 'saved');
       } catch (err) {
         console.error('Error al guardar en localStorage (posible límite de cuota):', err);
-        return false;
+        return report(false, 'error');
       }
     },
+
+    getPersistenceStatus() { return { ...lastResult }; },
+    hasPendingChanges() { return pendingState !== null; },
+    retryPendingSave() { return pendingState ? this.saveState(pendingState) : lastResult.ok; },
 
     resetState(defaultState) {
       const fresh = clone(defaultState || {});
@@ -146,6 +177,15 @@
   function applyIncomingState(raw) {
     if (!raw || typeof raw !== 'object' || !raw.data || typeof raw.data !== 'object') return;
     if (raw.updatedBy === CLIENT_ID) return;
+    if (pendingState || readBlocked) { report(false, 'conflict'); return; }
+    // storage y BroadcastChannel pueden entregar eventos de una revisión antigua.
+    try {
+      const current = localStorage.getItem(STORAGE_KEY);
+      const envelope = JSON.parse(current);
+      if (envelope.updatedAt !== raw.updatedAt || envelope.updatedBy !== raw.updatedBy) return;
+      if (envelope.revision && envelope.revision !== raw.revision) return;
+      expectedRaw = current;
+    } catch (error) { return; }
     applyingRemoteState = true;
     try {
       const core = window.Finanzas;

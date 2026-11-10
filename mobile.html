@@ -4,17 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>MiBolsillo · Versión Móvil | Finanzas Personales</title>
-  
+
   <!-- Google Fonts: Plus Jakarta Sans & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
+
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
+
   <!-- Estilos dedicados para la versión móvil -->
-  <link rel="stylesheet" href="styles/mobile.css">
+  <link rel="stylesheet" href="styles/mobile.css?v=20261108-menu">
 </head>
 <body>
 
@@ -232,7 +232,6 @@
               <span class="sub-label" id="lblMobilePlanHeaderSub">QUÉ EN LUGAR DE ESTÁ PASO</span>
               <h1 class="screen-title">Mi plan</h1>
             </div>
-            <button class="btn-icon-pill" title="Opciones" onclick="mobileApp.openModalAcademic()">🎓</button>
           </div>
 
           <!-- Selector de Subpestañas -->
@@ -362,7 +361,11 @@
             </div>
             <div style="display: flex; gap: 0.4rem;">
               <button class="btn-icon-pill" onclick="mobileApp.switchBusinessTab('perfil')" title="Tu espacio y ajustes" aria-label="Tu espacio y ajustes">⚙️</button>
-              <button class="btn-icon-pill" onclick="mobileApp.exportarCSV()" title="Exportar CSV" aria-label="Exportar CSV">📥</button>
+                        <!--boton radio-->
+
+              <button type="button" class="nav-btn business-options-toggle" data-business-tab="informes" id="mobileBusinessOptionsToggle" onclick="mobileApp.openQuickActionMenu('EMPRESARIAL')" title="Opciones del negocio" aria-label="Opciones del negocio" aria-haspopup="dialog" aria-controls="mobileBusinessOptions" aria-expanded="false">
+              <span class="business-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+              </button>
             </div>
           </div>
 
@@ -370,7 +373,7 @@
             <div class="business-summary-card">
               <div class="business-summary-topbar">
                 <span>Balance del negocio</span>
-                <button class="segment-tab business-action-btn" onclick="mobileApp.imprimirPDF()">📄 PDF</button>
+
               </div>
               <div class="business-summary-grid">
                 <div class="business-metric-box income">
@@ -547,7 +550,6 @@
               <span class="sub-label">MIBOLSILLO A TU MANERA</span>
               <h1 class="screen-title">Tu espacio</h1>
             </div>
-            <button class="btn-icon-pill" onclick="mobileApp.openModalAcademic()">🎓</button>
           </div>
 
           <div class="section-card" style="display: flex; align-items: center; justify-content: space-between;">
@@ -558,10 +560,7 @@
                 <span style="font-size: 0.78rem; color: var(--text-muted);" id="mobileProfileEmail">lucia.martin@email.com</span>
               </div>
             </div>
-            <div style="display: flex; gap: 0.35rem;">
-              <button class="btn-icon-pill hidden" id="mobileProfileBusinessReturn" onclick="mobileApp.switchBusinessTab('negocio')" title="Volver al negocio" aria-label="Volver al negocio">🏢</button>
-              <button class="btn-icon-pill" onclick="mobileApp.openModalEditarPerfil()" title="Editar perfil" aria-label="Editar perfil">✏️</button>
-            </div>
+
           </div>
 
           <div class="section-card">
@@ -604,18 +603,14 @@
 
           <div class="section-card">
             <h3 style="margin-bottom: 0.75rem; font-size: 0.95rem;">Gestión de datos</h3>
-            <button class="btn-action-primary" style="margin-bottom: 0.5rem;" onclick="mobileApp.exportarJSON()">
-              💾 Descargar copia JSON
-            </button>
+
             <button class="btn-action-primary" style="margin-bottom: 0.5rem;" onclick="mobileApp.exportarCSV()">
               📥 Descargar movimientos CSV
             </button>
             <button class="btn-action-primary" style="margin-bottom: 0.5rem;" onclick="mobileApp.imprimirPDF()">
               📄 Imprimir / guardar informe PDF
             </button>
-            <button class="btn-action-primary" style="background: transparent; color: var(--color-expense); border: 1px solid var(--color-expense); box-shadow: none;" onclick="mobileApp.restablecerDatos()">
-              🔄 Restablecer datos iniciales
-            </button>
+
           </div>
         </section>
 
@@ -657,22 +652,23 @@
           <span style="font-size: 1.25rem;">⇋</span>
           <span>Movs</span>
         </button>
-        <button class="nav-center-action-btn" onclick="mobileApp.openQuickActionMenu('EMPRESARIAL')" title="Acciones empresariales">
-          +
-        </button>
         <button class="nav-btn" data-business-tab="proveedores" onclick="mobileApp.switchBusinessTab('proveedores')">
           <span style="font-size: 1.25rem;">🚚</span>
           <span>Proveedores</span>
         </button>
-        <button class="nav-btn" data-business-tab="informes" onclick="mobileApp.switchBusinessTab('informes')">
-          <span style="font-size: 1.25rem;">📊</span>
-          <span>Informes</span>
-        </button>
-        <button class="nav-btn" data-business-tab="perfil" onclick="mobileApp.switchBusinessTab('perfil')">
-          <span style="font-size: 1.25rem;">⚙️</span>
-          <span>Tu espacio</span>
-        </button>
+
+
       </nav>
+
+      <div class="business-options-backdrop hidden" id="mobileBusinessOptions" onclick="if (event.target === this) mobileApp.closeQuickActionMenu()">
+        <section class="business-options-panel" role="dialog" aria-modal="true" aria-labelledby="mobileBusinessOptionsTitle" onkeydown="mobileApp.handleQuickActionKeydown(event)">
+          <div class="sheet-header">
+            <h2 class="sheet-title" id="mobileBusinessOptionsTitle">Opciones del negocio</h2>
+            <button type="button" class="btn-close-circle" aria-label="Cerrar opciones" onclick="mobileApp.closeQuickActionMenu()">✕</button>
+          </div>
+          <div class="quick-actions-list" id="mobileBusinessOptionsList"></div>
+        </section>
+      </div>
 
     </div>
   </div>
@@ -985,21 +981,7 @@
     </div>
   </div>
 
-  <!-- MODAL 8: SUSTENTACIÓN ACADÉMICA -->
-  <div class="bottom-sheet-backdrop hidden" id="modalMobileAcademic">
-    <div class="bottom-sheet-container">
-      <div class="sheet-drag-handle"></div>
-      <div class="sheet-header">
-        <h2 class="sheet-title">Fundamentos Académicos</h2>
-        <button class="btn-close-circle" onclick="mobileApp.closeModalAcademic()">✕</button>
-      </div>
-      <div style="font-size: 0.85rem; line-height: 1.5; color: var(--text-body);">
-        <p style="margin-bottom: 0.75rem;"><strong>1. Arquitectura Separada:</strong> Código desacoplado en Versión PC (<code>desktop.html</code>) y Versión Móvil (<code>mobile.html</code>), sincronizados a través de <code>shared.js</code>.</p>
-        <p style="margin-bottom: 0.75rem;"><strong>2. Fórmulas Matemáticas:</strong> Balance neto $D = I_T - G_T$, ahorro acumulado sin doble conteo y tasa porcentual acotada.</p>
-        <p><strong>3. Lógica Proposicional:</strong> Diagnóstico automático de flujos y alertas preventivas en tiempo real.</p>
-      </div>
-    </div>
-  </div>
+
 
   <!-- TOAST FLOTANTE -->
   <div class="toast-container" id="mobileToastContainer"></div>
@@ -1011,7 +993,7 @@
   <script src="src/utils/validators.js?v=20261103-6"></script>
   <script src="src/storage/seedData.js?v=20261103-6"></script>
   <script src="src/storage/demoData.js?v=20261103-6"></script>
-  <script src="src/storage/localStorage.js?v=20261103-6"></script>
+  <script src="src/storage/localStorage.js?v=20261108-1"></script>
   <script src="src/domains/personal/movementsDomain.js?v=20261103-6"></script>
   <script src="src/domains/personal/budgetDomain.js?v=20261103-6"></script>
   <script src="src/domains/personal/goalsDomain.js?v=20261103-6"></script>
@@ -1019,17 +1001,19 @@
   <script src="src/domains/business/businessDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/productsDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/inventoryDomain.js?v=20261103-6"></script>
-  <script src="src/domains/business/purchasesDomain.js?v=20261103-6"></script>
-  <script src="src/domains/business/salesDomain.js?v=20261106-1"></script>
-  <script src="src/domains/business/creditsDomain.js?v=20261103-6"></script>
+  <script src="src/domains/business/purchasesDomain.js?v=20261108-1"></script>
+  <script src="src/domains/business/salesDomain.js?v=20261108-1"></script>
+  <script src="src/domains/business/creditsDomain.js?v=20261108-1"></script>
   <script src="src/domains/business/productionDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/employeesDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/expensesDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/metricsDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/cashFlowDomain.js?v=20261103-6"></script>
   <script src="src/domains/user/userService.js?v=20261103-6"></script>
-  <script src="src/services/finanzasCore.js?v=20261106-1"></script>
+  <script src="src/services/finanzasCore.js?v=20261108-1"></script>
   <script src="src/utils/shared.js?v=20261103-6"></script>
-  <script src="src/utils/mobile.js?v=20261106-1"></script>
+  <script src="src/utils/mobile.js?v=20261108-menu"></script>
+  <script src="src/services/exportService.js?v=20261108-1"></script>
+  <script src="src/ui/shared/persistenceStatus.js?v=20261108-1"></script>
 </body>
 </html>

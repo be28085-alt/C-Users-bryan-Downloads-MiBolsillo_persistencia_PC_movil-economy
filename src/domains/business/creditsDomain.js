@@ -19,7 +19,13 @@
      * @returns {{ventaActualizada: Object, clienteActualizado: Object, pagoRegistro: Object}}
      */
     registrarAbono(negocioId, venta, cliente, monto, metodoPago = 'Efectivo', notas = '') {
-      const valorAbono = Math.abs(Number(monto) || 0);
+      const valorAbono = Number(monto);
+      if (!venta || venta.negocioId !== negocioId || (cliente && (cliente.negocioId !== negocioId || cliente.id !== venta.clienteId))) {
+        return { error: 'La factura y el cliente deben pertenecer al negocio activo.' };
+      }
+      if (!Number.isFinite(valorAbono) || valorAbono <= 0 || valorAbono > Number(venta.saldoPendiente)) {
+        return { error: 'El abono debe ser positivo y no superar el saldo de la factura.' };
+      }
 
       // Descontar saldo de la factura
       const saldoVentaActual = Number(venta.saldoPendiente) || 0;
@@ -38,8 +44,8 @@
         clienteNombre: cliente ? cliente.nombre : venta.clienteNombre,
         monto: valorAbono,
         fecha: window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0],
-        metodoPago: (metodoPago || 'Efectivo').trim(),
-        notas: (notas || '').trim()
+        metodoPago: String(metodoPago || 'Efectivo').trim(),
+        notas: String(notas || '').trim()
       };
 
       return {

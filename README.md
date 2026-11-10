@@ -1,5 +1,35 @@
 # MiBolsillo — organización y correcciones de lógica
 
+## Mejoras de confiabilidad (08-11-2026)
+
+- Ventas: validación de cantidades, precios, fechas e importes finitos; comprobación acumulada del stock cuando un producto aparece en varias líneas. El documento se valida completo antes de modificar inventario.
+- Compras: validación completa antes de modificar existencias; un pago explícito de cero conserva la deuda pendiente.
+- Cobranza: rechazo de abonos negativos, cero, no finitos, superiores al saldo o asociados a otro cliente/negocio.
+- PC y móvil comparten el aviso de persistencia y el servicio de copias JSON. El aviso permanece mientras existan errores y permite reintentar sin volver a registrar operaciones. Las facturas inválidas mantienen el formulario abierto; los campos de artículos tienen nombres accesibles y admiten cantidades desde 0,01.
+- Se añadió «Restaurar copia JSON» junto a la descarga de copias en el perfil. Se valida el archivo y se solicita confirmación antes de reemplazar datos; se descarga primero una copia del estado actual. Una restauración que no se puede guardar no reemplaza el estado visible.
+- Las páginas activas cargan los mismos servicios de almacenamiento, exportación y aviso. Los archivos antiguos de la raíz se mantienen por compatibilidad y no deben recibir nuevas reglas financieras.
+
+### Pruebas del núcleo activo
+
+Requieren Node.js y no instalan dependencias:
+
+```sh
+node --test tests/active-core.test.cjs
+node test_shared.js
+node test_dates.js
+```
+
+También puede usarse `npm test` si npm está disponible. Las pruebas nuevas cargan los scripts locales en el orden declarado por cada HTML y comprueban ventas, compras, cartera, inventario, fallo/reintento de almacenamiento, sincronización, restauración y comportamiento del aviso. Las pruebas antiguas se conservan como cobertura de compatibilidad.
+
+### Uso y límites
+
+- Ante «solo en memoria», conserva la pestaña abierta y usa «Reintentar guardado» o descarga una copia. Registrar otra vez la operación puede duplicarla.
+- Si otra pestaña tiene cambios que esta no ha recibido, se bloquea la escritura para evitar sobrescribirlos. Descarga ambas versiones y revísalas antes de restaurar una. No existe fusión automática de registros.
+- Si el JSON almacenado no se puede leer, se bloquean las escrituras para proteger el original; los datos iniciales visibles no significan que se haya recuperado el archivo dañado.
+- La detección de conflictos es preventiva: `localStorage` no ofrece transacciones entre pestañas. Para escrituras simultáneas garantizadas se requiere una solución transaccional.
+- La validación automatizada usa un entorno de navegador simulado; la comprobación visual de esta entrega quedó pendiente por un fallo de la herramienta de navegador.
+- La sincronización entre equipos, autenticación y copias remotas siguen como fase opcional: requieren definir backend y alojamiento. Qt permanece como implementación independiente.
+
 ## Archivos
 
 - `desktop.html` y `mobile.html`: interfaces activas de escritorio y móvil; ambas usan el núcleo modular de `src/`.

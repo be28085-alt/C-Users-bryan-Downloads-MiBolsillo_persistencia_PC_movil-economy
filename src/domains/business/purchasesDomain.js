@@ -18,6 +18,8 @@
      */
     procesarCompra(negocioId, datos = {}, productosActuales = []) {
       const detalles = Array.isArray(datos.detalles) ? datos.detalles : [];
+      const fecha = String(datos.fecha || window.obtenerFechaHoyISO());
+      if (!window.FinanzasDates.esFechaISOValida(fecha)) return { error: 'La fecha de la compra no es válida.' };
       if (detalles.length === 0) {
         return { compra: null, kardexEntries: [], error: 'La compra debe incluir al menos un producto o insumo.' };
       }
@@ -25,6 +27,24 @@
       let totalCompra = 0;
       const detallesValidados = [];
       const kardexEntries = [];
+      const cantidades = new Map();
+      for (const d of detalles) {
+        if (!d || typeof d !== 'object') return { error: 'Detalle de compra inválido.' };
+        const prod = productosActuales.find(p => p.id === d.productoId && p.negocioId === negocioId);
+        const cantidad = Number(d.cantidad);
+        const precio = Number(d.precioUnitario);
+        if (!prod || !Number.isFinite(cantidad) || cantidad <= 0 || !Number.isFinite(precio) || precio <= 0) {
+          return { error: 'Cada compra requiere un producto del negocio, cantidad y precio positivos.' };
+        }
+        const acumulada = (cantidades.get(prod.id) || 0) + cantidad;
+        cantidades.set(prod.id, acumulada);
+        if (!Number.isFinite(Number(prod.stock)) || Number(prod.stock) < 0 || !Number.isFinite(Number(prod.stock) + acumulada)) return { error: 'Stock inválido.' };
+        totalCompra += cantidad * precio;
+        if (!Number.isFinite(totalCompra)) return { error: 'El importe de la compra excede el límite permitido.' };
+      }
+      const pago = Number(datos.montoPagado ?? totalCompra);
+      if (!Number.isFinite(pago) || pago < 0 || pago > totalCompra) return { error: 'El pago debe estar entre cero y el total de la compra.' };
+      totalCompra = 0;
 
       detalles.forEach(d => {
         const prod = (productosActuales || []).find(p => p.id === d.productoId && p.negocioId === negocioId);
@@ -60,25 +80,25 @@
             stockAnterior: anterior,
             stockPosterior: prod.stock,
             motivo: `Compra confirmada #${datos.id || ''}`,
-            fecha: datos.fecha || (window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0])
+            fecha
           });
         }
       });
 
-      const montoPagado = Math.min(Math.max(Number(datos.montoPagado) || totalCompra, 0), totalCompra);
+      const montoPagado = pago;
       const saldoPendiente = Math.max(totalCompra - montoPagado, 0);
 
       const compra = {
         id: datos.id || `comp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         negocioId,
         proveedorId: datos.proveedorId || null,
-        proveedorNombre: (datos.proveedorNombre || 'Proveedor General').trim(),
-        fecha: datos.fecha || (window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0]),
+        proveedorNombre: String(datos.proveedorNombre || 'Proveedor General').trim(),
+        fecha,
         total: totalCompra,
         montoPagado,
         saldoPendiente,
         estado: 'CONFIRMADA',
-        observaciones: (datos.observaciones || '').trim(),
+        observaciones: String(datos.observaciones || '').trim(),
         detalles: detallesValidados
       };
 

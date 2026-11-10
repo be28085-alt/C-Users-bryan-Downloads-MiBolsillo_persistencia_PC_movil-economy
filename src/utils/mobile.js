@@ -1095,9 +1095,15 @@ class MobileApp {
   // ==========================================================================
   openQuickActionMenu(modulo = null) {
     const mode = modulo || (this.currentModule || 'PERSONAL');
-    const root = document.getElementById('mobileQuickActions');
-    const list = document.getElementById('mobileQuickActionsList');
+    const business = mode === 'EMPRESARIAL';
+    const root = document.getElementById(business ? 'mobileBusinessOptions' : 'mobileQuickActions');
+    const list = document.getElementById(business ? 'mobileBusinessOptionsList' : 'mobileQuickActionsList');
     if (!root || !list) return;
+    if (business && !root.classList.contains('hidden')) {
+      this.closeQuickActionMenu();
+      return;
+    }
+    this._quickActionTrigger = document.activeElement;
 
     const actions = mode === 'EMPRESARIAL'
       ? [
@@ -1106,7 +1112,8 @@ class MobileApp {
           { label: 'Agregar producto', action: 'business-product' },
           { label: 'Registrar gasto', action: 'business-expense' },
           { label: 'Registrar ingreso', action: 'business-income' },
-          { label: 'Movimiento de inventario', action: 'business-inventory' }
+          { label: 'Movimiento de inventario', action: 'business-inventory' },
+          { label: 'Informes', action: 'business-reports' }
         ]
       : [
           { label: 'Registrar ingreso personal', action: 'personal-income' },
@@ -1123,10 +1130,36 @@ class MobileApp {
     `).join('');
 
     root.classList.remove('hidden');
+    if (business) {
+      document.getElementById('mobileBusinessOptionsToggle')?.setAttribute('aria-expanded', 'true');
+      list.querySelector('button')?.focus();
+    }
   }
 
   closeQuickActionMenu() {
     document.getElementById('mobileQuickActions')?.classList.add('hidden');
+    document.getElementById('mobileBusinessOptions')?.classList.add('hidden');
+    document.getElementById('mobileBusinessOptionsToggle')?.setAttribute('aria-expanded', 'false');
+    this._quickActionTrigger?.focus();
+    this._quickActionTrigger = null;
+  }
+
+  handleQuickActionKeydown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeQuickActionMenu();
+    } else if (event.key === 'Tab') {
+      const buttons = Array.from(event.currentTarget.querySelectorAll('button'));
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
   }
 
   handleQuickAction(action) {
@@ -1134,6 +1167,10 @@ class MobileApp {
     const module = this.currentModule || 'PERSONAL';
 
     if (module === 'EMPRESARIAL') {
+      if (action === 'business-reports') {
+        this.switchBusinessTab('informes');
+        return;
+      }
       if (action === 'business-sale') {
         this.openModalBusinessSale();
         return;
@@ -1188,18 +1225,18 @@ class MobileApp {
       <div style="width:100%; display:grid; gap:.5rem;">
         <div class="form-row-custom">
           <label>Artículo</label>
-          <select class="sel-mobile-sale-product" required onchange="mobileApp.updateBusinessSalePrice(this)">
+          <select aria-label="Artículo" class="sel-mobile-sale-product" required onchange="mobileApp.updateBusinessSalePrice(this)">
             <option value="">Seleccione artículo...</option>
             ${productos.map(producto => `<option value="${escapeHTML(producto.id)}" data-price="${Number(producto.precioVenta) || 0}">${escapeHTML(producto.nombre)} (Disp: ${escapeHTML(String(producto.stock || 0))})</option>`).join('')}
           </select>
         </div>
         <div class="form-row-custom">
           <label>Cantidad</label>
-          <input aria-label="Cantidad" class="inp-mobile-sale-quantity" type="number" min="1" step="0.01" value="1" required oninput="mobileApp.updateBusinessSaleTotal()">
+          <input aria-label="Cantidad" class="inp-mobile-sale-quantity" type="number" min="0.01" step="0.01" value="1" required oninput="mobileApp.updateBusinessSaleTotal()">
         </div>
         <div class="form-row-custom">
           <label>Precio unitario</label>
-          <input aria-label="Precio unitario" class="inp-mobile-sale-price" type="number" min="0" step="0.01" value="0" required oninput="mobileApp.updateBusinessSaleTotal()">
+          <input aria-label="Precio unitario" class="inp-mobile-sale-price" type="number" min="0.01" step="0.01" value="0" required oninput="mobileApp.updateBusinessSaleTotal()">
         </div>
         <button class="link-btn" type="button" onclick="this.closest('.business-list-item').remove(); mobileApp.updateBusinessSaleTotal()">Quitar artículo</button>
       </div>
@@ -1235,8 +1272,7 @@ class MobileApp {
         productoId: row.querySelector('.sel-mobile-sale-product')?.value,
         cantidad: Number(row.querySelector('.inp-mobile-sale-quantity')?.value) || 0,
         precioUnitario: Number(row.querySelector('.inp-mobile-sale-price')?.value) || 0
-      }))
-      .filter(detalle => detalle.productoId && detalle.cantidad > 0);
+      }));
 
     if (detalles.length === 0) {
       this.mostrarToast('Agrega al menos un artículo a la factura.');
@@ -1664,13 +1700,8 @@ class MobileApp {
   }
 
   exportarJSON() {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(Finanzas.state, null, 2));
-    const a = document.createElement('a');
-    a.href = dataStr;
-    const periodoLabel = `${Finanzas.state.periodoAnio}_${String(Finanzas.state.periodoMes + 1).padStart(2, '0')}`;
-    a.download = `mibolsillo_backup_${periodoLabel}_movil.json`;
-    a.click();
-    this.mostrarToast('💾 Copia JSON guardada');
+    window.FinanzasExportService.descargarCopiaSeguridadJSON(Finanzas.state);
+    this.mostrarToast('Copia JSON descargada.');
   }
 
   restablecerDatos() {
@@ -1681,6 +1712,10 @@ class MobileApp {
   }
 
   mostrarToast(mensaje) {
+    if (window.FinanzasStorage?.hasPendingChanges()) {
+      mensaje = mensaje.replace(/guardada/g, 'registrada en memoria').replace(/guardado/g, 'registrado en memoria');
+      mensaje += ' ⚠ Hay cambios sin guardar. Revisa el aviso de almacenamiento.';
+    }
     const container = document.getElementById('mobileToastContainer');
     if (!container) return;
     const toast = document.createElement('div');

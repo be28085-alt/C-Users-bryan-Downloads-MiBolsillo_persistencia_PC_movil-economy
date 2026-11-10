@@ -69,7 +69,7 @@
       const sanitized = normalizeSourceState(nextState, baseState);
       this.state = clone(sanitized);
       if (window.MiBolsilloStorage && typeof window.MiBolsilloStorage.saveState === 'function') {
-        window.MiBolsilloStorage.saveState(this.state);
+        this.lastPersistence = { ok: window.MiBolsilloStorage.saveState(this.state) };
       }
       this.notifyListeners();
       return this.state;

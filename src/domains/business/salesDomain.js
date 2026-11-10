@@ -30,14 +30,32 @@
         return { venta: null, kardexEntries: [], error: 'La cédula del cliente es obligatoria para la factura.' };
       }
 
-      // Regla 3: Validación previa estricta de stock disponible
+      // Validar el documento completo antes de tocar existencias.
+      const cantidades = new Map();
+      let totalPrevisto = 0;
+      let costoPrevisto = 0;
       for (const d of detalles) {
+        if (!d || typeof d !== 'object') return { venta: null, kardexEntries: [], error: 'Detalle de venta inválido.' };
         const prod = (productosActuales || []).find(p => p.id === d.productoId && p.negocioId === negocioId);
-        const cantRequerida = Number(d.cantidad) || 0;
+        const cantidad = Number(d.cantidad);
         if (!prod) {
           return { venta: null, kardexEntries: [], error: `El producto ID "${d.productoId}" no existe en este negocio.` };
         }
-        if (prod.stock < cantRequerida) {
+        const precio = Number(d.precioUnitario ?? prod.precioVenta);
+        const costo = Number(prod.costoUnitario ?? 0);
+        const stock = Number(prod.stock);
+        if (!Number.isFinite(cantidad) || cantidad <= 0 || !Number.isFinite(precio) || precio <= 0 ||
+            !Number.isFinite(stock) || stock < 0 || !Number.isFinite(costo) || costo < 0) {
+          return { venta: null, kardexEntries: [], error: 'Cantidad y precio deben ser números positivos; stock y costo deben ser válidos.' };
+        }
+        const cantRequerida = (cantidades.get(prod.id) || 0) + cantidad;
+        cantidades.set(prod.id, cantRequerida);
+        totalPrevisto += cantidad * precio;
+        costoPrevisto += cantidad * costo;
+        if (!Number.isFinite(totalPrevisto) || !Number.isFinite(costoPrevisto)) {
+          return { venta: null, kardexEntries: [], error: 'El importe de la venta excede el límite permitido.' };
+        }
+        if (stock < cantRequerida) {
           return {
             venta: null,
             kardexEntries: [],
@@ -50,13 +68,16 @@
       let costoTotalVenta = 0;
       const detallesValidados = [];
       const kardexEntries = [];
-      const fecha = datos.fecha || (window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0]);
-      const id = datos.id || `vent-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const fecha = String(datos.fecha || (window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0]));
+      if (!window.FinanzasDates.esFechaISOValida(fecha)) {
+        return { venta: null, kardexEntries: [], error: 'La fecha de la venta no es válida.' };
+      }
+      const id = String(datos.id || `vent-${Date.now()}-${Math.floor(Math.random() * 1000)}`);
 
       detalles.forEach(d => {
         const prod = (productosActuales || []).find(p => p.id === d.productoId && p.negocioId === negocioId);
         const cantidad = Number(d.cantidad) || 0;
-        const precioUnitario = Number(d.precioUnitario) || prod.precioVenta || 0;
+        const precioUnitario = Number(d.precioUnitario ?? prod.precioVenta);
         const costoUnitario = Number(prod.costoUnitario) || 0;
         const subtotal = cantidad * precioUnitario;
 
@@ -74,7 +95,7 @@
 
         // Regla 2: Descontar existencias automáticamente
         const stockAnterior = Number(prod.stock) || 0;
-        prod.stock = Math.max(stockAnterior - cantidad, 0);
+        prod.stock = stockAnterior - cantidad;
 
         kardexEntries.push({
           id: `mov-inv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -109,13 +130,13 @@
         clienteDireccion: String(datos.clienteDireccion || '').trim(),
         fecha,
         tipoPago,
-        metodoPago: (datos.metodoPago || (tipoPago === 'CREDITO' ? 'Crédito' : 'Efectivo')).trim(),
+        metodoPago: String(datos.metodoPago || (tipoPago === 'CREDITO' ? 'Crédito' : 'Efectivo')).trim(),
         subtotal: totalVenta,
         total: totalVenta,
         saldoPendiente,
         costoTotalVenta,
         estado,
-        notas: (datos.notas || '').trim(),
+        notas: String(datos.notas || '').trim(),
         detalles: detallesValidados
       };
 

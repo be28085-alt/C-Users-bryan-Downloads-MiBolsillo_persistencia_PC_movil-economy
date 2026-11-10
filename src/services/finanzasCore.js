@@ -147,6 +147,8 @@
       } else if (storage && typeof storage.saveState === 'function') {
         storage.saveState(state);
       }
+      this.lastPersistence = storage && typeof storage.getPersistenceStatus === 'function'
+        ? storage.getPersistenceStatus() : { ok: false, status: 'unavailable' };
       this.notify();
       return state;
     }
@@ -687,6 +689,7 @@
       res.kardexEntries.forEach(k => this.state.movimientosInventario.push(k));
 
       this.guardarEstado();
+      res.persistence = { ...this.lastPersistence };
       return res;
     }
 
@@ -774,6 +777,7 @@
       res.kardexEntries.forEach(k => this.state.movimientosInventario.push(k));
 
       this.guardarEstado();
+      res.persistence = { ...this.lastPersistence };
       return res;
     }
 
@@ -787,11 +791,13 @@
       const venta = (this.state.ventas || []).find(v => v.id === ventaId);
       const cliente = (this.state.clientes || []).find(c => c.id === clienteId);
       if (!venta) return { error: 'Venta no encontrada.' };
+      if (clienteId && (!cliente || clienteId !== venta.clienteId)) return { error: 'El cliente no corresponde a la factura.' };
 
       const domain = window.BusinessCreditsDomain;
       if (!domain) return { error: 'Módulo de créditos no inicializado.' };
 
       const res = domain.registrarAbono(nId, venta, cliente, monto, metodoPago, notas);
+      if (res.error) return res;
       Object.assign(venta, res.ventaActualizada);
       if (cliente && res.clienteActualizado) {
         Object.assign(cliente, res.clienteActualizado);
@@ -801,6 +807,7 @@
       this.state.pagosVenta.push(res.pagoRegistro);
 
       this.guardarEstado();
+      res.persistence = { ...this.lastPersistence };
       return res;
     }
 
@@ -862,6 +869,7 @@
       res.kardexEntries.forEach(k => this.state.movimientosInventario.push(k));
 
       this.guardarEstado();
+      res.persistence = { ...this.lastPersistence };
       return res;
     }
 
