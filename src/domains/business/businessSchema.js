@@ -38,6 +38,7 @@
         ids.add(record.id);
       }
     }
+    for (const b of state.negocios) if (b.reportPreferences !== undefined) window.BusinessReportPreferences.validate(b.reportPreferences);
     for (const key of collections.filter(k => k !== 'negocios')) for (const r of state[key]) {
       // Legacy data stays readable; newly written records use the strict contract.
       if (r.businessVersion !== 1) continue;

@@ -105,7 +105,8 @@
       if (inRange(r.fecha, range)) cash[r.tipo === 'ENTRADA' ? 'incoming' : 'outgoing'] += cents(r.monto);
     }
     const details = selected.sort((a, b) => b.date.localeCompare(a.date) || String(a.id).localeCompare(String(b.id))).map(e => publicTotals({ ...e, profit: e.type === 'SALE' ? e.amount - e.cost : 0n }));
-    return { business: { id: business.id, name: business.nombre }, period, range, today, totals: publicTotals(t), comparison, categories, monthly, details, receivables: decimal(receivables), payables: decimal(payables), inventoryValue: decimal(inventoryValue), lowStockCount, cash: { available: !!cashDomain, invalidCount: invalidCashCount, ...publicTotals({ ...cash, net: cash.incoming - cash.outgoing }) }, invalidCount, hasData: selected.length > 0 };
+    const operations = window.BusinessReportOperationsDomain.build(state, businessId, range, today);
+    return { business: { id: business.id, name: business.nombre }, period, range, today, totals: publicTotals(t), comparison, categories, monthly, details, operations, receivables: decimal(receivables), payables: decimal(payables), inventoryValue: decimal(inventoryValue), lowStockCount, cash: { available: !!cashDomain, invalidCount: invalidCashCount, ...publicTotals({ ...cash, net: cash.incoming - cash.outgoing }) }, invalidCount, hasData: selected.length > 0 };
   }
   window.BusinessReportsDomain = { build, periodRange, decimal, cents, product };
 })();

@@ -139,6 +139,7 @@ class DesktopApp {
 
   actualizarModuloVisual(modulo) {
     const isEmpresarial = modulo === 'EMPRESARIAL';
+    document.body.classList.toggle('bm-business-mode', isEmpresarial);
     document.querySelectorAll('a[href*="mobile.html"]').forEach(a => { a.href = `mobile.html${isEmpresarial ? '?modulo=EMPRESARIAL' : ''}`; });
     const navPersonal = document.getElementById('navPersonal');
     const navEmpresarial = document.getElementById('navEmpresarial');
@@ -170,7 +171,7 @@ class DesktopApp {
 
     if (brandTitle && brandSub && brandIcon) {
       if (isEmpresarial) {
-        brandTitle.textContent = 'Mi Bolsillo Negocios';
+        brandTitle.textContent = 'Mi Negocio';
         brandSub.textContent = 'Gestión empresarial';
         brandIcon.textContent = '🏢';
       } else {
@@ -217,13 +218,16 @@ class DesktopApp {
       'deudas': 'Deudas y obligaciones',
       'informes': 'Informes y analítica',
       'perfil': 'Tu espacio · Perfil y ajustes',
-      'negocio-dashboard': 'Dashboard Empresarial',
+      'negocio-dashboard': 'Inicio',
       'negocio-inventario': 'Inventario del negocio',
       'negocio-movimientos': 'Movimientos del negocio',
-      'negocio-compras': 'Compras & Abastecimiento',
+      'negocio-compras': 'Compras',
       'negocio-proveedores': 'Directorio de Proveedores',
       'negocio-ventas': 'Ventas & Facturación',
       'negocio-informes': 'Informes del negocio',
+      'negocio-productos': 'Productos y utilidad',
+      'negocio-caja': 'Caja / flujo de efectivo',
+      'negocio-gastos': 'Gastos del negocio',
       'negocio-gestion': 'Gestión del negocio'
     };
     const spaceLabel = document.querySelector('.page-breadcrumb > span:first-child');

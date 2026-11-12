@@ -15,9 +15,9 @@
 
   <!-- Estilos dedicados para la versión móvil -->
   <link rel="stylesheet" href="styles/mobile.css?v=20261108-menu">
-  <link rel="stylesheet" href="styles/invoicing.css?v=20261109-1">
-  <link rel="stylesheet" href="styles/businessReports.css?v=20261110-1">
-  <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261109-3">
+  <link rel="stylesheet" href="styles/invoicing.css?v=20261110-5">
+  <link rel="stylesheet" href="styles/businessReports.css?v=20261110-2">
+  <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261110-4">
 </head>
 <body>
 
@@ -25,7 +25,7 @@
   <div class="mobile-top-notice">
     <div>
       <span class="badge">MÓVIL / SMARTPHONE</span>
-      <span style="margin-left: 6px; font-weight: 500;">MiBolsillo (Ingeniería de Sistemas - Semestre I)</span>
+      <span style="margin-left: 6px; font-weight: 500;">MiBolsillo</span>
     </div>
     <div>
       <a href="desktop.html" class="btn-switch-link" title="Abrir versión completa de escritorio">
@@ -357,12 +357,16 @@
              PANTALLA 3B: MÓDULO NEGOCIO (MÓVIL)
              ============================================================ -->
         <section class="screen-view" id="view-negocio">
-          <div class="view-header"><div class="header-titles"><span class="sub-label">GESTIÓN EMPRESARIAL</span><h1 class="screen-title">Mi Negocio</h1></div><button type="button" class="nav-btn business-options-toggle" id="mobileBusinessOptionsToggle" onclick="mobileApp.openQuickActionMenu('EMPRESARIAL')" aria-label="Opciones del negocio" aria-haspopup="dialog" aria-controls="mobileBusinessOptions" aria-expanded="false"><span class="business-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span></button></div>
+          <div class="view-header"><div class="header-titles"><span class="sub-label">GESTIÓN EMPRESARIAL</span><h1 class="screen-title">Mi Negocio</h1></div><div class="bm-mobile-header-actions"></a><button type="button" class="bm-profile-avatar" data-business-profile onclick="mobileApp.switchBusinessTab('perfil')" aria-label="Abrir mi perfil"></button><button type="button" class="nav-btn business-options-toggle" id="mobileBusinessOptionsToggle" onclick="mobileApp.openQuickActionMenu('EMPRESARIAL')" aria-label="Opciones del negocio" aria-haspopup="dialog" aria-controls="mobileBusinessOptions" aria-expanded="false"><span class="business-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span></button></div></div>
           <div class="business-panel active" data-business-panel="negocio"><div data-business-section="dashboard"></div></div>
           <div class="business-panel" data-business-panel="inventario"><div data-business-section="inventory"></div></div>
           <div class="business-panel" data-business-panel="movimientos"><div data-business-section="movements"></div></div>
           <div class="business-panel" data-business-panel="ventas"><div data-business-section="sales"></div></div>
           <div class="business-panel" data-business-panel="proveedores"><div data-business-section="contacts"></div></div>
+          <div class="business-panel" data-business-panel="compras"><div data-business-section="purchases"></div></div>
+          <div class="business-panel" data-business-panel="productos"><div data-business-section="products"></div></div>
+          <div class="business-panel" data-business-panel="caja"><div data-business-section="cash"></div></div>
+          <div class="business-panel" data-business-panel="gastos"><div data-business-section="expenses"></div></div>
           <div class="business-panel" data-business-panel="gestion"><div data-business-section="management"></div></div>
           <div class="business-panel" data-business-panel="informes"><div class="business-reports" data-business-report></div></div>
         </section>
@@ -518,7 +522,7 @@
         <button class="nav-btn" data-business-tab="negocio" onclick="mobileApp.switchBusinessTab('negocio')"><span style="font-size:1.25rem">🏢</span><span>Inicio</span></button>
         <button class="nav-btn" data-business-tab="inventario" onclick="mobileApp.switchBusinessTab('inventario')"><span style="font-size:1.25rem">📦</span><span>Inventario</span></button>
         <button class="nav-btn" data-business-tab="ventas" onclick="mobileApp.switchBusinessTab('ventas')"><span style="font-size:1.25rem">🧾</span><span>Ventas</span></button>
-        <button class="nav-btn" data-business-tab="proveedores" onclick="mobileApp.switchBusinessTab('proveedores')"><span style="font-size:1.25rem">👥</span><span>Contactos</span></button>
+        <button class="nav-btn" data-business-tab="proveedores" onclick="mobileApp.switchBusinessTab('proveedores')"><span style="font-size:1.25rem">👥</span><span>Proveedores</span></button>
         <button class="nav-btn" data-business-tab="gestion" onclick="mobileApp.switchBusinessTab('gestion')"><span style="font-size:1.25rem">🗂️</span><span>Gestión</span></button>
       </nav>
 
@@ -784,7 +788,8 @@
   <script src="src/utils/validators.js?v=20261103-6"></script>
   <script src="src/storage/seedData.js?v=20261103-6"></script>
   <script src="src/storage/demoData.js?v=20261109-3"></script>
-  <script src="src/domains/business/businessSchema.js?v=20261109-3"></script>
+  <script src="src/domains/business/reportPreferences.js?v=20261110-2"></script>
+  <script src="src/domains/business/businessSchema.js?v=20261110-2"></script>
   <script src="src/storage/migrations.js?v=20261109-3"></script>
   <script src="src/storage/localStorage.js?v=20261109-3"></script>
   <script src="src/domains/personal/movementsDomain.js?v=20261103-6"></script>
@@ -794,9 +799,6 @@
   <script src="src/domains/business/businessDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/productsDomain.js?v=20261109-3"></script>
   <script src="src/domains/business/inventoryDomain.js?v=20261103-6"></script>
-<script src="src/domains/business/salesDomain.js?v=20261108-1"></script>
-<script src="src/domains/business/productionDomain.js?v=20261103-6"></script>
-<script src="src/domains/business/expensesDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/metricsDomain.js?v=20261110-1"></script>
   <script src="src/domains/business/cashFlowDomain.js?v=20261109-3"></script>
   <script src="src/domains/user/userService.js?v=20261103-6"></script>
@@ -812,13 +814,17 @@
   <script src="src/storage/businessRepository.js?v=20261109-3"></script>
   <script src="src/invoicing/repository.js?v=20261109-3"></script>
   <script src="src/invoicing/service.js?v=20261109-3"></script>
-  <script src="src/invoicing/exports.js?v=20261109-1"></script>
-  <script src="src/invoicing/ui.js?v=20261109-3"></script>
-  <script src="src/domains/business/businessCommands.js?v=20261109-3"></script>
-  <script src="src/services/businessService.js?v=20261109-3"></script>
-  <script src="src/domains/business/reportsDomain.js?v=20261110-1"></script>
-  <script src="src/ui/views/business/businessReportsView.js?v=20261110-1"></script>
+  <script src="src/invoicing/exports.js?v=20261110-4"></script>
+  <script src="src/invoicing/ui.js?v=20261110-5"></script>
+  <script src="src/domains/business/businessCommands.js?v=20261110-2"></script>
+  <script src="src/services/businessService.js?v=20261110-2"></script>
+  <script src="src/domains/business/reportOperationsDomain.js?v=20261110-2"></script>
+  <script src="src/domains/business/reportsDomain.js?v=20261110-2"></script>
+  <script src="src/ui/views/business/businessReportOperationsView.js?v=20261110-2"></script>
+  <script src="src/ui/views/business/businessReportsView.js?v=20261110-2"></script>
   <script src="src/domains/business/readModel.js?v=20261109-3"></script>
-  <script src="src/ui/views/business/businessWorkspace.js?v=20261109-3"></script>
+  <script src="src/domains/business/workspaceMetrics.js?v=20261110-3"></script>
+  <script src="src/ui/views/business/businessWorkspaceScreens.js?v=20261110-3"></script>
+  <script src="src/ui/views/business/businessWorkspace.js?v=20261110-5"></script>
 </body>
 </html>

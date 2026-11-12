@@ -206,6 +206,7 @@
     stock(state, target, q, 'PRODUCCION', f.nombre, p.id, p.fecha); return result('producciones', p);
   }
   const commands = {
+    saveReportPreferences(s, d) { const b = business(s, false); b.reportPreferences = window.BusinessReportPreferences.validate(d); b.revision = (b.revision || 0) + 1; return result('negocios', b, 'Vista guardada y verificada para este negocio.'); },
     saveProduct: product, saveCustomer: (s, d) => contact(s, d, 'clientes'), saveSupplier: (s, d) => contact(s, d, 'proveedores'), archive,
     sale, purchase, saveExpense: (s, d) => movement(s, d, 'gastosNegocio'), saveIncome: (s, d) => movement(s, d, 'ingresosNegocio'), cancel, saveEmployee: employee, saveFormula: formula, production,
     adjustStock(s, d) { const p = find(s, 'productos', d.productoId), target = quantity(d.nuevoStock); stock(s, p, target - quantity(p.stock), 'AJUSTE', text(d.motivo, true), uuid(), date(d.fecha)); return result('productos', p); },

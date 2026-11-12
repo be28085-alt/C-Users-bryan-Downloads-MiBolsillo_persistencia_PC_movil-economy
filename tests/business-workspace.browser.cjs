@@ -11,20 +11,32 @@ const server = http.createServer((req, res) => {
   if (!file.startsWith(root + path.sep)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (e, data) => { if (e) { res.writeHead(404); res.end(); } else { res.setHeader('Content-Type', ({ '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' })[path.extname(file)] || 'application/octet-stream'); res.end(data); } });
 });
-const routes = { dashboard: ['negocio-dashboard', 'negocio'], inventory: ['negocio-inventario', 'inventario'], movements: ['negocio-movimientos', 'movimientos'], sales: ['negocio-ventas', 'ventas'], contacts: ['negocio-proveedores', 'proveedores'], management: ['negocio-gestion', 'gestion'] };
+const routes = { dashboard: ['negocio-dashboard', 'negocio'], inventory: ['negocio-inventario', 'inventario'], movements: ['negocio-movimientos', 'movimientos'], sales: ['negocio-ventas', 'ventas'], contacts: ['negocio-proveedores', 'proveedores'], management: ['negocio-gestion', 'gestion'], purchases: ['negocio-compras', 'compras'], products: ['negocio-productos', 'productos'], cash: ['negocio-caja', 'caja'], expenses: ['negocio-gastos', 'gastos'] };
 async function nav(page, section, mobile) {
   const route = routes[section][mobile ? 1 : 0];
   if (!mobile) await page.locator(`#navEmpresarial [data-view="${route}"]`).click();
   else if (section === 'movements') { await page.locator('#mobileBusinessOptionsToggle').click(); await page.locator('[data-quick-action="business-movements"]').click(); }
+  else if (['purchases', 'products', 'cash', 'expenses'].includes(section)) await page.locator('.business-panel.active .bm-mobile-sections [data-section="' + section + '"]').click();
   else await page.locator(`#mobileBusinessNav [data-business-tab="${route}"]`).click();
   return page.locator(`[data-business-section="${section}"]`);
 }
 async function fill(dialog, values) { for (const [name, value] of Object.entries(values)) await dialog.locator(`[name="${name}"]`).fill(String(value)); }
 async function save(page, double = false) {
   const dialog = page.locator('.bm-dialog[open]');
+  if (await dialog.locator('.bm-invoice-brand').count()) await page.screenshot({ path: path.join(output, 'sale-form-' + await page.evaluate(() => location.pathname.includes('mobile') ? 'mobile' : 'pc') + '.png') });
   if (double) await dialog.locator('button[type="submit"]').evaluate(b => { b.click(); b.click(); });
   else await dialog.locator('button[type="submit"]').click();
-  await page.waitForFunction(() => !document.querySelector('.bm-dialog')?.open);
+  await page.waitForFunction(() => !document.querySelector('.bm-dialog')?.open || !!document.querySelector('.bm-sale-success'));
+  if (await dialog.locator('.bm-sale-success').count()) {
+    await page.screenshot({ path: path.join(output, 'sale-complete-' + await page.evaluate(() => location.pathname.includes('mobile') ? 'mobile' : 'pc') + '.png') });
+    const snapshot = await page.evaluate(() => JSON.stringify([Finanzas.state.ventas, Finanzas.state.productos, Finanzas.state.pagosVenta]));
+    const downloaded = page.waitForEvent('download'); await dialog.getByRole('button', { name: 'Descargar PDF', exact: true }).click();
+    const file = await downloaded; const target = path.join(output, 'sale-' + await page.evaluate(() => location.pathname.includes('mobile') ? 'mobile' : 'pc') + '.pdf'); await file.saveAs(target);
+    assert.equal(fs.readFileSync(target).subarray(0, 8).toString(), '%PDF-1.4');
+    const opened = page.waitForEvent('popup'); await dialog.getByRole('button', { name: 'Imprimir comprobante', exact: true }).click(); const popup = await opened; await popup.waitForLoadState(); assert.match(await popup.locator('body').innerText(), /SIN VALIDEZ FISCAL/); await popup.close();
+    assert.equal(await page.evaluate(() => JSON.stringify([Finanzas.state.ventas, Finanzas.state.productos, Finanzas.state.pagosVenta])), snapshot);
+    await dialog.getByRole('button', { name: 'Finalizar', exact: true }).click();
+  }
 }
 async function flow(page, mobile) {
   let view = await nav(page, 'contacts', mobile); await view.locator('[data-tab="suppliers"]').click(); await view.getByRole('button', { name: '+ Proveedor', exact: true }).click();
@@ -42,10 +54,17 @@ async function flow(page, mobile) {
   await dialog.locator('[name="productoId"]').selectOption({ label: 'Artículo principal · stock 10' });
   await fill(dialog, { cantidad: '5', precioUnitario: '1200', fecha: '2026-11-09', fechaVencimiento: '2026-12-09' }); await dialog.locator('[name="tipoPago"]').selectOption('CREDITO'); await save(page);
   view = await nav(page, 'sales', mobile); await view.getByRole('button', { name: '+ Confirmar venta', exact: true }).click();
-  dialog = page.locator('.bm-dialog[open]'); await dialog.locator('[name="clienteId"]').selectOption({ label: 'Cliente A · 123456' }); await dialog.locator('[name="productoId"]').selectOption({ label: 'Artículo principal · stock 15' });
-  await fill(dialog, { cantidad: '3', descuentoPorcentaje: '10', fecha: '2026-11-09', fechaVencimiento: '2026-12-09' }); await dialog.locator('[name="impuesto"]').selectOption('IVA:19'); await dialog.locator('[name="tipoPago"]').selectOption('CREDITO'); await save(page, true);
+  dialog = page.locator('.invoice-dialog[open]');
+  await dialog.locator('[name="customerId"]').selectOption({ label: 'Cliente A · 123456' });
+  await dialog.locator('[name="productId"]').selectOption({ label: 'Artículo principal · stock 15' });
+  await fill(dialog, { quantity: '3', discountPercent: '10', date: '2026-11-09', dueDate: '2026-12-09' });
+  await dialog.locator('[name="paymentTerms"]').selectOption('CREDITO');
+  await dialog.locator('#inv-editor [value="submit"]').click();
+  await dialog.locator('.inv-sale-complete').waitFor();
   assert.equal(await page.evaluate(() => Finanzas.state.ventas.length), 1);
-  await view.getByRole('button', { name: 'Registrar pago', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { monto: '2000', fecha: '2026-11-09' }); await save(page);
+  await dialog.locator('#inv-payment [name="amount"]').fill('2000'); await dialog.locator('#inv-payment button').click();
+  await page.waitForFunction(() => Finanzas.state.ventas[0].saldoPendiente === 4426);
+  await dialog.locator('[data-inv="close"]').click();
   view = await nav(page, 'management', mobile); await view.locator('[data-tab="payables"]').click(); await view.getByRole('button', { name: 'Registrar pago', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { monto: '1000', fecha: '2026-11-09' }); await save(page);
   view = await nav(page, 'movements', mobile); await view.getByRole('button', { name: '+ Gasto', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { descripcion: 'Servicios empresariales', categoria: 'Servicios', monto: '500', fecha: '2026-11-09' }); await save(page);
   await view.getByRole('button', { name: '+ Ingreso', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { descripcion: 'Ingreso adicional', monto: '250', fecha: '2026-11-09' }); await save(page);
@@ -66,7 +85,7 @@ async function flow(page, mobile) {
   const downloaded = page.waitForEvent('download'); await view.getByRole('button', { name: 'Descargar CSV', exact: true }).click(); const file = await downloaded; await file.saveAs(path.join(output, `${mobile ? 'mobile' : 'pc'}-products.csv`));
   await view.getByRole('button', { name: 'Consultar', exact: true }).click(); await page.locator('.bm-dialog[open] [data-bm="close"]').first().click();
   // Print a real sale voucher (the normal flow does not fabricate an official invoice).
-  view = await nav(page, 'sales', mobile); const popupPromise = page.waitForEvent('popup'); await view.getByRole('button', { name: 'Comprobante', exact: true }).click(); const popup = await popupPromise; await popup.waitForLoadState(); assert.match(await popup.locator('body').innerText(), /SIN VALIDEZ FISCAL/); await popup.close();
+  view = await nav(page, 'sales', mobile); const downloadPromise = page.waitForEvent('download'); await view.getByRole('button', { name: 'Comprobante', exact: true }).click(); await (await downloadPromise).saveAs(path.join(output, 'linked-sale.pdf'));
   // Recipes, stock consumption and the produced lot are exercised through the actual forms.
   view = await nav(page, 'inventory', mobile); await view.getByRole('button', { name: '+ Producto', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Producto fabricado', sku: 'FAB', precioVenta: '5000' }); await save(page);
   view = await nav(page, 'management', mobile); await view.locator('[data-tab="production"]').click(); await view.getByRole('button', { name: '+ Receta', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Receta comprobada', cantidadBase: '1' });
@@ -88,7 +107,7 @@ async function flow(page, mobile) {
   view = await nav(page, 'contacts', mobile); await view.locator('[data-tab="suppliers"]').click(); assert.equal(await view.locator('tr[data-record-id]').count(), 10); await view.getByRole('button', { name: 'Siguiente', exact: true }).click(); assert.equal(await view.locator('tr[data-record-id]').count(), 2); await view.getByRole('button', { name: 'Anterior', exact: true }).click(); assert.equal(await view.locator('tr[data-record-id]').count(), 10);
   // Archive a related customer and retain the sale and customer snapshot.
   view = await nav(page, 'contacts', mobile); await view.locator('[data-tab="customers"]').click(); await view.getByRole('button', { name: 'Eliminar / archivar', exact: true }).click(); await save(page);
-  assert.equal(await page.evaluate(() => Finanzas.state.clientes[0].estado), 'ARCHIVADO'); assert.equal(await page.evaluate(() => Finanzas.state.ventas[0].clienteSnapshot.nombre), 'Cliente A');
+  assert.equal(await page.evaluate(() => Finanzas.state.clientes[0].estado), 'ARCHIVADO'); assert.equal(await page.evaluate(() => Finanzas.state.facturacion.documents.find(d => d.id === Finanzas.state.ventas[0].invoiceDocumentId).customer.name), 'Cliente A');
 }
 async function seed(page) {
   await page.evaluate(async () => {
@@ -116,6 +135,22 @@ async function seed(page) {
         const bounds = await view.evaluate(el => ({ right: el.getBoundingClientRect().right, scroll: el.scrollWidth, client: el.clientWidth, viewport: innerWidth }));
         assert.ok(bounds.right <= bounds.viewport + 2, `${name} ${width} ${section}: right=${bounds.right}`);
         assert.ok(bounds.scroll <= bounds.client + 2, `${name} ${width} ${section}: horizontal overflow ${bounds.scroll}/${bounds.client}`);
+        assert.equal(await view.locator('h1').count(), 1);
+        if (!['management', 'movements'].includes(section)) assert.equal(await view.locator('.bm-kpis article').count(), 4);
+        if ((!mobile && width === 1366) || (mobile && width === 390)) await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-${section}.png`), animations: 'disabled' });
+        if ((width === 1366 && !mobile) || (width === 390 && mobile)) {
+          if (['purchases', 'products', 'cash', 'expenses'].includes(section)) {
+            await view.locator('.bm-header .bm-primary').click();
+            const dialog = page.locator('.bm-dialog[open]'); await dialog.waitFor();
+            assert.ok(await dialog.locator('form').count());
+            await dialog.locator('[data-bm="close"]').first().click();
+          }
+          if (['dashboard', 'cash'].includes(section)) {
+            await view.locator('.bm-chart-data summary').click();
+            assert.equal(await view.locator('.bm-chart-data tbody tr').count(), 6);
+            await view.locator('.bm-chart-data summary').click();
+          }
+        }
       }
       await nav(page, 'dashboard', mobile);
       if (!mobile && width >= 768) assert.ok(await page.locator('.top-notice-bar').evaluate(bar => {
@@ -125,6 +160,14 @@ async function seed(page) {
       await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-dashboard.png`), animations: 'disabled' });
       await nav(page, 'inventory', mobile); await page.locator('[data-business-section="inventory"]').getByRole('button', { name: '+ Producto', exact: true }).click();
       const dialog = page.locator('.bm-dialog[open]'); assert.ok(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 2)); await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-form.png`) }); await dialog.locator('[data-bm="close"]').first().click();
+      const avatar = page.locator(mobile ? '#view-negocio [data-business-profile]' : '.pc-top-header [data-business-profile]');
+      if (mobile || width >= 768) {
+        assert.ok((await avatar.innerText()).trim());
+        const version = page.locator(mobile ? '#view-negocio .bm-version-button' : '.pc-top-header .bm-version-button');
+        assert.match(await version.getAttribute('href'), mobile ? /desktop.html.*EMPRESARIAL/ : /mobile.html.*EMPRESARIAL/);
+        await avatar.click(); assert.equal(await page.locator('#view-perfil').evaluate(el => el.classList.contains('active')), true);
+        await nav(page, 'dashboard', mobile);
+      }
       const personal = await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos));
       await page.evaluate(() => { if (typeof pcApp !== 'undefined') pcApp.setModulo('PERSONAL', 'inicio'); else mobileApp.setModulo('PERSONAL', 'inicio'); });
       assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)), personal); assert.equal(await page.locator('#view-inicio').evaluate(el => el.classList.contains('active')), true);

@@ -9,16 +9,12 @@
   const amountField = (label, name, value = '', required = true) => field(label, name, value, `inputmode="decimal" ${required ? 'required' : ''}`);
   const isActive = r => !['ARCHIVADO', 'ANULADA', 'INACTIVO'].includes(r.estado);
   let dialog, dialogBody, feedback, formContext, busy = false, focusReturn, latestModel;
-  const titles = { dashboard: 'Resumen del negocio', inventory: 'Inventario y productos', movements: 'Movimientos del negocio', sales: 'Ventas y facturación', contacts: 'Clientes y proveedores', management: 'Gestión del negocio' };
-  const pcViews = { dashboard: 'negocio-dashboard', inventory: 'negocio-inventario', movements: 'negocio-movimientos', sales: 'negocio-ventas', contacts: 'negocio-proveedores', management: 'negocio-gestion' };
-  const mobileViews = { dashboard: 'negocio', inventory: 'inventario', movements: 'movimientos', sales: 'ventas', contacts: 'proveedores', management: 'gestion' };
+  const titles = window.BusinessWorkspaceScreens.titles;
+  const pcViews = { dashboard: 'negocio-dashboard', inventory: 'negocio-inventario', movements: 'negocio-movimientos', sales: 'negocio-ventas', contacts: 'negocio-proveedores', management: 'negocio-gestion', purchases: 'negocio-compras', products: 'negocio-productos', cash: 'negocio-caja', expenses: 'negocio-gastos' };
+  const mobileViews = { dashboard: 'negocio', inventory: 'inventario', movements: 'movimientos', sales: 'ventas', contacts: 'proveedores', management: 'gestion', purchases: 'compras', products: 'productos', cash: 'caja', expenses: 'gastos' };
   const kindCollection = { product: 'productos', customer: 'clientes', supplier: 'proveedores', employee: 'empleados', expense: 'gastosNegocio', income: 'ingresosNegocio', sale: 'ventas', purchase: 'compras', formula: 'formulas', production: 'producciones', business: 'negocios', deleteBusiness: 'negocios' };
   const col = (label, get, html = false) => ({ label, get, html });
   const status = r => `<span class="bm-badge ${['ANULADA', 'ARCHIVADO', 'INACTIVO'].includes(r.estado) ? 'bm-muted-badge' : ''}">${E(r.estado || 'ACTIVO')}</span>`;
-  function header(root) {
-    const business = window.Finanzas.getNegocioActivo();
-    return `<header class="bm-header"><div><small>MI NEGOCIO</small><h1>${titles[root.dataset.businessSection]}</h1><p>${E(business?.nombre || 'Selecciona un negocio')} · datos guardados en este navegador</p></div><div class="bm-header-controls"><label>Negocio activo<select data-bm-active>${window.Finanzas.getNegocios().map(n => `<option value="${E(n.id)}" ${n.id === business?.id ? 'selected' : ''}>${E(n.nombre)}</option>`).join('')}</select></label>${button('Acciones', 'actions')}</div></header>`;
-  }
   function tabs(root, values, fallback) {
     const selected = root.dataset.tab || fallback; root.dataset.tab = selected;
     return `<nav class="bm-tabs" aria-label="Secciones de ${titles[root.dataset.businessSection]}">${values.map(([key, label]) => `<button type="button" data-bm="tab" data-tab="${key}" aria-pressed="${key === selected}">${label}</button>`).join('')}</nav>`;
@@ -36,29 +32,6 @@
   }
   function catalogActions(r, collection, kind) { return `<div class="bm-row-actions">${action('Consultar', 'detail', collection, r.id)}${action('Editar', 'form', collection, r.id, kind)}${r.estado !== 'ARCHIVADO' ? action('Eliminar / archivar', 'archive', collection, r.id) : ''}</div>`; }
   function commercialActions(r, collection) { return `<div class="bm-row-actions">${action('Consultar', 'detail', collection, r.id)}${Number(r.saldoPendiente) > 0 && r.estado !== 'ANULADA' ? action('Registrar pago', 'form', collection, r.id, 'payment') : ''}${r.estado !== 'ANULADA' ? action(r.invoiceDocumentId ? 'Notas de ajuste' : 'Anular', r.invoiceDocumentId ? 'invoice' : 'cancel', collection, r.invoiceDocumentId || r.id) : ''}${action('Comprobante', 'print', collection, r.id)}</div>`; }
-  function dashboard(root, m) {
-    const t = m.report.totals;
-    const period = root.dataset.period || 'MES_ACTUAL';
-    const controls = `<div class="bm-toolbar"><label>Período de resultados<select data-bm-period>${[['MES_ACTUAL', 'Mes actual'], ['MES_ANTERIOR', 'Mes anterior'], ['ANIO_ACTUAL', 'Año actual'], ['TODOS', 'Histórico']].map(([v, l]) => `<option value="${v}" ${period === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label><div class="bm-actions">${button('+ Venta', 'form', 'data-kind="sale"', true)}${button('+ Compra', 'form', 'data-kind="purchase"')}${button('+ Gasto', 'form', 'data-kind="expense"')}${button('+ Ingreso', 'form', 'data-kind="income"')}</div></div>`;
-    const cards = [
-      ['Utilidad neta', money(t.netProfit), `Margen neto: ${t.margin}%`, 'bm-hero'], ['Ventas netas', money(t.sales), `${t.salesCount} ventas en ${m.report.range.label}`], ['Ingresos totales', money(t.income), 'Ventas netas + otros ingresos'], ['Costos y gastos', money(t.expenses), 'Costo de ventas + operación y pagos a empleados'], ['Por cobrar', money(m.receivableTotal), 'Saldo actual de clientes'], ['Por pagar', money(m.payableTotal), 'Compras y gastos pendientes'], ['Productos disponibles', m.products.filter(p => Number(p.stock) > 0).length, `${m.lowStock.length} con inventario bajo`], ['Clientes registrados', m.customers.filter(isActive).length, 'Contactos activos del negocio'], ['Facturas generadas', m.invoiceCount, `${m.draftCount} borradores de simulación`], ['Flujo neto registrado', money(m.cash.flujoNeto), 'Cobros menos pagos acumulados; no es saldo bancario']
-    ];
-    return `${controls}<div class="bm-kpis">${cards.map(([label, value, desc, extra]) => `<article class="${extra || ''}"><span>${label}</span><strong>${E(value)}</strong><small>${E(desc)}</small></article>`).join('')}</div><div class="bm-grid"><section class="bm-card business-reports"><h2>Ventas, ingresos y gastos</h2><p>Últimos seis meses · los cobros de cartera no duplican ingresos</p><div class="br-chart-key"><span><i class="br-dot" style="background:#278fa4"></i>Ventas netas</span><span><i class="br-dot" style="background:#0f8b65"></i>Ingresos totales</span><span><i class="br-dot" style="background:#d93858"></i>Costos y gastos</span></div>${window.BusinessReportsView.bars(m.report, true)}</section><section class="bm-card"><h2>Alertas de inventario</h2>${m.lowStock.map(p => `<div class="bm-alert-row"><span>${E(p.nombre)}<small>Mínimo ${E(p.stockMinimo || 0)} ${E(p.unidadMedida)}</small></span><strong>${E(p.stock)}</strong>${action('Revisar', 'detail', 'productos', p.id)}</div>`).join('') || '<p>Sin productos por debajo del inventario mínimo.</p>'}</section></div><section class="bm-card"><h2>Últimas ventas</h2>${tableHtml(m.sales.slice(0, 5), [col('Número', r => r.numeroFactura || r.id), col('Cliente', r => r.clienteNombre), col('Fecha', r => r.fecha), col('Total', r => money(r.total)), col('Estado', status, true), col('Acciones', r => commercialActions(r, 'ventas'), true)])}</section>`;
-  }
-  function inventory(root, m) {
-    const nav = tabs(root, [['products', 'Productos'], ['history', 'Historial de inventario']], 'products');
-    if (root.dataset.tab === 'history') return nav + list(root, m.stockHistory.slice().reverse(), [col('Fecha', r => r.fecha), col('Producto', r => r.productoNombre), col('Movimiento', r => r.tipo), col('Cantidad', r => r.cantidad), col('Antes', r => r.stockAnterior), col('Después', r => r.stockPosterior), col('Motivo', r => r.motivo)], button('Registrar entrada / salida / ajuste', 'form', 'data-kind="stock"', true));
-    const all = window.Finanzas.state.productos.filter(p => p.negocioId === m.report.business.id);
-    return nav + list(root, all, [col('Producto', r => r.nombre), col('SKU / tipo', r => `${r.sku || '—'} · ${r.tipo || 'PRODUCTO'}`), col('Existencias', r => `${r.stock} ${r.unidadMedida || 'UND'}`), col('Costo', r => money(r.costoUnitario)), col('Precio', r => money(r.precioVenta)), col('Alerta', r => r.estado === 'ARCHIVADO' ? 'Archivado' : Number(r.stock) <= Number(r.stockMinimo || 0) ? 'Inventario bajo' : 'Disponible'), col('Acciones', r => catalogActions(r, 'productos', 'product') + (r.estado !== 'ARCHIVADO' ? action('Movimiento', 'form', 'productos', r.id, 'stock') : ''), true)], button('+ Producto', 'form', 'data-kind="product"', true));
-  }
-  function sales(root, m) {
-    return `<p class="bm-note">Las ventas confirmadas conservan su detalle. Las correcciones usan anulaciones o notas en la facturación simulada.</p>` + list(root, m.sales, [col('Número', r => r.numeroFactura || r.id), col('Cliente', r => r.clienteNombre), col('Fecha', r => r.fecha), col('Total', r => money(r.total)), col('Por cobrar', r => money(r.saldoPendiente)), col('Estado', status, true), col('Acciones', r => commercialActions(r, 'ventas'), true)], button('+ Confirmar venta', 'form', 'data-kind="sale"', true) + '<button type="button" data-invoice-open>Facturación electrónica simulada</button>');
-  }
-  function contacts(root, m) {
-    const nav = tabs(root, [['customers', 'Clientes'], ['suppliers', 'Proveedores']], 'customers');
-    const customer = root.dataset.tab === 'customers', collection = customer ? 'clientes' : 'proveedores', kind = customer ? 'customer' : 'supplier';
-    return nav + list(root, customer ? m.customers : m.suppliers, [col('Nombre', r => r.nombre), col('Identificación', r => r.cedula || r.documento || '—'), col('Contacto', r => `${r.telefono || ''} ${r.email || ''}`), col(customer ? 'Por cobrar' : 'Por pagar', r => money(r.saldoPendiente)), col('Estado', status, true), col('Acciones', r => catalogActions(r, collection, kind), true)], button(customer ? '+ Cliente' : '+ Proveedor', 'form', `data-kind="${kind}"`, true));
-  }
   function movements(root, m) {
     const nav = tabs(root, [['cash', 'Cobros y pagos'], ['expenses', 'Gastos'], ['incomes', 'Otros ingresos']], 'cash');
     const actions = button('+ Gasto', 'form', 'data-kind="expense"', true) + button('+ Ingreso', 'form', 'data-kind="income"');
@@ -67,27 +40,33 @@
     return nav + list(root, expense ? m.expenses : m.incomes, [col('Fecha', r => r.fecha), col('Categoría', r => r.categoria), col('Descripción', r => r.descripcion), col('Monto', r => money(r.monto)), col('Estado', status, true), col('Acciones', r => `${action('Consultar', 'detail', collection, r.id)}${r.estado !== 'ANULADA' ? action('Editar', 'form', collection, r.id, kind) + action('Anular', 'cancel', collection, r.id) : ''}`, true)], actions);
   }
   function management(root, m) {
-    const nav = tabs(root, [['purchases', 'Compras'], ['receivables', 'Por cobrar'], ['payables', 'Por pagar'], ['employees', 'Empleados'], ['production', 'Producción'], ['business', 'Mi negocio']], 'purchases');
+    const nav = tabs(root, [['purchases', 'Compras'], ['receivables', 'Por cobrar'], ['payables', 'Por pagar'], ['employees', 'Empleados'], ['production', 'Producción'], ['business', 'Mi negocio']], 'purchases') + `<div class="bm-report-shortcut"><span>Registra y administra aquí tus operaciones. Consulta los resultados y el detalle consolidado en Informes.</span>${button('Ver informe de esta sección', 'report')}</div>`;
     const tab = root.dataset.tab;
     if (tab === 'purchases') return nav + list(root, m.purchases, [col('Referencia', r => r.id), col('Proveedor', r => r.proveedorNombre), col('Fecha', r => r.fecha), col('Total', r => money(r.total)), col('Pagado', r => money(r.montoPagado)), col('Pendiente', r => money(r.saldoPendiente)), col('Estado', status, true), col('Acciones', r => commercialActions(r, 'compras'), true)], button('+ Compra', 'form', 'data-kind="purchase"', true));
     if (tab === 'receivables' || tab === 'payables') {
       const receivable = tab === 'receivables', rows = receivable ? m.receivables : m.payables;
       const dueDate = r => r.fechaVencimiento || window.Finanzas.state.facturacion?.documents.find(d => d.id === r.invoiceDocumentId)?.dueDate || '';
-      return nav + `<div class="bm-summary">Saldo pendiente actual: <strong>${E(money(receivable ? m.receivableTotal : m.payableTotal))}</strong></div>` + list(root, rows, [col(receivable ? 'Cliente' : 'Proveedor', r => receivable ? r.clienteNombre : r.proveedorNombre), col('Referencia', r => r.numeroFactura || r.id), col('Vencimiento', r => dueDate(r) || 'Sin fecha registrada'), col('Situación', r => dueDate(r) && dueDate(r) < window.BusinessUtils.today() ? 'Vencida' : 'Pendiente'), col('Saldo', r => money(r.saldoPendiente)), col('Acciones', r => action('Registrar pago', 'form', receivable ? 'ventas' : r.collection, r.id, 'payment') + action('Historial', 'detail', receivable ? 'ventas' : r.collection, r.id), true)]);
+      return nav + `<div class="bm-summary">Saldo pendiente actual: <strong>${E(money(receivable ? m.receivableTotal : m.payableTotal))}</strong></div>` + list(root, rows, [col(receivable ? 'Cliente' : 'Proveedor', r => receivable ? r.clienteNombre : r.proveedorNombre), col('Referencia', r => r.numeroFactura || r.numeroCompra || (r.id?.length > 20 ? `CMP-${r.id.slice(0, 8).toUpperCase()}` : r.id)), col('Vencimiento', r => dueDate(r) || 'Sin fecha registrada'), col('Situación', r => dueDate(r) && dueDate(r) < window.BusinessUtils.today() ? 'Vencida' : 'Pendiente'), col('Saldo', r => money(r.saldoPendiente)), col('Acciones', r => action('Registrar pago', 'form', receivable ? 'ventas' : r.collection, r.id, 'payment') + action('Historial', 'detail', receivable ? 'ventas' : r.collection, r.id), true)]);
     }
     if (tab === 'employees') {
       const payroll = window.Finanzas.state.pagosEmpleado.filter(p => p.negocioId === m.report.business.id).slice().reverse();
       return nav + `<p class="bm-note">Registro administrativo de colaboradores y pagos empresariales. No realiza liquidación de nómina legal.</p>` + list(root, m.employees, [col('Empleado', r => r.nombre), col('Cargo', r => r.cargo), col('Referencia de salario', r => money(r.salario)), col('Estado', status, true), col('Acciones', r => catalogActions(r, 'empleados', 'employee') + (r.estado === 'ACTIVO' ? action('Registrar pago', 'form', 'empleados', r.id, 'payroll') : ''), true)], button('+ Empleado', 'form', 'data-kind="employee"', true)) + `<section class="bm-card"><h2>Pagos a empleados</h2>${tableHtml(payroll, [col('Fecha', r => r.fecha), col('Empleado', r => r.empleadoNombre), col('Período', r => r.periodo), col('Monto', r => money(r.monto)), col('Estado', status, true), col('Acciones', r => action('Comprobante', 'print', 'pagosEmpleado', r.id) + (r.estado !== 'ANULADA' ? action('Anular', 'cancel', 'pagosEmpleado', r.id) : ''), true)])}</section>`;
     }
     if (tab === 'production') return nav + list(root, m.formulas, [col('Receta', r => r.nombre), col('Producto', r => r.productoNombre), col('Cantidad base', r => r.cantidadBase), col('Estado', status, true), col('Acciones', r => catalogActions(r, 'formulas', 'formula') + (isActive(r) ? action('Producir', 'form', 'formulas', r.id, 'production') : ''), true)], button('+ Receta', 'form', 'data-kind="formula"', true)) + `<section class="bm-card"><h2>Lotes fabricados</h2>${tableHtml(m.productions.slice().reverse(), [col('Fecha', r => r.fecha), col('Producto', r => r.productoNombre), col('Cantidad', r => r.cantidadProducida), col('Costo total', r => money(r.costoTotal)), col('Acciones', r => action('Consultar', 'detail', 'producciones', r.id), true)])}</section>`;
-    return nav + `<section class="bm-card"><h2>Información y negocios</h2><p>${E(m.report.business.name)}</p><div class="bm-actions">${button('Editar negocio activo', 'form', `data-kind="business" data-id="${E(m.report.business.id)}"`)}${button('+ Crear negocio', 'form', 'data-kind="business"')}${button('Eliminar negocio sin historial', 'form', `data-kind="deleteBusiness" data-id="${E(m.report.business.id)}"`)}</div><p class="bm-note">Los negocios con movimientos o documentos no se eliminan. Las copias JSON del perfil incluyen todo el estado; cada negocio conserva sus relaciones.</p></section>`;
+    const state = window.Finanzas.state, businessId = m.report.business.id;
+    const canDelete = state.negocios.length > 1 && !window.BusinessSchema.collections.some(key => key !== 'negocios' && state[key].some(r => r.negocioId === businessId)) && !(state.facturacion?.documents || []).some(d => d.businessId === businessId);
+    return nav + `<section class="bm-card"><h2>Información y negocios</h2><p>${E(m.report.business.name)}</p><div class="bm-actions">${button('Editar negocio activo', 'form', `data-kind="business" data-id="${E(m.report.business.id)}"`)}${button('+ Crear negocio', 'form', 'data-kind="business"')}${canDelete ? button('Eliminar negocio sin historial', 'form', `data-kind="deleteBusiness" data-id="${E(m.report.business.id)}"`) : ''}</div><p class="bm-note">Los negocios con movimientos o documentos no se eliminan. Las copias JSON del perfil incluyen todo el estado; cada negocio conserva sus relaciones.</p></section>`;
   }
+  const screens = window.BusinessWorkspaceScreens.create({ E, money, button, action, col, status, list, tableHtml, catalogActions, commercialActions });
   function renderRoot(root, model) {
     const m = model || window.BusinessReadModel.build(window.Finanzas, window.Finanzas.state.negocioActivoId, root.dataset.period || 'MES_ACTUAL');
     latestModel = m;
+    document.querySelectorAll('[data-business-profile]').forEach(b => { b.textContent = window.Finanzas.state.usuario?.iniciales || 'Yo'; });
     root.classList.add('business-manager');
     const section = root.dataset.businessSection;
-    root.innerHTML = header(root) + ({ dashboard, inventory, movements, sales, contacts, management }[section])(root, m);
+    root.innerHTML = screens.header(root) + ({ ...screens, movements, management }[section])(root, m) + '<footer class="bm-workspace-footer"><span>Mi Negocio · Tu información, en orden</span><span>Datos guardados en este navegador</span></footer>';
+    const nav = root.querySelector('.bm-mobile-sections'), selected = nav?.querySelector('[aria-current="page"]');
+    if (selected) nav.scrollLeft = Math.max(0, selected.offsetLeft - nav.offsetLeft - (nav.clientWidth - selected.offsetWidth) / 2);
   }
   function renderAll() {
     const core = window.Finanzas, b = core?.getNegocioActivo();
@@ -97,6 +76,7 @@
     });
   }
   function navigate(section, tab = '') {
+    if (!Object.hasOwn(pcViews, section)) return;
     if (typeof pcApp !== 'undefined') pcApp.switchView(pcViews[section]);
     else if (window.mobileApp) window.mobileApp.switchBusinessTab(mobileViews[section]);
     const root = document.querySelector(`[data-business-section="${section}"]`);
@@ -109,7 +89,7 @@
     document.body.appendChild(dialog); dialogBody = dialog.querySelector('.bm-dialog-body'); feedback = dialog.querySelector('.bm-form-feedback');
     dialog.addEventListener('submit', submit);
     dialog.addEventListener('input', event => { if (event.target.closest('.bm-lines')) preview(); });
-    dialog.addEventListener('change', event => { if (event.target.matches('[data-bm-product]')) { const p = window.Finanzas.getProductoById(event.target.value); const row = event.target.closest('.bm-line'); row.querySelector('[name="precioUnitario"]').value = p?.[formContext.kind === 'purchase' ? 'costoUnitario' : 'precioVenta'] || '0'; } preview(); });
+    dialog.addEventListener('change', event => { if (event.target.name === 'clienteId') { const c = window.Finanzas.state.clientes.find(c => c.id === event.target.value); const target = dialogBody.querySelector('[data-sale-customer]'); if (target) target.textContent = c ? [c.tipoDocumento || 'CC', c.cedula, c.email, c.telefono, c.direccion].filter(Boolean).join(' · ') : 'Selecciona un cliente.'; } if (event.target.matches('[data-bm-product]')) { const p = window.Finanzas.getProductoById(event.target.value); const row = event.target.closest('.bm-line'); row.querySelector('[name="precioUnitario"]').value = p?.[formContext.kind === 'purchase' ? 'costoUnitario' : 'precioVenta'] || '0'; } preview(); });
     dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
     dialog.addEventListener('close', () => focusReturn?.focus());
   }
@@ -121,7 +101,33 @@
   }
   function commercialForm(kind, r) {
     const purchase = kind === 'purchase';
+    if (!purchase) return saleForm();
     return `<div class="bm-form-grid">${select(purchase ? 'Proveedor' : 'Cliente', purchase ? 'proveedorId' : 'clienteId', entityOptions(purchase ? 'proveedores' : 'clientes'), '', 'required')}${field('Fecha', 'fecha', window.BusinessUtils.today(), 'type="date" required')}${select('Condición de pago', 'tipoPago', [['CONTADO', 'Contado'], ['CREDITO', 'Crédito']], 'CONTADO')}${field('Vencimiento', 'fechaVencimiento', window.BusinessUtils.today(), 'type="date" required')}${amountField('Pago inicial COP (vacío: según condición)', 'montoPagado', '', false)}${select('Medio de pago', 'metodoPago', ['Efectivo', 'Transferencia', 'Tarjeta', 'Otro'].map(v => [v, v]), 'Efectivo')}</div><div class="bm-actions">${button('+ Registrar contacto', 'form', `data-kind="${purchase ? 'supplier' : 'customer'}"`)}${button('+ Registrar producto', 'form', 'data-kind="product"')}</div><fieldset><legend>Artículos · use punto decimal sin separadores de miles</legend><div class="bm-lines">${lineHtml()}</div>${button('+ Agregar artículo', 'add-line')}</fieldset><output class="bm-preview" aria-live="polite"></output>${field('Observaciones', purchase ? 'observaciones' : 'notas', '', 'maxlength="200"')}<p class="bm-note">${purchase ? 'Al confirmar se incrementa el inventario y se registra el pago o la obligación del proveedor.' : 'Comprobante interno sin validez fiscal. La venta confirmada se corrige mediante anulación. Use Facturación simulada para documentos con borradores y notas.'}</p>`;
+  }
+  function saleForm() {
+    const b = window.Finanzas.getNegocioActivo();
+    return `<div class="bm-invoice-brand"><div><small>COMPROBANTE DE VENTA</small><h3>${E(b.nombre)}</h3><p>${E(b.nit || '')} · ${E(b.direccion || '')}</p></div><span>Venta nueva<br><small>Consecutivo al confirmar</small></span></div>
+      <fieldset><legend>1. Cliente</legend>${select('Seleccionar cliente', 'clienteId', entityOptions('clientes'), '', 'required')}<div class="bm-sale-customer" data-sale-customer>Selecciona un cliente para consultar su identificación y contacto.</div><div class="bm-actions">${button('+ Registrar contacto', 'form', 'data-kind="customer"')}</div></fieldset>
+      <fieldset><legend>2. Datos del documento</legend><div class="bm-form-grid">${field('Fecha de emisión', 'fecha', window.BusinessUtils.today(), 'type="date" required')}${field('Fecha de vencimiento', 'fechaVencimiento', window.BusinessUtils.today(), 'type="date" required')}</div></fieldset>
+      <fieldset><legend>3. Artículos de la venta · COP</legend><p class="bm-note">Selecciona los productos e indica cantidades, descuentos e impuestos. Usa punto para los decimales.</p><div class="bm-lines">${lineHtml()}</div><div class="bm-actions">${button('+ Agregar artículo', 'add-line')}${button('+ Registrar producto', 'form', 'data-kind="product"')}</div></fieldset>
+      <fieldset><legend>4. Condiciones de pago</legend><div class="bm-form-grid">${select('Condición de pago', 'tipoPago', [['CONTADO', 'Contado'], ['CREDITO', 'Crédito']], 'CONTADO')}${select('Medio de pago', 'metodoPago', ['Efectivo', 'Transferencia', 'Tarjeta', 'Otro'].map(v => [v, v]), 'Efectivo')}${amountField('Pago inicial COP (vacío: según condición)', 'montoPagado', '', false)}</div></fieldset>
+      <div class="bm-sale-bottom"><label>Observaciones<textarea name="notas" maxlength="200" rows="3" placeholder="Información adicional para el cliente"></textarea></label><output class="bm-preview bm-invoice-totals" aria-live="polite"></output></div><p class="bm-note">Comprobante interno sin validez fiscal. Al confirmar podrás imprimirlo o descargarlo en PDF.</p>`;
+  }
+  function saleComplete(record) {
+    formContext = { kind: 'sale-complete', r: record, collection: 'ventas' };
+    feedback.textContent = ''; dialog.querySelector('h2').textContent = 'Venta registrada';
+    dialogBody.innerHTML = `<div class="bm-sale-success" role="status"><span class="bm-success-check">✓</span><h3>Tu venta se guardó correctamente</h3><p>${E(record.numeroFactura)} · ${E(record.clienteNombre)}</p><strong>${E(money(record.total))}</strong><p>¿Quieres imprimir o descargar el comprobante?</p></div><div class="bm-completion-actions">${action('Imprimir comprobante', 'print', 'ventas', record.id)}${action('Descargar PDF', 'download-sale', 'ventas', record.id)}${button('Finalizar', 'close')}</div>`;
+    if (!dialog.open) dialog.showModal(); dialog.scrollTop = 0;
+  }
+  function downloadSale(id) {
+    const r = window.Finanzas.state.ventas.find(r => r.id === id && r.negocioId === window.Finanzas.state.negocioActivoId);
+    if (!r) throw new Error('Venta no encontrada.');
+    if (r.invoiceDocumentId) return window.InvoiceExports.download(new window.InvoiceService().get(r.invoiceDocumentId), 'pdf');
+    const b = window.Finanzas.getNegocioActivo(), c = r.clienteSnapshot || {};
+    const doc = { kind: 'INVOICE', number: r.numeroFactura, date: r.fecha, dueDate: r.fechaVencimiento, status: r.estado, supplier: { name: b.nombre, document: b.nit || '', address: b.direccion || '' }, customer: { name: r.clienteNombre, documentType: c.tipoDocumento || 'CC', document: c.cedula || r.clienteCedula || '', email: c.email || '', address: c.direccion || '', phone: c.telefono || '' }, totals: r.calculo, paymentTerms: r.tipoPago, paymentMethod: r.metodoPago, notes: r.notas, paid: money(r.montoPagado), balance: money(r.saldoPendiente) };
+    if (!doc.totals) throw new Error('Esta venta histórica se puede guardar como PDF desde Imprimir comprobante.');
+    const url = URL.createObjectURL(new Blob([window.InvoiceExports.pdf(doc, { receipt: true })], { type: 'application/pdf' }));
+    const a = document.createElement('a'); a.href = url; a.download = `${r.numeroFactura}-comprobante.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   function fields(kind, r, collection) {
     const required = 'required maxlength="200"';
@@ -140,6 +146,7 @@
     return '';
   }
   function form(kind, id = '', collection = '', initial = {}) {
+    if (kind === 'sale') { dialog?.close(); return window.InvoiceUI.newInvoice(); }
     ensureDialog();
     if (busy) return;
     const source = collection || kindCollection[kind];
@@ -148,7 +155,8 @@
     if (kind === 'payment' && r.invoiceDocumentId) { window.InvoiceUI.open(r.invoiceDocumentId); return; }
     focusReturn = document.activeElement;
     formContext = { kind, r: cloneRecord(r), collection: source, key: window.BusinessUtils.uuid(), businessId: window.Finanzas.state.negocioActivoId };
-    feedback.textContent = ''; dialog.querySelector('h2').textContent = ({ product: 'Producto', customer: 'Cliente', supplier: 'Proveedor', employee: 'Empleado', sale: 'Confirmar venta', purchase: 'Registrar compra', stock: 'Movimiento de inventario', expense: 'Gasto empresarial', income: 'Ingreso adicional', payment: 'Registrar pago', payroll: 'Pago a empleado', formula: 'Receta de producción', production: 'Fabricar lote', business: 'Datos del negocio', cancel: 'Anular operación', archive: 'Eliminar o archivar', deleteBusiness: 'Eliminar negocio' })[kind];
+    dialog.classList.toggle('bm-sale-dialog', kind === 'sale');
+    feedback.textContent = ''; dialog.querySelector('h2').textContent = ({ product: 'Producto', customer: 'Cliente', supplier: 'Proveedor', employee: 'Empleado', sale: 'Registrar venta', purchase: 'Registrar compra', stock: 'Movimiento de inventario', expense: 'Gasto empresarial', income: 'Ingreso adicional', payment: 'Registrar pago', payroll: 'Pago a empleado', formula: 'Receta de producción', production: 'Fabricar lote', business: 'Datos del negocio', cancel: 'Anular operación', archive: 'Eliminar o archivar', deleteBusiness: 'Eliminar negocio' })[kind];
     dialogBody.innerHTML = `<form class="bm-form">${fields(kind, r, source)}<footer class="bm-form-actions">${button('Cancelar', 'close')}<button class="bm-primary" type="submit">${['cancel', 'archive', 'deleteBusiness'].includes(kind) ? 'Confirmar' : 'Guardar y confirmar'}</button></footer></form>`;
     if (!dialog.open) dialog.showModal(); dialog.scrollTop = 0; preview();
   }
@@ -162,7 +170,7 @@
   }
   function preview() {
     const out = dialogBody?.querySelector('.bm-preview'); if (!out) return;
-    try { const t = window.InvoiceMoney.calculate(lines().map(l => ({ quantity: l.cantidad, unitPrice: l.precioUnitario, discountPercent: l.descuentoPorcentaje, taxKind: l.tipoImpuesto, taxRate: l.tarifaImpuesto }))); out.textContent = `Base: ${money(t.base)} · Impuestos: ${money(t.tax)} · Total: ${money(t.total)}`; }
+    try { const t = window.InvoiceMoney.calculate(lines().map(l => ({ quantity: l.cantidad, unitPrice: l.precioUnitario, discountPercent: l.descuentoPorcentaje, taxKind: l.tipoImpuesto, taxRate: l.tarifaImpuesto }))); if (formContext.kind === 'sale') out.innerHTML = [['Subtotal', t.gross], ['Descuentos', t.discount], ['Base gravable', t.base], ['Impuestos', t.tax], ['Total de la venta', t.total]].map(([label, value]) => `<span><span>${label}</span><strong>${E(money(value))}</strong></span>`).join(''); else out.textContent = `Base: ${money(t.base)} · Impuestos: ${money(t.tax)} · Total: ${money(t.total)}`; }
     catch (e) { out.textContent = e.message; }
   }
   async function submit(event) {
@@ -184,6 +192,7 @@
       const destinations = { product: ['inventory'], stock: ['inventory', 'history'], customer: ['contacts', 'customers'], supplier: ['contacts', 'suppliers'], employee: ['management', 'employees'], payroll: ['management', 'employees'], sale: ['sales'], purchase: ['management', 'purchases'], expense: ['movements', 'expenses'], income: ['movements', 'incomes'], formula: ['management', 'production'], production: ['management', 'production'], business: ['dashboard'], deleteBusiness: ['dashboard'] };
       if (destinations[ctx.kind]) navigate(...destinations[ctx.kind]); else renderAll();
       notice(out.message || 'Guardado y verificado en el almacenamiento local.');
+      if (ctx.kind === 'sale') saleComplete(out.record);
     } catch (e) { feedback.textContent = e.message; feedback.focus(); }
     finally { busy = false; dialog.removeAttribute('aria-busy'); buttons.forEach(b => { b.disabled = false; }); }
   }
@@ -212,17 +221,22 @@
     window.FinanzasExportService.descargarCSV(`negocio_${root.dataset.businessSection}_${window.BusinessUtils.today()}.csv`, [columns.map(c => escape(c.label)).join(';'), ...rows.map(r => columns.map(c => escape(c.get(r))).join(';'))].join('\r\n'));
   }
   function init() {
-    document.querySelectorAll('#navEmpresarial [data-view]').forEach(b => { const label = b.textContent.trim().replace(/\s+/g, ' '); b.setAttribute('aria-label', label); b.title = label; });
+    document.querySelectorAll('#navEmpresarial [data-view]').forEach(b => { const icon = b.querySelector('.nav-icon'); if (icon && b.dataset.businessIcon) icon.innerHTML = window.BusinessWorkspaceScreens.icon(b.dataset.businessIcon); const label = b.textContent.trim().replace(/\s+/g, ' '); b.setAttribute('aria-label', label); b.title = label; });
+    const mobileIcons = { negocio: 'dashboard', inventario: 'inventory', ventas: 'sales', proveedores: 'contacts', gestion: 'products' };
+    document.querySelectorAll('#mobileBusinessNav [data-business-tab]').forEach(b => { const icon = b.querySelector('span'); if (icon) icon.innerHTML = window.BusinessWorkspaceScreens.icon(mobileIcons[b.dataset.businessTab]); });
     document.addEventListener('click', event => {
       const b = event.target.closest('[data-bm]'); if (!b || busy) return;
       const root = b.closest('[data-business-section]'), { bm: command, kind, collection, id } = b.dataset;
       try {
         if (command === 'close') dialog?.close();
+        else if (command === 'navigate') navigate(b.dataset.section, b.dataset.tab);
         else if (command === 'form') form(kind, id, collection);
         else if (command === 'detail') detail(collection, id);
         else if (command === 'archive' || command === 'cancel') form(command, id, collection);
         else if (command === 'invoice') window.InvoiceUI.open(id);
+        else if (command === 'report') { const tab = root?.dataset.tab; window.BusinessReportsView.openSection(({ purchases: 'purchases', receivables: 'balances', payables: 'balances', employees: 'operations', production: 'operations' })[tab] || 'overview'); }
         else if (command === 'print') printRecord(collection, id);
+        else if (command === 'download-sale') downloadSale(id);
         else if (command === 'tab') { root.dataset.tab = b.dataset.tab; root.dataset.query = ''; root.dataset.page = 1; renderRoot(root); }
         else if (command === 'page') { root.dataset.page = b.dataset.page; renderRoot(root); }
         else if (command === 'export') exportRows(root);
@@ -260,7 +274,7 @@
     const model = window.BusinessReadModel.build(window.Finanzas), today = window.BusinessUtils.today();
     const overdue = [...model.receivables.map(r => ({ ...r, collection: 'ventas' })), ...model.payables].filter(r => (r.fechaVencimiento || window.Finanzas.state.facturacion?.documents.find(d => d.id === r.invoiceDocumentId)?.dueDate || '9999') < today);
     focusReturn = document.activeElement; feedback.textContent = ''; dialog.querySelector('h2').textContent = 'Alertas de Mi Negocio';
-    dialogBody.innerHTML = `<h3>Inventario bajo · ${model.lowStock.length}</h3>${tableHtml(model.lowStock, [col('Producto', r => r.nombre), col('Existencias', r => r.stock), col('Mínimo', r => r.stockMinimo || 0), col('Acciones', r => action('Consultar', 'detail', 'productos', r.id), true)])}<h3>Obligaciones vencidas · ${overdue.length}</h3>${tableHtml(overdue, [col('Referencia', r => r.numeroFactura || r.id), col('Cliente / proveedor', r => r.clienteNombre || r.proveedorNombre), col('Saldo', r => money(r.saldoPendiente)), col('Acciones', r => action('Consultar', 'detail', r.collection, r.id), true)])}<div class="bm-actions">${button('Cerrar', 'close')}</div>`;
+    dialogBody.innerHTML = `<h3>Inventario bajo · ${model.lowStock.length}</h3>${tableHtml(model.lowStock, [col('Producto', r => r.nombre), col('Existencias', r => r.stock), col('Mínimo', r => r.stockMinimo || 0), col('Acciones', r => action('Consultar', 'detail', 'productos', r.id), true)])}<h3>Obligaciones vencidas · ${overdue.length}</h3>${tableHtml(overdue, [col('Referencia', r => r.numeroFactura || r.numeroCompra || (r.id?.length > 20 ? `CMP-${r.id.slice(0, 8).toUpperCase()}` : r.id)), col('Cliente / proveedor', r => r.clienteNombre || r.proveedorNombre), col('Saldo', r => money(r.saldoPendiente)), col('Acciones', r => action('Consultar', 'detail', r.collection, r.id), true)])}<div class="bm-actions">${button('Cerrar', 'close')}</div>`;
     if (!dialog.open) dialog.showModal(); dialog.scrollTop = 0;
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

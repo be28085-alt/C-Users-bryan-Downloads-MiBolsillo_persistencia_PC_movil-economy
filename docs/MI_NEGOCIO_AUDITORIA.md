@@ -155,3 +155,38 @@ Se muestran cobros, pagos y flujo neto del período utilizando el mismo libro de
 El diseño se adapta al ancho real del panel mediante consultas de contenedor: tablas convertidas en tarjetas en paneles estrechos y tarjetas financieras en una columna cuando sea necesario, tanto en PC como en móvil. Se revisó la impresión A4.
 
 Verificación de esta ampliación: **49 pruebas automatizadas**, verificaciones históricas de fechas/estado y **14 escenarios de navegador** (PC y móvil en 320, 375, 390, 768, 1024, 1366 y 1920 px), con filtros personalizados, fechas inválidas, detalle, CSV, impresión, gráficos sin red y separación del módulo personal.
+
+
+## Organización integral del informe — 10 de noviembre de 2026
+
+La captura de Gestión evidenciaba referencias UUID extensas, cantidades partidas en varias líneas, compras con estado genérico y consultas distribuidas entre secciones. El informe se organizó en siete vistas accesibles: **Resumen, Ventas, Gastos e ingresos, Compras, Cuentas pendientes, Personal y operación, Cobros y pagos**. Las pestañas admiten teclado y desplazamiento horizontal en pantallas estrechas; las tablas pasan a tarjetas en móvil.
+
+### Información incorporada
+
+- Compras del período: proveedor, referencia, fecha, total, pagado a la fecha, saldo actual y estado de pago. Se excluyen anuladas del resultado y se informa su cantidad.
+- Cartera y obligaciones actuales: documento, contacto, vencimiento, saldo y situación, con documentos vencidos primero. Se advierte si la cartera histórica de clientes no coincide con los documentos detallados.
+- Personal actual y pagos del período; lotes fabricados y sus costos; inventario actual al costo y alertas.
+- Libro de cobros y pagos del período. Los pagos iniciales y posteriores comparten la misma proyección de caja, sin duplicar ingresos ni gastos.
+- Acciones reales desde el informe: consulta del documento, registro de pago, comprobante y anulación de compras con motivo y confirmación. Reutilizan `BusinessUI` y `BusinessService`, con sus validaciones, bloqueo y publicación posterior al guardado.
+- CSV e impresión incluyen todas las secciones, aunque una sola esté visible en pantalla.
+
+### Persistencia comprobada
+
+Los documentos siguen en la única clave `FINANZAS_ETAPA_DATA_V2`. El informe es una lectura del estado del negocio, sin una copia financiera adicional. **Guardar vista** conserva período, rango aplicado y sección en `negocios[].reportPreferences`, con validación versionada, idempotencia, auditoría y la misma unidad de trabajo del resto del negocio. Solo anuncia éxito después del guardado verificable. Un fallo conserva la configuración anterior; cambiar de negocio carga sus propias preferencias. Las preferencias se incluyen en las copias JSON.
+
+Se probaron recarga y apertura de la otra versión PC/móvil en el mismo origen, errores de almacenamiento, doble clic y aislamiento entre negocios. La persistencia es local del navegador: no añade sincronización entre dispositivos ni un servidor remoto.
+
+### Decisiones de la revisión de Mi Negocio
+
+- Gestión conserva los formularios y la administración de operaciones; incorpora un acceso al informe de su sección. No se duplicaron reglas financieras ni escritores.
+- Las referencias UUID se abrevian solo para su presentación; el identificador completo y las relaciones originales permanecen intactos.
+- El estado de pago del informe distingue pagada, parcial, pendiente y vencida; el estado original del documento se conserva.
+- Se retiró la tarjeta de cartera repetida en el resumen y la carga de tres dominios antiguos sin consumidores activos (`salesDomain`, `productionDomain`, `expensesDomain`). Los archivos históricos permanecen en el repositorio.
+- La eliminación de negocios solo se ofrece cuando hay más de uno y el seleccionado no tiene historial. Las restricciones del servicio siguen siendo obligatorias.
+- Se conservan Finanzas Personales, los formularios de negocio, los snapshots históricos y la facturación simulada. La autenticación de servidor, MySQL y la paginación de consultas remotas para grandes volúmenes requieren una etapa de backend.
+
+### Archivos y verificación
+
+Nuevos módulos compartidos: `reportPreferences.js`, `reportOperationsDomain.js` y `businessReportOperationsView.js`. Se integran en `reportsDomain.js`, `businessReportsView.js`, `businessCommands.js`, `businessService.js`, `businessSchema.js`, `businessWorkspace.js`, ambos HTML y sus hojas de estilo.
+
+Resultado: **52 pruebas automatizadas**, verificaciones históricas de estado/fechas y **28 escenarios de navegador**: 14 del informe y 14 del espacio empresarial, en ambas páginas a 320, 375, 390, 768, 1024, 1366 y 1920 px. Los recorridos completos comprueban además pagos desde el informe sin duplicados, fallo/reintento de preferencias, recuperación tras recarga y consistencia entre PC/móvil.

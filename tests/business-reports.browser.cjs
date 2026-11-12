@@ -37,7 +37,7 @@ const server = http.createServer((req, res) => {
         const n = Finanzas.state.negocioActivoId;
         Finanzas.state.negocios.find(b => b.id === n).nombre = 'Panadería del Sol';
         Finanzas.state.ventas = [
-          { id: 'r1', negocioId: n, fecha: '2026-11-09', total: 4500000, costoTotalVenta: 1700000, detalles: [{ cantidad: 100, costoUnitario: 17000 }] },
+          { id: 'r1', negocioId: n, clienteId: 'cli', clienteNombre: 'Cliente A', saldoPendiente: 1250000, montoPagado: 3250000, fechaVencimiento: '2026-11-08', fecha: '2026-11-09', total: 4500000, costoTotalVenta: 1700000, detalles: [{ cantidad: 100, costoUnitario: 17000 }] },
           { id: 'r2', negocioId: n, fecha: '2026-11-01', total: 2300000, costoTotalVenta: 900000, detalles: [{ cantidad: 100, costoUnitario: 9000 }] },
           { id: 'r3', negocioId: n, fecha: '2026-10-31', total: 5200000, costoTotalVenta: 2100000, detalles: [{ cantidad: 100, costoUnitario: 21000 }] },
           ...['06', '07', '08', '09'].map((m, i) => ({ id: 'h' + m, negocioId: n, fecha: `2026-${m}-15`, total: 2500000 + i * 450000, costoTotalVenta: 1000000 + i * 120000, detalles: [] }))
@@ -52,6 +52,11 @@ const server = http.createServer((req, res) => {
         ];
         Finanzas.state.pagosEmpleado = [{ id: 'pay', negocioId: n, fecha: '2026-11-05', monto: 1000000 }];
         Finanzas.state.clientes = [{ id: 'cli', negocioId: n, nombre: 'Cliente', saldoPendiente: 1250000 }];
+        Finanzas.state.proveedores = [{ id: 'prov', negocioId: n, nombre: 'Café Hacienda El Retiro', saldoPendiente: 1000000 }];
+        Finanzas.state.compras = [
+          { id: 'edafa30b-5e59-4c83-898a-e05d8f169888', negocioId: n, proveedorId: 'prov', proveedorNombre: 'Café Hacienda El Retiro', fecha: '2026-11-09', fechaVencimiento: '2026-12-09', total: 723520, montoPagado: 723520, saldoPendiente: 0, estado: 'CONFIRMADA' },
+          { id: 'comp-101', negocioId: n, proveedorId: 'prov', proveedorNombre: 'Café Hacienda El Retiro', fecha: '2026-11-02', fechaVencimiento: '2026-11-08', total: 1500000, montoPagado: 500000, saldoPendiente: 1000000, estado: 'CONFIRMADA' }
+        ];
         Finanzas.guardarEstado();
         if (typeof pcApp !== 'undefined') pcApp.switchView('negocio-informes');
         else mobileApp.switchBusinessTab('informes');
@@ -82,6 +87,43 @@ const server = http.createServer((req, res) => {
       assert.match(fs.readFileSync(customPath, 'utf8'), /"Utilidad neta";"-1350000.00"/);
       await report.locator('[data-report-period]').selectOption('MES_ACTUAL');
       assert.equal(await report.locator('.br-results tr').count(), 7);
+      await report.locator('[data-report-tab="purchases"]').click();
+      assert.equal(await report.locator('[data-report-detail="purchases"] tbody tr').count(), 2);
+      assert.match(await report.locator('[data-report-panel="purchases"]').innerText(), /2.223.520 COP/);
+      assert.match(await report.locator('[data-report-panel="purchases"]').innerText(), /CMP-EDAFA30B/);
+      await report.locator('[data-report-detail="purchases"] [data-report-record="detail"]').first().click();
+      await page.locator('.bm-dialog[open]').getByRole('heading', { name: 'Consultar registro' }).waitFor();
+      await page.locator('.bm-dialog[open] [data-bm="close"]').first().click();
+      await report.locator('[data-report-detail="purchases"] [data-report-record="cancel"]').first().click();
+      await page.locator('.bm-dialog[open]').getByRole('heading', { name: 'Anular operación' }).waitFor();
+      assert.equal(await page.locator('.bm-dialog[open] [name="motivo"]').count(), 1);
+      await page.locator('.bm-dialog[open] [data-bm="close"]').first().click();
+      if ((name === 'desktop.html' && width === 1366) || (name === 'mobile.html' && width === 390)) {
+        await report.locator('[data-report-detail="purchases"] [data-report-record="payment"][data-id="comp-101"]').click();
+        const dialog = page.locator('.bm-dialog[open]'); await dialog.locator('[name="monto"]').fill('100000');
+        await dialog.locator('[name="fecha"]').fill('2026-11-09');
+        await dialog.locator('button[type="submit"]').evaluate(button => { button.click(); button.click(); });
+        await page.waitForFunction(() => !document.querySelector('.bm-dialog')?.open);
+        assert.equal(await page.evaluate(() => Finanzas.state.compras.find(r => r.id === 'comp-101').saldoPendiente), 900000);
+        assert.equal(await page.evaluate(() => Finanzas.state.pagosCompra.filter(r => r.compraId === 'comp-101').length), 1);
+      }
+      const preferenceBefore = await page.evaluate(() => JSON.stringify(Finanzas.getNegocioActivo().reportPreferences));
+      await page.evaluate(() => { window.__nativeReportSetItem = Storage.prototype.setItem; Storage.prototype.setItem = function(k, v) { if (k === 'FINANZAS_ETAPA_DATA_V2') throw new Error('QuotaExceededError'); return window.__nativeReportSetItem.call(this, k, v); }; });
+      await report.locator('[data-report-action="save-view"]').click();
+      await page.waitForFunction(() => document.querySelector('[data-business-report] .br-feedback').textContent.includes('No se pudo guardar'));
+      assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.getNegocioActivo().reportPreferences)), preferenceBefore);
+      await page.evaluate(() => { Storage.prototype.setItem = window.__nativeReportSetItem; });
+      await report.locator('[data-report-action="save-view"]').evaluate(button => { button.click(); button.click(); });
+      await page.waitForFunction(() => document.querySelector('[data-business-report] .br-feedback').textContent.includes('Vista guardada'));
+      assert.equal(await page.evaluate(() => Finanzas.state.businessLedger.audit.filter(r => r.action === 'saveReportPreferences').length), 1);
+      await page.reload();
+      await page.evaluate(() => { if (typeof pcApp !== 'undefined') pcApp.switchView('negocio-informes'); else mobileApp.switchBusinessTab('informes'); });
+      assert.equal(await report.locator('[data-report-tab="purchases"]').getAttribute('aria-selected'), 'true');
+      assert.equal(await report.locator('[data-report-period]').inputValue(), 'MES_ACTUAL');
+      const sibling = await context.newPage(); await sibling.goto(`${origin}/${name === 'desktop.html' ? 'mobile.html' : 'desktop.html'}?modulo=EMPRESARIAL`);
+      await sibling.evaluate(() => { if (typeof pcApp !== 'undefined') pcApp.switchView('negocio-informes'); else mobileApp.switchBusinessTab('informes'); });
+      assert.equal(await sibling.locator('[data-report-tab="purchases"]').getAttribute('aria-selected'), 'true'); await sibling.close();
+      await report.locator('[data-report-tab="overview"]').click();
       const dataBefore = await page.evaluate(() => JSON.stringify(Finanzas.state));
       await page.screenshot({ path: path.join(output, `${width}-overview.png`) });
       await report.locator('summary').click(); assert.equal(await report.locator('.br-monthly-data tr').count(), 7);
@@ -106,11 +148,22 @@ const server = http.createServer((req, res) => {
       await report.locator('[data-report-period]').selectOption('MES_ACTUAL');
       assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state)), dataBefore);
       await report.locator('.br-detail-grid').scrollIntoViewIfNeeded(); await page.screenshot({ path: path.join(output, `${width}-breakdown.png`) });
+      await report.locator('[data-report-tab="sales"]').click();
       await report.locator('[data-report-detail="sales"]').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(output, `${name}-${width}-sales-detail.png`) });
+      for (const key of ['overview', 'sales', 'expenses', 'purchases', 'balances', 'operations', 'cash']) {
+        await report.locator(`[data-report-tab="${key}"]`).click();
+        assert.equal(await report.locator(`[data-report-panel="${key}"]`).isVisible(), true);
+        assert.ok(await report.evaluate(el => el.scrollWidth <= el.clientWidth + 2), `${name} ${width} ${key} overflow`);
+      }
+      await report.locator('[data-report-tab="purchases"]').click();
+      await page.screenshot({ path: path.join(output, `${name}-${width}-purchases.png`) });
       const layout = await report.evaluate(el => ({ width: el.clientWidth, scroll: el.scrollWidth, overflowing: [...el.querySelectorAll('*')].filter(child => child.getBoundingClientRect().right > el.getBoundingClientRect().right + 2 && !child.closest('.br-table-wrap')).map(child => ({ tag: child.tagName, cls: child.className, width: child.getBoundingClientRect().width, text: child.textContent.slice(0, 50) })).slice(0, 10) }));
       assert.ok(layout.scroll <= layout.width + 2, `${name} ${width}: report overflow ${JSON.stringify(layout)}`);
       assert.ok(await report.evaluate(el => el.getBoundingClientRect().right <= innerWidth + 2), `${width}: report must fit viewport`);
+      await page.evaluate(() => BusinessUI.navigate('management', 'purchases'));
+      await page.locator('[data-business-section="management"] [data-bm="report"]').click();
+      assert.equal(await report.locator('[data-report-tab="purchases"]').getAttribute('aria-selected'), 'true');
       const previousPersonal = await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos));
       await page.evaluate(() => { if (typeof pcApp !== 'undefined') pcApp.setModulo('PERSONAL', 'informes'); else mobileApp.setModulo('PERSONAL', 'informes'); });
       assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)), previousPersonal);

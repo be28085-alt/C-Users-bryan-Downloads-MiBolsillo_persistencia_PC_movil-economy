@@ -144,3 +144,23 @@ test('una copia sin negocios puede crear el primero sin duplicarlo al reintentar
   const again = await s.execute('saveBusiness', { nombre: 'Primer negocio' }, key);
   assert.equal(first.record.id, again.record.id); assert.equal(a.core.state.negocios.length, 1);
 });
+
+
+for (const page of ['desktop.html', 'mobile.html']) test(`${page}: la vista del informe persiste, se aísla por negocio y revierte ante fallo de guardado`, async () => {
+  const a = await setup(page), n = a.core.state.negocioActivoId, preferences = { version: 1, period: 'PERSONALIZADO', from: '2026-10-01', to: '2026-11-09', section: 'purchases' };
+  const financial = JSON.stringify([a.core.state.ventas, a.core.state.compras, a.core.state.productos, a.core.state.movimientos]);
+  const key = randomUUID(); await a.s.execute('saveReportPreferences', preferences, key); await a.s.execute('saveReportPreferences', preferences, key);
+  assert.equal(a.core.state.businessLedger.operations.filter(o => o.key === key).length, 1);
+  assert.equal(JSON.stringify([a.core.state.ventas, a.core.state.compras, a.core.state.productos, a.core.state.movimientos]), financial);
+  const loaded = app(page, { disk: a.disk }); assert.equal(loaded.core.getNegocioActivo().reportPreferences.section, 'purchases');
+  assert.equal(loaded.core.getNegocioActivo().reportPreferences.from, '2026-10-01');
+  a.setFailure(true); await assert.rejects(() => a.s.execute('saveReportPreferences', { ...preferences, section: 'cash' }), /No se pudo guardar/); a.setFailure(false);
+  assert.equal(a.core.getNegocioActivo().reportPreferences.section, 'purchases');
+  await assert.rejects(() => a.s.execute('saveReportPreferences', { ...preferences, from: '2026-12-01' }), /Fechas/);
+  await assert.rejects(() => a.s.execute('saveReportPreferences', { ...preferences, section: 'constructor' }), /inválida/);
+  const second = (await a.s.execute('saveBusiness', { nombre: 'Otro negocio' })).record;
+  assert.equal(a.core.getNegocioActivo().reportPreferences, undefined);
+  await a.s.execute('saveReportPreferences', { version: 1, period: 'TODOS', section: 'cash' });
+  await a.s.execute('selectBusiness', { id: n }); assert.equal(a.core.getNegocioActivo().reportPreferences.section, 'purchases');
+  await a.s.execute('selectBusiness', { id: second.id }); assert.equal(a.core.getNegocioActivo().reportPreferences.section, 'cash');
+});

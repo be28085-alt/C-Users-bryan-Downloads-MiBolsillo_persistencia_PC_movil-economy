@@ -32,7 +32,8 @@
         (l.discount !== '0.00' ? `<cac:AllowanceCharge>${cbc('ChargeIndicator', 'false')}${cbc('AllowanceChargeReason', 'Descuento comercial')}${money('Amount', l.discount)}${money('BaseAmount', l.gross)}</cac:AllowanceCharge>` : '') +
         `<cac:TaxTotal>${money('TaxAmount', l.tax)}${taxSubtotal({ kind: l.taxKind, rate: l.taxRate, base: l.base, amount: l.tax })}</cac:TaxTotal><cac:Item>${cbc('Description', `${l.description} [unidad interna: ${l.unit}]`)}</cac:Item><cac:Price>${money('PriceAmount', l.unitPrice)}</cac:Price></cac:${lineTag}>`).join('') + `</${root}>`;
   }
-  function pdf(doc) {
+  function pdf(doc, options = {}) {
+    const receipt = options.receipt === true;
     // Small dependency-free PDF writer. ISO-8859-1 text maps to Helvetica WinAnsi for Spanish.
     const clean = s => String(s ?? '').replace(/[\u2010-\u2015]/g, '-').replace(/[^\x20-\xff]/g, '?');
     const quote = s => clean(s).replace(/[\\()]/g, '\\$&');
@@ -46,10 +47,10 @@
     function page() {
       commands = []; pages.push(commands); y = 720;
       commands.push('0.06 0.14 0.22 rg 0 754 595 88 re f');
-      drawText(38, 805, kindLabel[doc.kind], 19, true, '1 1 1');
+      drawText(38, 805, receipt ? 'Comprobante de venta' : kindLabel[doc.kind], 19, true, '1 1 1');
       drawText(38, 780, doc.number || 'BORRADOR', 12, true, '0.5 0.9 0.8');
-      drawText(38, 740, 'SIMULACIÓN SIN VALIDEZ FISCAL', 13, true, '0.68 0.22 0.08');
-      drawText(38, 26, `Gestor Financiero | Simulación interna | Página ${pages.length}`, 9);
+      drawText(38, 740, receipt ? 'COMPROBANTE INTERNO SIN VALIDEZ FISCAL' : 'SIMULACIÓN SIN VALIDEZ FISCAL', 13, true, '0.68 0.22 0.08');
+      drawText(38, 26, `Gestor Financiero | ${receipt ? 'Comprobante interno' : 'Simulación interna'} | Página ${pages.length}`, 9);
       drawText(38, 13, 'Sin CUFE/CUDE oficial, firma digital, numeración autorizada ni validación DIAN.', 8);
     }
     const need = height => { if (y - height < 55) page(); };
@@ -76,6 +77,8 @@
     paragraph(`Pago: ${doc.paymentTerms} | Medio: ${doc.paymentMethod}`);
     if (doc.notes) paragraph(`Observaciones: ${doc.notes}`);
     paragraph('Redondeo HALF_UP por línea a 2 decimales. Cantidades y precios hasta 4 decimales.');
+    if (receipt) { paragraph(`Pagado COP: ${doc.paid} | Saldo pendiente COP: ${doc.balance}`, true); }
+    else {
     need(165);
     const code = qr(doc), count = code.getModuleCount(), cell = 112 / (count + 8), left = 38, bottom = y - 125;
     commands.push(`1 1 1 rg ${left} ${bottom} 112 112 re f`, '0 0 0 rg');
@@ -84,6 +87,7 @@
     drawText(165, y - 43, 'Requiere los datos locales y acceso al negocio.', 9);
     drawText(165, y - 60, 'No corresponde a validación oficial de la DIAN.', 9);
     wrap(doc.simulationId, 59).forEach((s, i) => drawText(165, y - 80 - i * 12, s, 8));
+    }
     // Object offsets count single-byte characters. Return Uint8Array, not a UTF-8 encoded string.
     const objects = [null, '<< /Type /Catalog /Pages 2 0 R >>', '', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'];
     const kids = [];

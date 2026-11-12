@@ -30,8 +30,11 @@ const server = http.createServer((req, res) => {
         Finanzas.guardarEstado();
         BusinessUI.navigate('sales');
       });
-      await page.locator('[data-invoice-open]').click();
-      await page.locator('[data-inv="new"]').click();
+      await page.evaluate(async () => { await Finanzas.getBusinessService().execute('saveCustomer', { nombre: 'Cliente automático', cedula: '123456789', email: 'auto@example.co', direccion: 'Bogotá' }); });
+      await page.locator('[data-business-section="sales"] .bm-header .bm-primary').click();
+      assert.equal(await page.locator('[name="name"]').inputValue(), 'Cliente automático');
+      assert.equal(await page.locator('[name="email"]').inputValue(), 'auto@example.co');
+      assert.equal(await page.locator('[name="unitPrice"]').inputValue(), '10000');
       await page.locator('[name="name"]').fill('María Gómez'); await page.locator('[name="document"]').fill('123456789');
       await page.locator('[name="email"]').fill('maria@example.co'); await page.locator('[name="address"]').fill('Calle 10 # 5-20, Bogotá');
       await page.locator('[name="paymentTerms"]').selectOption('CREDITO'); await page.locator('[name="quantity"]').fill('2'); await page.locator('[name="discountPercent"]').fill('5');
@@ -40,6 +43,8 @@ const server = http.createServer((req, res) => {
       await page.getByRole('heading', { name: 'SIM-FV-000001', exact: true }).waitFor();
       assert.equal(await page.locator('.inv-message').innerText(), '');
       assert.equal(await page.locator('.inv-status').innerText(), 'Validada internamente');
+      await page.locator('.inv-sale-complete').waitFor();
+      const popupEvent = page.waitForEvent('popup'); await page.locator('[data-inv="print"]').click(); const printed = await popupEvent; await printed.waitForLoadState(); assert.match(await printed.locator('body').innerText(), /SIM-FV-000001/); await printed.close();
       const info = await page.evaluate(() => ({ documents: Finanzas.state.facturacion.documents.length, sales: Finanzas.state.ventas.filter(v => v.invoiceDocumentId).length, total: Finanzas.state.facturacion.documents[0].totals.total, stock: Finanzas.state.productos[0].stock }));
       assert.deepEqual(info, { documents: 1, sales: 1, total: '22610.00', stock: 28 });
       const xml = await page.evaluate(() => { const x = InvoiceExports.xml(Finanzas.state.facturacion.documents[0]); return { xml: x, errors: new DOMParser().parseFromString(x, 'application/xml').querySelectorAll('parsererror').length }; });

@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 function context() {
   const c = vm.createContext({ document: { readyState: 'loading', addEventListener() {} }, URL, location: { href: 'http://localhost:5500/desktop.html' } }); c.window = c;
-  for (const f of ['src/utils/dates.js', 'src/domains/business/reportsDomain.js', 'src/domains/business/cashFlowDomain.js', 'src/ui/views/business/businessReportsView.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), c);
+  for (const f of ['src/utils/dates.js', 'src/domains/business/reportPreferences.js', 'src/domains/business/reportOperationsDomain.js', 'src/domains/business/reportsDomain.js', 'src/domains/business/cashFlowDomain.js', 'src/ui/views/business/businessReportOperationsView.js', 'src/ui/views/business/businessReportsView.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), c);
   return c;
 }
 function fixture() {
@@ -111,4 +111,26 @@ test('flujo usa fechas de cobro y pago sin duplicarlos y separa saldos actuales 
   assert.equal(m.receivables, '60.00'); assert.equal(m.payables, '60.00'); assert.equal(m.inventoryValue, '10.63'); assert.equal(m.lowStockCount, 1);
   const previous = c.BusinessReportsDomain.build(s, 'n', { ...options, period: 'MES_ANTERIOR' });
   assert.equal(previous.cash.incoming, '0.00'); assert.equal(previous.receivables, m.receivables); assert.equal(previous.payables, m.payables);
+});
+
+
+test('compras, cartera, personal y producción usan el negocio y los períodos correctos sin duplicar gastos', () => {
+  const c = context(), s = fixture();
+  s.compras = [
+    { id: 'purchase-uuid-123456', negocioId: 'n', proveedorNombre: 'Proveedor A', fecha: options.today, fechaVencimiento: '2026-11-08', total: '100.25', montoPagado: '20.10', saldoPendiente: '80.15' },
+    { id: 'old', negocioId: 'n', fecha: '2026-10-02', total: '30', montoPagado: '10', saldoPendiente: '20', fechaVencimiento: '2026-12-01' },
+    { id: 'cancelled', negocioId: 'n', fecha: options.today, total: '999', estado: 'ANULADA' },
+    { id: 'foreign', negocioId: 'other', fecha: options.today, total: '999' }
+  ];
+  s.empleados = [{ id: 'e', negocioId: 'n', nombre: 'Colaborador', cargo: 'Apoyo', estado: 'ACTIVO' }];
+  s.pagosEmpleado[0].empleadoId = 'e';
+  s.producciones = [{ id: 'lot', negocioId: 'n', fecha: options.today, productoNombre: 'Pan', cantidadProducida: '12.5', costoTotal: '4.75' }];
+  const m = c.BusinessReportsDomain.build(s, 'n', options), o = m.operations;
+  assert.equal(o.purchases.length, 1); assert.equal(o.purchaseTotals.total, '100.25'); assert.equal(o.purchaseTotals.paid, '20.10'); assert.equal(o.purchaseTotals.balance, '80.15');
+  assert.equal(o.cancelledPurchases, 1); assert.equal(o.payableTotal, '100.15'); assert.equal(o.overduePayables, '80.15'); assert.equal(o.payables[0].status, 'Vencida');
+  assert.equal(o.employees[0].paid, '5.00'); assert.equal(o.activeEmployees, 1); assert.equal(o.productionCost, '4.75'); assert.equal(o.productions[0].quantity, '12.5');
+  assert.equal(m.totals.netProfit, '100.00');
+  const csv = c.BusinessReportsView.csv(m), print = c.BusinessReportsView.printDocument(m);
+  assert.match(csv, /"100.25";"20.10";"80.15"/); assert.match(csv, /Personal actual/); assert.match(csv, /Producción del período/);
+  assert.match(print, /Compras y proveedores/); assert.match(print, /Cuentas por pagar/); assert.doesNotMatch(print, /data-report-record|data-report-tab|save-view/);
 });

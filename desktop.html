@@ -30,9 +30,9 @@
   </script>
   <!-- Estilos de Escritorio -->
   <link href="desktop.css?v=20261104-2" rel="stylesheet"/>
-  <link rel="stylesheet" href="styles/invoicing.css?v=20261109-1">
-  <link rel="stylesheet" href="styles/businessReports.css?v=20261110-1">
-  <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261109-3">
+  <link rel="stylesheet" href="styles/invoicing.css?v=20261110-5">
+  <link rel="stylesheet" href="styles/businessReports.css?v=20261110-2">
+  <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261110-4">
  </head>
  <body>
   <!-- BARRA SUPERIOR INFORMATIVA: CONMUTADOR DE VERSIONES SEPARADAS -->
@@ -158,80 +158,19 @@
      </li>
     </ul>
     <ul class="sidebar-nav-list" id="navEmpresarial" style="display: none;">
-     <li>
-      <button class="nav-item-btn" data-view="negocio-dashboard" onclick="pcApp.switchView('negocio-dashboard')">
-       <span class="nav-icon">
-        🏠
-       </span>
-       <span>
-        Inicio
-       </span>
-      </button>
-     </li>
-     <li>
-      <button class="nav-item-btn" data-view="negocio-inventario" onclick="pcApp.switchView('negocio-inventario')">
-       <span class="nav-icon">
-        📦
-       </span>
-       <span>
-        Inventario
-       </span>
-      </button>
-     </li>
-     <li>
-      <button class="nav-item-btn" data-view="negocio-movimientos" onclick="pcApp.switchView('negocio-movimientos')">
-       <span class="nav-icon">
-        📋
-       </span>
-       <span>
-        Movimientos
-       </span>
-      </button>
-     </li>
-     <li>
-      <button class="nav-item-btn" data-view="negocio-ventas" onclick="pcApp.switchView('negocio-ventas')">
-       <span class="nav-icon">
-        💰
-       </span>
-       <span>
-        Ventas
-       </span>
-      </button>
-     </li>
-     <li>
-      <button class="nav-item-btn" data-view="negocio-proveedores" onclick="pcApp.switchView('negocio-proveedores')">
-       <span class="nav-icon">
-        🚚
-       </span>
-       <span>
-        Contactos
-       </span>
-      </button>
-     </li>
-     <li>
-      <button class="nav-item-btn" data-view="negocio-informes" onclick="pcApp.switchView('negocio-informes')">
-       <span class="nav-icon">
-        📊
-       </span>
-       <span>
-        Informes
-       </span>
-      </button>
-     </li>
-     <li>
-
-        <li><button class="nav-item-btn" data-view="negocio-gestion" onclick="pcApp.switchView('negocio-gestion')" aria-label="Gestión del negocio"><span class="nav-icon">🗂️</span><span>Gestión</span></button></li>
-  
-      <button class="nav-item-btn" data-view="perfil" onclick="pcApp.switchView('perfil')">
-       <span class="nav-icon">
-        ⚙️
-       </span>
-       <span>
-        Tu espacio
-       </span>
-      </button>
-     </li>
-</ul>
+     <li><button class="nav-item-btn" data-view="negocio-dashboard" data-business-icon="dashboard" onclick="pcApp.switchView('negocio-dashboard')"><span class="nav-icon" aria-hidden="true"></span><span>Inicio</span></button></li>
+     <li><button class="nav-item-btn" data-view="negocio-inventario" data-business-icon="inventory" onclick="pcApp.switchView('negocio-inventario')"><span class="nav-icon" aria-hidden="true"></span><span>Inventario</span></button></li>
+     <li><button class="nav-item-btn" data-view="negocio-compras" data-business-icon="purchases" onclick="pcApp.switchView('negocio-compras')"><span class="nav-icon" aria-hidden="true"></span><span>Compras</span></button></li>
+     <li><button class="nav-item-btn" data-view="negocio-proveedores" data-business-icon="contacts" onclick="pcApp.switchView('negocio-proveedores')"><span class="nav-icon" aria-hidden="true"></span><span>Proveedores</span></button></li>
+     <li><button class="nav-item-btn" data-view="negocio-ventas" data-business-icon="sales" onclick="pcApp.switchView('negocio-ventas')"><span class="nav-icon" aria-hidden="true"></span><span>Ventas</span></button></li>
+     <li><button class="nav-item-btn" data-view="negocio-productos" data-business-icon="products" onclick="pcApp.switchView('negocio-productos')"><span class="nav-icon" aria-hidden="true"></span><span>Productos / utilidad</span></button></li>
+     <li><button class="nav-item-btn" data-view="negocio-caja" data-business-icon="cash" onclick="pcApp.switchView('negocio-caja')"><span class="nav-icon" aria-hidden="true"></span><span>Caja / flujo de efectivo</span></button></li>
+     <li><button class="nav-item-btn" data-view="negocio-gastos" data-business-icon="expenses" onclick="pcApp.switchView('negocio-gastos')"><span class="nav-icon" aria-hidden="true"></span><span>Gastos del negocio</span></button></li>
+     <li><button class="nav-item-btn" data-view="negocio-movimientos" data-business-icon="cash" onclick="pcApp.switchView('negocio-movimientos')"><span class="nav-icon" aria-hidden="true"></span><span>Otros movimientos</span></button></li>
+     <li><button class="nav-item-btn" data-view="negocio-informes" data-business-icon="products" onclick="pcApp.switchView('negocio-informes')"><span class="nav-icon" aria-hidden="true"></span><span>Informes</span></button></li>
+     <li><button class="nav-item-btn" data-view="negocio-gestion" data-business-icon="contacts" onclick="pcApp.switchView('negocio-gestion')"><span class="nav-icon" aria-hidden="true"></span><span>Gestión</span></button></li>
+     <li><button class="nav-item-btn" data-view="perfil" data-business-icon="contacts" onclick="pcApp.switchView('perfil')"><span class="nav-icon" aria-hidden="true"></span><span>Tu espacio</span></button></li>
+    </ul>
     <!-- Pie del Sidebar: Academic & User -->
     <div class="sidebar-footer">
      <div class="sidebar-user-capsule" onclick="pcApp.switchView('perfil')">
@@ -297,6 +236,8 @@
        </span>
        Nuevo movimiento
       </button>
+      
+      <button type="button" class="bm-profile-avatar bm-pc-only" data-business-profile onclick="pcApp.switchView('perfil')" aria-label="Abrir mi perfil"></button>
       <button class="btn-pc-primary" id="btnPcBusinessQuick" onclick="pcApp.openQuickBusinessActions()" style="display:none;">
        <span>
         +
@@ -1350,7 +1291,11 @@
      <section class="pc-view" id="view-negocio-proveedores">
       <div data-business-section="contacts"></div>
      </section>
-     <section class="pc-view" id="view-negocio-gestion">
+     <section class="pc-view" id="view-negocio-compras"><div data-business-section="purchases"></div></section>
+      <section class="pc-view" id="view-negocio-productos"><div data-business-section="products"></div></section>
+      <section class="pc-view" id="view-negocio-caja"><div data-business-section="cash"></div></section>
+      <section class="pc-view" id="view-negocio-gastos"><div data-business-section="expenses"></div></section>
+      <section class="pc-view" id="view-negocio-gestion">
       <div data-business-section="management"></div>
      </section>
      <section class="pc-view" id="view-negocio-informes">
@@ -1953,7 +1898,8 @@
   </script>
   <script src="src/storage/demoData.js?v=20261109-3">
   </script>
-  <script src="src/domains/business/businessSchema.js?v=20261109-3"></script>
+  <script src="src/domains/business/reportPreferences.js?v=20261110-2"></script>
+  <script src="src/domains/business/businessSchema.js?v=20261110-2"></script>
   <script src="src/storage/migrations.js?v=20261109-3"></script>
   <script src="src/storage/localStorage.js?v=20261109-3">
   </script>
@@ -1971,12 +1917,6 @@
   </script>
   <script src="src/domains/business/inventoryDomain.js?v=20261104-1">
   </script>
-<script src="src/domains/business/salesDomain.js?v=20261108-1">
-  </script>
-<script src="src/domains/business/productionDomain.js?v=20261104-1">
-  </script>
-<script src="src/domains/business/expensesDomain.js?v=20261104-1">
-  </script>
   <script src="src/domains/business/metricsDomain.js?v=20261110-1">
   </script>
   <script src="src/domains/business/cashFlowDomain.js?v=20261109-3">
@@ -1987,7 +1927,7 @@
   </script>
   <script src="src/utils/shared.js?v=20261104-1">
   </script>
-  <script src="src/utils/desktop.js?v=20261109-3">
+  <script src="src/utils/desktop.js?v=20261110-3">
   </script>
    <script src="src/services/exportService.js?v=20261109-3"></script>
   <script src="src/ui/shared/persistenceStatus.js?v=20261108-1"></script>
@@ -1998,13 +1938,17 @@
   <script src="src/storage/businessRepository.js?v=20261109-3"></script>
   <script src="src/invoicing/repository.js?v=20261109-3"></script>
   <script src="src/invoicing/service.js?v=20261109-3"></script>
-  <script src="src/invoicing/exports.js?v=20261109-1"></script>
-  <script src="src/invoicing/ui.js?v=20261109-3"></script>
-  <script src="src/domains/business/businessCommands.js?v=20261109-3"></script>
-  <script src="src/services/businessService.js?v=20261109-3"></script>
-  <script src="src/domains/business/reportsDomain.js?v=20261110-1"></script>
-  <script src="src/ui/views/business/businessReportsView.js?v=20261110-1"></script>
+  <script src="src/invoicing/exports.js?v=20261110-4"></script>
+  <script src="src/invoicing/ui.js?v=20261110-5"></script>
+  <script src="src/domains/business/businessCommands.js?v=20261110-2"></script>
+  <script src="src/services/businessService.js?v=20261110-2"></script>
+  <script src="src/domains/business/reportOperationsDomain.js?v=20261110-2"></script>
+  <script src="src/domains/business/reportsDomain.js?v=20261110-2"></script>
+  <script src="src/ui/views/business/businessReportOperationsView.js?v=20261110-2"></script>
+  <script src="src/ui/views/business/businessReportsView.js?v=20261110-2"></script>
   <script src="src/domains/business/readModel.js?v=20261109-3"></script>
-  <script src="src/ui/views/business/businessWorkspace.js?v=20261109-3"></script>
+  <script src="src/domains/business/workspaceMetrics.js?v=20261110-3"></script>
+  <script src="src/ui/views/business/businessWorkspaceScreens.js?v=20261110-3"></script>
+  <script src="src/ui/views/business/businessWorkspace.js?v=20261110-5"></script>
 </body>
 </html>
