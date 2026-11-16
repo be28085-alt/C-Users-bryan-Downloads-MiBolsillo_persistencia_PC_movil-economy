@@ -17,7 +17,6 @@ class MobileApp {
     this.modalType = 'GASTO';
     this.chartInstance = null;
     this.chartCategories = null;
-    this.businessChart = null;
     this.initialized = false;
     this._savingMovement = false;
     this._lastMovementSignature = '';

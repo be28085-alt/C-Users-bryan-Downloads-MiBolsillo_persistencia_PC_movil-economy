@@ -15,10 +15,10 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js">
   </script>
   <!-- Estilos de Escritorio -->
-  <link href="desktop.css?v=20261104-2" rel="stylesheet"/>
+  <link href="styles/desktop.css?v=20261114-1" rel="stylesheet"/>
   <link rel="stylesheet" href="styles/invoicing.css?v=20261110-5">
   <link rel="stylesheet" href="styles/businessReports.css?v=20261110-2">
-  <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261110-4">
+  <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261114-1">
  </head>
  <body>
   <!-- BARRA SUPERIOR INFORMATIVA: CONMUTADOR DE VERSIONES SEPARADAS -->
@@ -1818,15 +1818,15 @@
       <p>
        El código separa explícitamente la
        <em>
-        Versión Escritorio (desktop.html / desktop.css / desktop.js)
+        Versión Escritorio (desktop.html / styles/desktop.css / src/utils/desktop.js)
        </em>
        y la
        <em>
-        Versión Móvil (mobile.html / mobile.css / mobile.js)
+        Versión Móvil (mobile.html / styles/mobile.css / src/utils/mobile.js)
        </em>
        , desacopladas mediante el núcleo reactivo
        <code>
-        shared.js
+        src/services/finanzasCore.js
        </code>
        .
       </p>
@@ -1913,7 +1913,7 @@
   </script>
   <script src="src/utils/shared.js?v=20261104-1">
   </script>
-  <script src="src/utils/desktop.js?v=20261110-3">
+  <script src="src/utils/desktop.js?v=20261114-1">
   </script>
    <script src="src/services/exportService.js?v=20261109-3"></script>
   <script src="src/ui/shared/persistenceStatus.js?v=20261108-1"></script>

@@ -7,7 +7,7 @@ const window = {
   addEventListener:()=>{}
 };
 const document = { createElement:()=>({set textContent(v){this._v=v},get innerHTML(){return this._v}}) };
-const code = fs.readFileSync(__dirname + '/shared.js','utf8') + `
+const code = fs.readFileSync(__dirname + '/legacy/web/shared.js','utf8') + `
 (() => {
   const m = Finanzas.agregarMovimiento({tipo:'INGRESO', concepto:'Prueba', categoria:'Salario', valor:100000, fecha:obtenerFechaHoyISO()});
   if (m.error) throw new Error(m.error);

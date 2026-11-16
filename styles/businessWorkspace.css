@@ -365,10 +365,9 @@ body.bm-business-mode .header-search-box { max-width: 240px; }
 #mobileBusinessNav svg { width: 20px; height: 20px; }
 #mobileBusinessNav .nav-btn.active { color: #245c70; }
 
-/* Profile and platform access, beside the business menu. */
+/* Profile access beside the business menu. */
 .bm-mobile-header-actions { display:flex; align-items:center; gap:7px; flex-shrink:0; }
 .bm-profile-avatar { width:34px; height:34px; border:0; border-radius:50%; background:#245c70; color:white; font:700 11px system-ui; cursor:pointer; display:grid; place-items:center; flex-shrink:0; }
-.bm-version-button { display:inline-flex; align-items:center; justify-content:center; min-height:34px; padding:6px 9px; border:1px solid #d9e6ee; border-radius:6px; background:white; color:#245c70; font:600 10px system-ui; text-decoration:none; white-space:nowrap; }
 .bm-pc-only { display:none; }
 body.bm-business-mode .bm-pc-only { display:inline-flex; align-items:center; justify-content:center; }
 #view-negocio > .view-header { gap:8px; }

@@ -17,12 +17,6 @@ class DesktopApp {
 
     // Estados y filtros del módulo empresarial
     this.filtroPeriodoReportes = 'MES_ACTUAL';
-    this.filtroTipoProductos = 'ALL';
-    this.filtroTipoVentas = 'ALL';
-    this.filtroTipoInventario = 'ALL';
-    this.textoFiltroProductos = '';
-    this.textoFiltroMaterias = '';
-    this.textoFiltroVentas = '';
 
     // Instancias de Chart.js
     this.chartDashboard = null;

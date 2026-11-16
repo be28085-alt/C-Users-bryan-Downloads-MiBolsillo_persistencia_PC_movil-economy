@@ -1,0 +1,13 @@
+{
+  "appId": "com.mibolsillo.app",
+  "appName": "MiBolsillo",
+  "webDir": "dist/android-web",
+  "loggingBehavior": "debug",
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

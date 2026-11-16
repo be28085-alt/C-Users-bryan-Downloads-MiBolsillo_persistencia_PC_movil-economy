@@ -160,17 +160,24 @@ async function seed(page) {
       await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-dashboard.png`), animations: 'disabled' });
       await nav(page, 'inventory', mobile); await page.locator('[data-business-section="inventory"]').getByRole('button', { name: '+ Producto', exact: true }).click();
       const dialog = page.locator('.bm-dialog[open]'); assert.ok(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 2)); await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-form.png`) }); await dialog.locator('[data-bm="close"]').first().click();
+      const version = page.locator(mobile ? '.mobile-top-notice .btn-switch-link[href*="desktop.html"]' : '.top-notice-bar .btn-switch-version[href*="mobile.html"]');
+      const targetPage = mobile ? 'desktop.html' : 'mobile.html';
+      const versionUrl = new URL(await version.getAttribute('href'), page.url());
+      assert.equal(versionUrl.pathname, `/${targetPage}`);
+      assert.equal(versionUrl.searchParams.get('modulo'), 'EMPRESARIAL');
       const avatar = page.locator(mobile ? '#view-negocio [data-business-profile]' : '.pc-top-header [data-business-profile]');
       if (mobile || width >= 768) {
         assert.ok((await avatar.innerText()).trim());
-        const version = page.locator(mobile ? '#view-negocio .bm-version-button' : '.pc-top-header .bm-version-button');
-        assert.match(await version.getAttribute('href'), mobile ? /desktop.html.*EMPRESARIAL/ : /mobile.html.*EMPRESARIAL/);
         await avatar.click(); assert.equal(await page.locator('#view-perfil').evaluate(el => el.classList.contains('active')), true);
         await nav(page, 'dashboard', mobile);
       }
       const personal = await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos));
       await page.evaluate(() => { if (typeof pcApp !== 'undefined') pcApp.setModulo('PERSONAL', 'inicio'); else mobileApp.setModulo('PERSONAL', 'inicio'); });
       assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)), personal); assert.equal(await page.locator('#view-inicio').evaluate(el => el.classList.contains('active')), true);
+      await version.click(); await page.waitForURL(`${origin}/${targetPage}`);
+      await page.waitForFunction(() => typeof Finanzas !== 'undefined' && Finanzas.state);
+      assert.equal(new URL(page.url()).pathname, `/${targetPage}`);
+      assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)), personal);
       assert.deepEqual(errors, []); await context.close(); console.log(`PASS ${name} ${width}px: business views, forms, navigation and isolation${(!mobile && width === 1366) || (mobile && width === 390) ? '; full CRUD/payment/reload/storage-error flow' : ''}`);
     }
   } finally { await browser.close(); server.close(); }

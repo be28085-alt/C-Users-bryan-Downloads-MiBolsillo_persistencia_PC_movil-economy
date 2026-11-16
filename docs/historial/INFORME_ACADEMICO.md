@@ -1,3 +1,7 @@
+> Documento histórico conservado durante la organización del proyecto del 14-11-2026. Describe el estado de una revisión anterior; los resultados de pruebas y los pendientes pertenecen a esa revisión. Para las rutas actuales y el funcionamiento vigente, consulte [la guía principal](../../README.md) y [la estructura del proyecto](../ESTRUCTURA.md).
+>
+> Rutas anteriores: los JavaScript de raíz se conservan en `legacy/web/`, los programas C++ en `legacy/console/` y los módulos alternativos sin conexión con las páginas actuales en `legacy/modular/src/`. Los puentes CSS anteriores se conservan en `legacy/web/`; las hojas activas están en `styles/`. Las rutas de código se interpretan desde la raíz del repositorio.
+
 # MIBOLSILLO: INFORME ACADÉMICO Y REVISIÓN TÉCNICA
 
 **Prototipo para la gestión y el control de las finanzas personales**  
@@ -194,7 +198,7 @@ El proyecto incluye interfaces web y un programa de consola independientes:
 1. Abra una terminal de comandos en la carpeta del proyecto.
 2. Compile con GCC/MinGW ejecutando:
    ```bash
-   g++ -std=c++17 -Wall -Wextra main.cpp -o finanzas.exe
+   g++ -std=c++17 -Wall -Wextra legacy/console/main.cpp -o finanzas.exe
    ```
 3. Ejecute la aplicación:
    ```bash
@@ -257,7 +261,7 @@ Con el estado web de demostración observado, los indicadores se mantienen: ingr
 ### 9.4 Validaciones ejecutadas para esta revisión
 
 * `node --check` para `shared.js`, `desktop.js`, `mobile.js` y `app.js`: **correcto**.
-* Compilación de sintaxis C++17 con `g++ -std=c++17 -Wall -Wextra -fsyntax-only main.cpp`: **correcta**.
+* Compilación de sintaxis C++17 con `g++ -std=c++17 -Wall -Wextra -fsyntax-only legacy/console/main.cpp`: **correcta**.
 * Pruebas de regresión en Node.js: **correctas** para estado parcial/restablecimiento, validación de fechas, presupuestos por período, presentación con centavos y conciliación de los datos demostrativos.
 * Comprobación estática: los campos monetarios `type=number` de PC, móvil e `index.html` aceptan pasos de `0.01`; los formularios de perfil contienen sus campos de saldo inicial.
 * Revisión estática: no quedan interpolaciones de datos en `onclick`/`onchange`/`oninput` en plantillas dinámicas; las acciones usan atributos `data-*` y listeners delegados.
@@ -389,5 +393,8 @@ src/
 ### 11.3 Archivos Rediseñados como Fachadas de Compatibilidad
 * `src/utils/desktop.js`: De un monolito de 3.139 líneas pasó a un punto de entrada conciso (25 líneas) que delega en `src/ui/desktop/desktopApp.js` y expone `window.pcApp`.
 * `src/utils/shared.js`: De un archivo masivo de 2.463 líneas pasó a un puente de compatibilidad (50 líneas) que re-exporta los catálogos y funciones en el espacio global para garantizar funcionamiento con scripts existentes y la versión móvil.
+
+
+
 
 

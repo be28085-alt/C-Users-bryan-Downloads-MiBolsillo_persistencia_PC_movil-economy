@@ -1,3 +1,7 @@
+> Documento histórico conservado durante la organización del proyecto del 14-11-2026. Describe el estado de una revisión anterior; los resultados de pruebas y los pendientes pertenecen a esa revisión. Para las rutas actuales y el funcionamiento vigente, consulte [la guía principal](../../README.md) y [la estructura del proyecto](../ESTRUCTURA.md).
+>
+> Rutas anteriores: los JavaScript de raíz se conservan en `legacy/web/`, los programas C++ en `legacy/console/` y los módulos alternativos sin conexión con las páginas actuales en `legacy/modular/src/`. Los puentes CSS anteriores se conservan en `legacy/web/`; las hojas activas están en `styles/`. Las rutas de código se interpretan desde la raíz del repositorio.
+
 # Corrección de navegación en Mi negocio
 
 ## Archivos modificados
@@ -14,3 +18,6 @@ No se eliminaron paneles, botones, acciones ni módulos. Se mantienen los acceso
 
 ## Aplicación
 Reemplaza los dos archivos respetando las rutas indicadas. Reinicia Live Server y recarga con Ctrl+F5.
+
+
+
