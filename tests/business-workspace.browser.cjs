@@ -7,6 +7,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..'), output = path.join(root, 'tmp', 'business-workspace');
 fs.mkdirSync(output, { recursive: true });
 const server = http.createServer((req, res) => {
+  if (req.url === '/api/auth/session') { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({legacyMode:true})); return; }
   const file = path.resolve(root, '.' + decodeURIComponent(new URL(req.url, 'http://localhost').pathname));
   if (!file.startsWith(root + path.sep)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (e, data) => { if (e) { res.writeHead(404); res.end(); } else { res.setHeader('Content-Type', ({ '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' })[path.extname(file)] || 'application/octet-stream'); res.end(data); } });
@@ -14,7 +15,15 @@ const server = http.createServer((req, res) => {
 const routes = { dashboard: ['negocio-dashboard', 'negocio'], inventory: ['negocio-inventario', 'inventario'], movements: ['negocio-movimientos', 'movimientos'], sales: ['negocio-ventas', 'ventas'], contacts: ['negocio-proveedores', 'proveedores'], management: ['negocio-gestion', 'gestion'], purchases: ['negocio-compras', 'compras'], products: ['negocio-productos', 'productos'], cash: ['negocio-caja', 'caja'], expenses: ['negocio-gastos', 'gastos'] };
 async function nav(page, section, mobile) {
   const route = routes[section][mobile ? 1 : 0];
-  if (!mobile) await page.locator(`#navEmpresarial [data-view="${route}"]`).click();
+  if (!mobile) {
+    const sidebar = page.locator(`#navEmpresarial [data-view="${route}"]`);
+    if (await sidebar.isVisible()) await sidebar.click();
+    else {
+      const bottom = page.locator(`#responsiveBottomNav [data-responsive-view="${route}"]`);
+      if (await bottom.count()) await bottom.click();
+      else { await page.locator('#responsiveBottomNav button[aria-label="Más secciones"]').click(); await page.locator(`#responsiveMenu [data-responsive-view="${route}"]`).click(); }
+    }
+  }
   else if (section === 'movements') { await page.locator('#mobileBusinessOptionsToggle').click(); await page.locator('[data-quick-action="business-movements"]').click(); }
   else if (['purchases', 'products', 'cash', 'expenses'].includes(section)) await page.locator('.business-panel.active .bm-mobile-sections [data-section="' + section + '"]').click();
   else await page.locator(`#mobileBusinessNav [data-business-tab="${route}"]`).click();
@@ -80,10 +89,19 @@ async function flow(page, mobile) {
   await page.evaluate(() => { window.__originalStorageSet = Storage.prototype.setItem; Storage.prototype.setItem = function(k, v) { if (window.__storageFailure && k === 'FINANZAS_ETAPA_DATA_V2') throw new Error('QuotaExceededError'); return window.__originalStorageSet.call(this, k, v); }; window.__storageFailure = true; });
   await dialog.locator('button[type="submit"]').click(); await dialog.locator('.bm-form-feedback').filter({ hasText: 'No se pudo guardar' }).waitFor(); assert.equal(await page.evaluate(() => Finanzas.state.productos.length), 1);
   await page.evaluate(() => { window.__storageFailure = false; }); await save(page); assert.equal(await page.evaluate(() => Finanzas.state.productos.length), 2);
-  // Search, CSV and consultation must use the saved records.
+  // Search and consultation still use saved records in the simplified interface.
   await view.locator('[data-bm-search]').fill('Artículo editado'); assert.equal(await view.locator('tr[data-record-id]').count(), 1);
-  const downloaded = page.waitForEvent('download'); await view.getByRole('button', { name: 'Descargar CSV', exact: true }).click(); const file = await downloaded; await file.saveAs(path.join(output, `${mobile ? 'mobile' : 'pc'}-products.csv`));
+  assert.equal(await view.getByRole('button', { name: 'Descargar CSV', exact: true }).count(), 0);
   await view.getByRole('button', { name: 'Consultar', exact: true }).click(); await page.locator('.bm-dialog[open] [data-bm="close"]').first().click();
+  assert.equal(await view.getByRole('button', { name: 'Historial de inventario', exact: true }).count(), 0);
+  for (const [type, quantity, stock] of [['ENTRADA', '1', '13'], ['SALIDA', '1', '12']]) {
+    await view.getByRole('button', { name: 'Movimiento', exact: true }).click(); dialog = page.locator('.bm-dialog[open]');
+    await dialog.locator('[name="productoId"]').selectOption({ label: `Artículo editado · stock ${stock === '13' ? '12' : '13'}` });
+    await dialog.locator('[name="tipo"]').selectOption(type); await fill(dialog, { cantidad: quantity, fecha: '2026-11-09', motivo: 'Verificación de movimiento' }); await save(page);
+    assert.equal(await view.getByRole('button', { name: 'Historial de inventario', exact: true }).count(), 0);
+  }
+  assert.equal(await page.evaluate(() => Finanzas.state.productos[0].stock), 12);
+  assert.equal(await page.evaluate(() => Finanzas.state.movimientosInventario.filter(m => m.motivo === 'Verificación de movimiento').length), 2);
   // Print a real sale voucher (the normal flow does not fabricate an official invoice).
   view = await nav(page, 'sales', mobile); const downloadPromise = page.waitForEvent('download'); await view.getByRole('button', { name: 'Comprobante', exact: true }).click(); await (await downloadPromise).saveAs(path.join(output, 'linked-sale.pdf'));
   // Recipes, stock consumption and the produced lot are exercised through the actual forms.
@@ -137,6 +155,7 @@ async function seed(page) {
         assert.ok(bounds.scroll <= bounds.client + 2, `${name} ${width} ${section}: horizontal overflow ${bounds.scroll}/${bounds.client}`);
         assert.equal(await view.locator('h1').count(), 1);
         if (!['management', 'movements'].includes(section)) assert.equal(await view.locator('.bm-kpis article').count(), 4);
+        if (section === 'inventory') assert.equal(await view.getByRole('button', { name: 'Historial de inventario', exact: true }).count(), 0);
         if ((!mobile && width === 1366) || (mobile && width === 390)) await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-${section}.png`), animations: 'disabled' });
         if ((width === 1366 && !mobile) || (width === 390 && mobile)) {
           if (['purchases', 'products', 'cash', 'expenses'].includes(section)) {
@@ -153,18 +172,10 @@ async function seed(page) {
         }
       }
       await nav(page, 'dashboard', mobile);
-      if (!mobile && width >= 768) assert.ok(await page.locator('.top-notice-bar').evaluate(bar => {
-        const bounds = bar.getBoundingClientRect();
-        return Array.from(bar.querySelectorAll('a')).every(link => { const r = link.getBoundingClientRect(); return r.top >= bounds.top && r.bottom <= bounds.bottom && r.right <= bounds.right; });
-      }), `desktop ${width}: version links must fit the header`);
+      assert.equal(await page.locator('a[href*="desktop.html"],a[href*="mobile.html"]').count(), 0, 'no platform selectors');
       await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-dashboard.png`), animations: 'disabled' });
       await nav(page, 'inventory', mobile); await page.locator('[data-business-section="inventory"]').getByRole('button', { name: '+ Producto', exact: true }).click();
       const dialog = page.locator('.bm-dialog[open]'); assert.ok(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 2)); await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-form.png`) }); await dialog.locator('[data-bm="close"]').first().click();
-      const version = page.locator(mobile ? '.mobile-top-notice .btn-switch-link[href*="desktop.html"]' : '.top-notice-bar .btn-switch-version[href*="mobile.html"]');
-      const targetPage = mobile ? 'desktop.html' : 'mobile.html';
-      const versionUrl = new URL(await version.getAttribute('href'), page.url());
-      assert.equal(versionUrl.pathname, `/${targetPage}`);
-      assert.equal(versionUrl.searchParams.get('modulo'), 'EMPRESARIAL');
       const avatar = page.locator(mobile ? '#view-negocio [data-business-profile]' : '.pc-top-header [data-business-profile]');
       if (mobile || width >= 768) {
         assert.ok((await avatar.innerText()).trim());
@@ -174,9 +185,7 @@ async function seed(page) {
       const personal = await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos));
       await page.evaluate(() => { if (typeof pcApp !== 'undefined') pcApp.setModulo('PERSONAL', 'inicio'); else mobileApp.setModulo('PERSONAL', 'inicio'); });
       assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)), personal); assert.equal(await page.locator('#view-inicio').evaluate(el => el.classList.contains('active')), true);
-      await version.click(); await page.waitForURL(`${origin}/${targetPage}`);
-      await page.waitForFunction(() => typeof Finanzas !== 'undefined' && Finanzas.state);
-      assert.equal(new URL(page.url()).pathname, `/${targetPage}`);
+      await page.setViewportSize({ width: width < 800 ? 1366 : 390, height: 950 });
       assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)), personal);
       assert.deepEqual(errors, []); await context.close(); console.log(`PASS ${name} ${width}px: business views, forms, navigation and isolation${(!mobile && width === 1366) || (mobile && width === 390) ? '; full CRUD/payment/reload/storage-error flow' : ''}`);
     }

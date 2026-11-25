@@ -1,12 +1,13 @@
 # MiBolsillo para Android y Google Play
 
-Se preparó un proyecto Android con Capacitor 8.6.2 en `android/`. Reutiliza el código web actual y abre `mobile.html` al iniciar. Conserva la versión PC, el cambio entre plataformas y las reglas financieras compartidas. Es una base de desarrollo; todavía no es una versión lista para publicar.
+El proyecto Android Capacitor está en `android/` y conserva las fuentes HTML de MiBolsillo. La entrada actual muestra el acceso a la cuenta; con backend disponible, una sola pantalla financiera se adapta al ancho sin selector ni recarga. El APK independiente todavía necesita integrar el backend de cuentas/SQLite nativo o una API segura: no está listo para utilizar las cuentas localmente ni para publicar. Consulte [Cuentas y migración](CUENTAS_Y_MIGRACION.md).
 
 ## Estado comprobado
 
-- El empaquetador `scripts/build-android-web.cjs` copia las dependencias declaradas por ambas entradas a `dist/android-web/`. No incluye código archivado, pruebas, SQL ni archivos personales.
+- El empaquetador `scripts/build-android-web.cjs` copia la entrada adaptable y las dependencias declaradas por ambas interfaces a `dist/android-web/`. Los módulos financieros se incluyen sin reescribirlos. No incluye código archivado, pruebas, SQL ni archivos personales.
 - Chart.js y su licencia se incluyen localmente. Las páginas empaquetadas usan fuentes del sistema para evitar depender de Google Fonts al arrancar. Los HTML web originales se conservan.
 - Capacitor carga el contenido incluido desde `https://localhost`, sin servidor remoto ni HTTP inseguro. Mantener ese origen en futuras versiones evita cambiar accidentalmente el almacenamiento local.
+- El [servidor local SQLite](SQLITE.md) guarda estados separados por usuario en el computador. No se incluye en Android. El paquete estático sin API de acceso muestra el error de conexión y bloquea las finanzas privadas; no utiliza `localStorage` como sustituto de una cuenta autenticada. La integración nativa y su migración siguen pendientes.
 - Proyecto nativo generado y sincronizado. Android mínimo: API 24; compilación y destino: API 36. Nombre provisional: MiBolsillo; identificador provisional: `com.mibolsillo.app`.
 - La compilación de APK se intentó, pero este equipo no dispone de Java/JAVA_HOME ni se encontró el SDK Android. No se ha generado un APK/AAB ni probado la aplicación en un dispositivo Android.
 - Verificación: 58 pruebas Node y las comprobaciones de compatibilidad aprobadas. Sobre el paquete web se verificaron en Chrome los flujos personales y empresariales completos de PC (1366 px) y móvil (390 px), incluida persistencia tras recarga, operaciones, descargas y cambio de plataforma. Estas pruebas no sustituyen la comprobación en Android WebView.
@@ -34,7 +35,7 @@ Con Android Studio y un teléfono/emulador, verifique los flujos antes de prepar
 
 ## Trabajo pendiente antes de distribuir
 
-El objetivo de persistencia es guardar localmente y sincronizar con una cuenta en la nube. La arquitectura, migración, respaldos y fases pendientes se describen en el [plan de almacenamiento local y en la nube](ALMACENAMIENTO_LOCAL_Y_NUBE.md). Esta funcionalidad todavía no está implementada.
+El objetivo de persistencia en Android es guardar en SQLite nativo y sincronizar con una cuenta en la nube. La arquitectura, migración, respaldos y fases pendientes se describen en el [plan de almacenamiento local y en la nube](ALMACENAMIENTO_LOCAL_Y_NUBE.md). El servidor SQLite para uso web local ya tiene una implementación separada; SQLite nativo Android y la nube todavía no están implementados.
 
 1. Confirmar identificador definitivo, titular y nombre comercial antes de la primera publicación. El identificador actual es provisional y no acredita disponibilidad en Google Play.
 2. Probar en Android todas las funciones personales y empresariales, el teclado, el botón Atrás, la rotación, la pantalla completa, Web Locks y el funcionamiento sin red.

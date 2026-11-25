@@ -1,38 +1,41 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include "data/DatabaseManager.h"
-#include "services/BusinessService.h"
-#include <QDebug>
+#include <QQuickStyle>
+#include <QTimer>
+#ifdef MIBOLSILLO_NATIVE_PROTOTYPE
+#include "services/FinanceService.h"
+#else
+#include "WebAppLauncher.h"
+#endif
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     QGuiApplication app(argc, argv);
-    app.setApplicationName("GestorFinanciero");
-    app.setOrganizationName("FinanzasApp");
-
-    // 1. Inicializar conexión a MySQL mediante Qt SQL (QMYSQL)
-    auto& db = DatabaseManager::instance();
-    bool dbConnected = db.connectToDatabase("localhost", 3306, "gestor_financiero", "root", "1234");
-    if (!dbConnected) {
-        qWarning() << "[Main] Advertencia: Base de datos MySQL no disponible en localhost. Ejecutando en modo demostración/desconectado.";
-    }
-
-    // 2. Instanciar servicios de lógica de negocio
-    BusinessService businessService;
-
-    // 3. Inicializar motor QML
+    app.setApplicationDisplayName(QStringLiteral("MiBolsillo"));
+    app.setOrganizationName(QStringLiteral("MiBolsillo"));
+    app.setApplicationVersion(QStringLiteral("0.3.0"));
+    QQuickStyle::setStyle(QStringLiteral("Basic"));
+#ifdef MIBOLSILLO_NATIVE_PROTOTYPE
+    app.setApplicationName(QStringLiteral("MiBolsilloQt"));
+    FinanceService financeService;
     QQmlApplicationEngine engine;
-    engine.rootContext()->setContextProperty("businessService", &businessService);
-    engine.rootContext()->setContextProperty("dbConnected", dbConnected);
-
+    engine.rootContext()->setContextProperty(QStringLiteral("financeService"), &financeService);
     const QUrl url(QStringLiteral("qrc:/qml/main.qml"));
-    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-                     &app, [url](QObject *obj, const QUrl &objUrl) {
-        if (!obj && url == objUrl)
-            QCoreApplication::exit(-1);
+#else
+    app.setApplicationName(QStringLiteral("MiBolsilloHTML"));
+    WebAppLauncher webLauncher;
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("webLauncher"), &webLauncher);
+    const QUrl url(QStringLiteral("qrc:/qml/WebLauncher.qml"));
+#endif
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app,
+                     [url](QObject *object, const QUrl &objectUrl) {
+        if (!object && url == objectUrl) QCoreApplication::exit(1);
     }, Qt::QueuedConnection);
-
     engine.load(url);
-
+#ifndef MIBOLSILLO_NATIVE_PROTOTYPE
+    if (!engine.rootObjects().isEmpty()) QTimer::singleShot(0, &webLauncher, &WebAppLauncher::start);
+#endif
     return app.exec();
 }

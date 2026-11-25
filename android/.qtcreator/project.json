@@ -1,0 +1,44 @@
+{
+    "$schema": "https://download.qt.io/official_releases/qtcreator/latest/installer_source/jsonschemas/project.json",
+    "build.configuration": [
+        {
+            "name": "Project Gradlew build",
+            "steps": [
+                {
+                    "executable": "%{ActiveProject:ProjectDirectory}/gradlew%{HostOs:BatchFileSuffix}",
+                    "workingDirectory": "%{ActiveProject:ProjectDirectory}"
+                }
+            ]
+        },
+        {
+            "name": "System Gradle build",
+            "steps": [
+                {
+                    "executable": "gradle",
+                    "workingDirectory": "%{ActiveProject:ProjectDirectory}"
+                }
+            ]
+        }
+    ],
+    "files.exclude": [
+        ".qtcreator/project.json.user"
+    ],
+    "targets": [
+        {
+            "arguments": [
+                "run"
+            ],
+            "executable": "%{ActiveProject:ProjectDirectory}/gradlew%{HostOs:BatchFileSuffix}",
+            "name": "Project Gradlew run",
+            "workingDirectory": "%{ActiveProject:ProjectDirectory}"
+        },
+        {
+            "arguments": [
+                "run"
+            ],
+            "executable": "gradle",
+            "name": "System Gradle run",
+            "workingDirectory": "%{ActiveProject:ProjectDirectory}"
+        }
+    ]
+}

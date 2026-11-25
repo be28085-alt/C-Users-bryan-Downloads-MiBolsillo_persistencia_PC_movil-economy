@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/main.qml</file>
+        <file>qml/AuthView.qml</file>
+        <file>qml/FinanceView.qml</file>
+        <file>qml/ProfileView.qml</file>
+        <file>qml/BusinessModule.qml</file>
+    </qresource>
+</RCC>

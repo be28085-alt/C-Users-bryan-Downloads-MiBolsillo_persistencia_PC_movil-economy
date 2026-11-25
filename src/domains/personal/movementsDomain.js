@@ -49,7 +49,7 @@
         if (m.tipo === 'INGRESO') total += val;
         else if (m.tipo === 'GASTO') total -= val;
       });
-      return total;
+      return Math.round((total + Number.EPSILON) * 100) / 100;
     },
 
     /**
@@ -66,9 +66,9 @@
         else if (m.tipo === 'GASTO') gastos += val;
       });
       return {
-        ingresos,
-        gastos,
-        balance: ingresos - gastos
+        ingresos: Math.round((ingresos + Number.EPSILON) * 100) / 100,
+        gastos: Math.round((gastos + Number.EPSILON) * 100) / 100,
+        balance: Math.round((ingresos - gastos + Number.EPSILON) * 100) / 100
       };
     },
 
@@ -87,7 +87,7 @@
       const grupoFecha = window.formatearGrupoFecha ? window.formatearGrupoFecha(fecha) : fecha;
 
       return {
-        id: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: window.crypto?.randomUUID?.() || `tx-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
         tipo,
         concepto,
         categoria,

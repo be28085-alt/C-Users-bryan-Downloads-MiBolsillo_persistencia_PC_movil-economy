@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>MiBolsillo</title>
+  <link rel="stylesheet" href="styles/account-access.css">
+  <link rel="stylesheet" href="styles/reference-account.css?v=20261123-1">
+  <style>
+    html,body{margin:0;width:100%;min-height:100%;background:#f3f6f8}
+    #mibolsillo-app{display:block;width:100%;height:100dvh;border:0}
+    #mibolsillo-app[hidden],#account-access[hidden],#entry-status[hidden]{display:none}
+    #entry-status{padding:16px;color:#133842;font:16px system-ui}
+  </style>
+  <script src="src/ui/shared/adaptiveEntry.js" defer></script>
+  <script src="src/ui/shared/accountAccess.js" defer></script>
+</head>
+<body>
+  <p id="entry-status" role="status" aria-live="polite">Abriendo MiBolsillo…</p>
+  <main id="account-access"></main>
+  <iframe id="mibolsillo-app" title="MiBolsillo · Finanzas Personales y Mi Negocio" allow="clipboard-write" hidden></iframe>
+  <noscript>Activa JavaScript y abre MiBolsillo desde su servidor local para acceder a tu cuenta.</noscript>
+</body>
+</html>

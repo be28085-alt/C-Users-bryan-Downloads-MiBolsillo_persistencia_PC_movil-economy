@@ -66,14 +66,14 @@
     const details = detailsMarkup(model), operations = window.BusinessReportOperationsView.markup(model, printing);
     const panel = (key, content) => `<section id="br-panel-${key}" data-report-panel="${key}" ${printing ? '' : `role="tabpanel" aria-labelledby="br-tab-${key}" ${selected === key ? '' : 'hidden'}`}>${printing ? `<h2 class="br-print-section">${sections[key]}</h2>` : ''}${content}</section>`;
     const marginText = cents(t.income) > 0n ? `${positive ? 'Conservas el ' : 'Margen neto negativo: '}${String(t.margin).replace('.', ',')}%${positive ? ' de tus ingresos' : ''}` : 'Sin ingresos registrados en el período';
-    return `<header class="br-header"><div><span class="br-eyebrow">INFORMES DE MI NEGOCIO</span><h1>Tu negocio, en perspectiva</h1><p>${E(model.business.name)} · <span data-report-period-label>${E(model.range.label)}</span></p></div>${printing ? '' : `<div class="br-controls"><label>Período del informe<select data-report-period>${Object.entries(periods).map(([v, l]) => `<option value="${v}" ${model.period === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label><div class="br-export-actions"><button type="button" data-report-action="csv">↓ Descargar CSV</button><button type="button" data-report-action="save-view">Guardar vista</button><button type="button" class="br-button-primary" data-report-action="print">Imprimir / PDF</button></div></div>`}</header>
+    return `<header class="br-header"><div><h1>${printing ? 'Tu negocio, en perspectiva' : 'Informes'}</h1><p>${printing ? `${E(model.business.name)} · ${E(model.range.label)}` : 'Mi Negocio / Informes'}</p></div>${printing ? '' : `<div class="br-controls"><select data-report-period aria-label="Período del informe">${Object.entries(periods).map(([v, l]) => `<option value="${v}" ${model.period === v ? 'selected' : ''}>${l}</option>`).join('')}</select><button type="button" class="br-button-primary" data-report-action="print">Imprimir / PDF</button></div>`}</header>
       ${!printing && model.period === 'PERSONALIZADO' ? `<div class="br-date-range"><label>Desde<input type="date" data-report-from value="${E(model.range.from)}" required></label><label>Hasta<input type="date" data-report-to value="${E(model.range.to)}" required></label><button type="button" class="br-button-primary" data-report-action="range">Aplicar fechas</button></div>` : ''}
       <p class="br-feedback" role="status" aria-live="polite"></p>
       ${!model.hasData ? '<div class="br-empty" role="status"><strong>No hay movimientos de ventas, gastos u otros ingresos en este período.</strong><span>Los cobros, pagos y saldos se muestran por separado. Selecciona otro período para consultar más registros.</span></div>' : ''}
       ${model.invalidCount ? `<div class="br-empty br-warning">Se excluyeron ${model.invalidCount} registros del negocio con fechas o valores inválidos. Revisa esos registros para completar el informe.</div>` : ''}
       ${model.cash.invalidCount ? `<div class="br-empty br-warning">El flujo de dinero omite ${model.cash.invalidCount} movimientos sin fecha válida. Revisa su registro de origen.</div>` : ''}
       ${model.operations.invalidCount ? `<div class="br-empty br-warning">Se omitieron ${model.operations.invalidCount} registros operativos con importes o saldos inconsistentes. Revisa los documentos originales.</div>` : ''}
-      ${printing ? '' : `<nav class="br-section-nav" role="tablist" aria-label="Secciones del informe">${Object.entries(sections).map(([key, label]) => `<button type="button" role="tab" id="br-tab-${key}" aria-controls="br-panel-${key}" aria-selected="${selected === key}" tabindex="${selected === key ? '0' : '-1'}" data-report-tab="${key}">${label}</button>`).join('')}</nav><p class="br-storage-note">Fuente: datos del negocio en este navegador · el informe se actualiza con cada operación. Usa Guardar vista para recordar el período y la sección.</p>`}
+      ${printing ? '' : `<nav class="br-section-nav" role="tablist" aria-label="Secciones del informe">${Object.entries(sections).map(([key, label]) => `<button type="button" role="tab" id="br-tab-${key}" aria-controls="br-panel-${key}" aria-selected="${selected === key}" tabindex="${selected === key ? '0' : '-1'}" data-report-tab="${key}">${label}</button>`).join('')}</nav>`}
       <section id="br-panel-overview" data-report-panel="overview" ${printing ? '' : `role="tabpanel" aria-labelledby="br-tab-overview" ${selected === 'overview' ? '' : 'hidden'}`}>
       <div class="br-kpis"><article class="br-kpi br-hero ${positive ? '' : 'br-loss'}"><span>Utilidad neta del período</span><strong data-report-value="netProfit">${E(money(t.netProfit, true))}</strong><span class="br-chip">${E(marginText)}</span><small>${trend(model, 'netProfitDelta')}</small></article><article class="br-kpi"><span>Ingresos totales <b class="br-arrow br-positive">↗</b></span><strong class="br-positive" data-report-value="income">${E(money(t.income))}</strong><span class="br-chip">Ventas netas + otros ingresos</span><small>${trend(model, 'incomeDelta')}</small></article><article class="br-kpi"><span>Costos y gastos <b class="br-arrow br-negative">↘</b></span><strong class="br-negative" data-report-value="expenses">${E(money(t.expenses))}</strong><span class="br-chip">Costo de ventas + operación</span><small>${trend(model, 'expensesDelta')}</small></article></div>
       <div class="br-secondary-kpis br-activity-summary"><div><span>Ventas del período</span><strong data-report-value="salesCount">${t.salesCount}</strong></div><div><span>Ticket promedio de venta</span><strong>${E(money(t.ticket))}</strong></div></div>
@@ -140,7 +140,6 @@
       const root = event.target.closest('[data-business-report]'); root.dataset.reportPeriod = event.target.value;
       render(window.Finanzas, window.Finanzas.getNegocioActivo(), event.target.value); root.querySelector('[data-report-period]').focus();
     });
-    let savingView = false;
     document.addEventListener('click', async event => {
       const tab = event.target.closest('[data-report-tab]'); if (tab) { selectSection(tab.closest('[data-business-report]'), tab.dataset.reportTab); return; }
       const record = event.target.closest('[data-report-record]');
@@ -165,16 +164,6 @@
           options.from = root.querySelector('[data-report-from]').value; options.to = root.querySelector('[data-report-to]').value;
         }
         const model = window.BusinessReportsDomain.build(window.Finanzas.state, window.Finanzas.state.negocioActivoId, options);
-        if (button.dataset.reportAction === 'save-view') {
-          if (savingView) return;
-          savingView = true; button.disabled = true;
-          const businessId = model.business.id;
-          try {
-            await window.Finanzas.getBusinessService().execute('saveReportPreferences', { version: 1, period: model.period, from: model.range.from, to: model.range.to, section: root.dataset.reportSection || 'overview' });
-            if (root.dataset.businessId === businessId) root.querySelector('.br-feedback').textContent = 'Vista guardada y verificada. Se recuperará al abrir este negocio en PC o móvil.';
-          } finally { savingView = false; root.querySelector('[data-report-action="save-view"]').disabled = false; }
-          return;
-        }
         if (button.dataset.reportAction === 'range') {
           root.dataset.reportFrom = options.from; root.dataset.reportTo = options.to;
           render(window.Finanzas, window.Finanzas.getNegocioActivo()); root.querySelector('[data-report-action="range"]').focus();

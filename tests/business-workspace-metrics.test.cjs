@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { app } = require('./helpers/browser-core.cjs');
 
 for (const page of ['desktop.html', 'mobile.html']) test(`${page}: indicadores del nuevo espacio concilian inventario, proveedores, gastos y caja`, async () => {
-  const a = app(page); a.core.setModuloActivo('EMPRESARIAL');
+  const a = app(page); (await a.core.setModuloActivo('EMPRESARIAL'));
   const service = a.core.getBusinessService(), date = '2026-11-09';
   const supplier = (await service.execute('saveSupplier', { nombre: 'Proveedor', cedula: '9001' })).record;
   const customer = (await service.execute('saveCustomer', { nombre: 'Cliente', cedula: '1001' })).record;
@@ -30,7 +30,7 @@ for (const page of ['desktop.html', 'mobile.html']) test(`${page}: indicadores d
 });
 
 test('márgenes negativos y precios cero se muestran sin NaN ni divisiones por cero', async () => {
-  const a = app(); a.core.setModuloActivo('EMPRESARIAL'); const service = a.core.getBusinessService();
+  const a = app(); (await a.core.setModuloActivo('EMPRESARIAL')); const service = a.core.getBusinessService();
   await service.execute('saveProduct', { nombre: 'Pérdida', stock: '0.1', costoUnitario: '0.3', precioVenta: '0.2' });
   await service.execute('saveProduct', { nombre: 'Sin precio', stock: '1', costoUnitario: '1', precioVenta: '0' });
   const metrics = a.context.BusinessWorkspaceMetrics.build(a.context.BusinessReadModel.build(a.core, a.core.state.negocioActivoId, 'TODOS'));

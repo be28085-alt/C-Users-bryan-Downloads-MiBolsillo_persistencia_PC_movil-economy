@@ -21,13 +21,16 @@
         if (m.tipo === 'GASTO') gastado += Number(m.valor) || 0;
       });
 
-      const restante = limite - gastado;
+      gastado = Math.round((gastado + Number.EPSILON) * 100) / 100;
+      const restante = Math.round((limite - gastado + Number.EPSILON) * 100) / 100;
       const porcentaje = limite > 0 ? (gastado / limite) * 100 : 0;
-      let estado = 'NORMAL';
-      if (porcentaje >= 100) estado = 'EXCEDIDO';
+      let estado = limite > 0 ? 'NORMAL' : 'SIN_CONFIGURAR';
+      if (limite > 0 && gastado > limite) estado = 'EXCEDIDO';
+      else if (limite > 0 && gastado === limite) estado = 'AGOTADO';
       else if (porcentaje >= 80) estado = 'ALERTA';
 
       return {
+        configurado: limite > 0,
         limite,
         gastado,
         restante,
@@ -87,7 +90,7 @@
           tipo: 'danger',
           icono: '🚨',
           titulo: 'Presupuesto mensual superado',
-          mensaje: `Has sobrepasado tu límite global en un ${estadoPresupuesto.porcentaje.toFixed(1)}%.`
+          mensaje: `Has consumido el ${estadoPresupuesto.porcentaje.toFixed(1)}% de tu presupuesto asignado.`
         });
       } else if (estadoPresupuesto && estadoPresupuesto.estado === 'ALERTA') {
         alertas.push({

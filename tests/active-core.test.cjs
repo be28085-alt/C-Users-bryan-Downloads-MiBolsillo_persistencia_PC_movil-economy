@@ -116,22 +116,22 @@ test('copia: valida, restaura y protege datos ante errores', async () => {
   assert.equal(service.validarCopiaSeguridadJSON(backup).error, null);
   for (const value of ['{}', 'null', '{bad', backup.replace('"stock":5', '"stock":-1')]) {
     const before = a.disk.get(key);
-    assert.ok(service.restaurarCopiaSeguridadJSON(value).error);
+    assert.ok((await service.restaurarCopiaSeguridadJSON(value)).error);
     assert.equal(a.disk.get(key), before);
   }
   (await a.core.registrarVenta(sale([line(1)])));
-  assert.equal(service.restaurarCopiaSeguridadJSON(backup).error, null);
+  assert.equal((await service.restaurarCopiaSeguridadJSON(backup)).error, null);
   assert.equal(a.core.state.productos[0].stock, 5);
   a.setFailure(true);
   const changed = backup.replace('"stock":5', '"stock":99');
-  assert.ok(service.restaurarCopiaSeguridadJSON(changed).error);
+  assert.ok((await service.restaurarCopiaSeguridadJSON(changed)).error);
   assert.equal(a.core.state.productos[0].stock, 5);
   a.setFailure(false);
   a.storage.retryPendingSave();
   assert.equal(JSON.parse(a.disk.get(key)).data.productos[0].stock, 5);
 });
 
-test('aviso accesible: aparece al fallar y desaparece tras reintentar', async () => {
+test('aviso accesible: un alta fallida conserva el estado y el reintento guarda una sola vez', async () => {
   const a = app(); prepare(a);
   const nodes = [];
   function element(tag) {
@@ -150,14 +150,24 @@ test('aviso accesible: aparece al fallar y desaparece tras reintentar', async ()
   assert.equal(panel.hidden, true);
   const personalCount = a.core.state.movimientos.length;
   a.setFailure(true);
-  a.core.agregarMovimiento({ tipo: 'INGRESO', concepto: 'Prueba', valor: 1, categoria: 'Otros', fecha: '2026-11-08' });
+  const data = { tipo: 'INGRESO', concepto: 'Prueba', valor: 1, categoria: 'Otros', fecha: '2026-11-08' };
+  assert.ok((await a.core.agregarMovimiento(data)).error);
   assert.equal(panel.hidden, false);
-  assert.match(alert.textContent, /solo en memoria/);
+  assert.match(alert.textContent, /no se guardó/);
+  assert.equal(retry.hidden, true);
+  assert.equal(a.core.state.movimientos.length, personalCount);
+  a.setFailure(false);
+  assert.ok((await a.core.agregarMovimiento(data)).id);
+  assert.equal(panel.hidden, true);
+  assert.equal(JSON.parse(a.disk.get(key)).data.movimientos.length, personalCount + 1);
+  // Keep recovery of previously pending writes available as well.
+  a.setFailure(true);
+  a.storage.saveState({ ...a.core.state, saldoInicial: 88 });
   assert.equal(retry.hidden, false);
   a.setFailure(false);
   retry.onclick();
   assert.equal(panel.hidden, true);
-  assert.equal(JSON.parse(a.disk.get(key)).data.movimientos.length, personalCount + 1);
+  assert.equal(JSON.parse(a.disk.get(key)).data.saldoInicial, 88);
 });
 
 test('todos los scripts locales activos existen y tienen sintaxis válida', async () => {

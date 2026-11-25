@@ -1,0 +1,328 @@
+/* Mi Negocio: the same clear workspace on desktop, tablet and phone. */
+.business-manager,
+.bm-dialog {
+  --bm-ink: #203b49;
+  --bm-muted: #607c8c;
+  --bm-border: #dfebf1;
+  --bm-green: #24576b;
+  font-family: var(--font-family, 'Inter', system-ui, sans-serif);
+  font-size: 1rem;
+}
+
+.business-manager .bm-header {
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.business-manager .bm-header > div:first-child { min-width: 0; }
+.business-manager .bm-header small {
+  color: var(--bm-muted);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+}
+.business-manager .bm-header h1 {
+  color: #203b49;
+  font-size: clamp(1.55rem, 2.2vw, 2rem);
+  font-weight: 650;
+  letter-spacing: -.035em;
+  margin: 8px 0;
+}
+.business-manager .bm-header p { font-size: .875rem; line-height: 1.65; }
+.business-manager .bm-header-controls { align-items: end; gap: 8px; }
+.business-manager .bm-business-picker { font-size: .75rem; max-width: 200px; }
+.business-manager label,
+.bm-dialog label { font-size: .875rem; font-weight: 500; }
+.business-manager button,
+.bm-dialog button {
+  border-color: #d9e6ee;
+  border-radius: 7px;
+  padding: 10px 14px;
+  min-height: 42px;
+  font-size: .875rem;
+  font-weight: 600;
+}
+.business-manager .bm-primary,
+.bm-dialog .bm-primary { background: #24576b; border-color: #24576b; }
+.business-manager .bm-primary:hover,
+.bm-dialog .bm-primary:hover { background: #1b475a; border-color: #1b475a; }
+.business-manager button:hover,
+.bm-dialog button:hover { border-color: #9dbac9; background: #edf5f9; }
+.business-manager input,
+.business-manager select,
+.bm-dialog input,
+.bm-dialog select,
+.bm-dialog textarea {
+  font-size: .875rem;
+  border-color: #d9e6ee;
+  border-radius: 7px;
+  padding: 10px 12px;
+  min-height: 42px;
+}
+.business-manager .bm-business-picker select { font-size: .875rem; min-height: 42px; }
+.business-manager :focus-visible,
+.bm-dialog :focus-visible { outline: 3px solid #78a6bb; outline-offset: 3px; }
+
+.business-manager .bm-period { flex-wrap: wrap; gap: 8px 20px; margin-bottom: 16px; }
+.business-manager .bm-period label { font-size: .875rem; }
+.business-manager .bm-period > span { font-size: .75rem; }
+.business-manager .bm-kpis {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0 22px;
+}
+.business-manager .bm-kpis article {
+  border: 1px solid var(--bm-border);
+  border-radius: 9px;
+  padding: 20px 18px;
+  background: #fff;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.business-manager .bm-kpi-label { align-items: start; min-width: 0; }
+.business-manager .bm-kpis span { font-size: .875rem; line-height: 1.4; }
+.business-manager .bm-kpi-label svg { width: 18px; height: 18px; color: #86a4b5; }
+.business-manager .bm-kpis strong {
+  font-size: clamp(1.25rem, 1.7vw, 1.75rem);
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -.045em;
+  font-variant-numeric: tabular-nums;
+  margin: 16px 0 8px;
+  overflow-wrap: anywhere;
+}
+.business-manager .bm-kpis small { font-size: .75rem; line-height: 1.55; margin-top: auto; }
+.business-manager .bm-kpis .bm-hero { grid-column: auto; background: #24576b; border-color: #24576b; }
+.business-manager .bm-kpis .bm-hero span,
+.business-manager .bm-kpis .bm-hero small { color: #d9eaf1; }
+.business-manager .bm-kpis .bm-hero svg { color: #b9d4e0; }
+
+.business-manager .bm-grid {
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+  gap: 20px;
+  margin: 22px 0;
+}
+.business-manager .bm-card {
+  border: 1px solid var(--bm-border);
+  border-radius: 9px;
+  padding: 22px;
+  box-shadow: none;
+  margin: 20px 0;
+}
+.business-manager .bm-grid .bm-card { margin: 0; }
+.business-manager .bm-card-heading { margin-bottom: 18px; gap: 12px; }
+.business-manager .bm-card h2 { font-size: 1rem; font-weight: 650; line-height: 1.4; }
+.business-manager .bm-card-heading p,
+.business-manager .bm-card > p,
+.business-manager .bm-note { font-size: .8125rem; line-height: 1.65; }
+.business-manager .bm-count { font-size: .75rem; padding: 3px 7px; }
+.business-manager .bm-context-note {
+  background: #eaf3f8;
+  border-color: #deebf2;
+  color: #507386;
+  font-size: .8125rem;
+  line-height: 1.65;
+  padding: 14px 16px;
+  border-radius: 7px;
+}
+.business-manager .bm-context-note.bm-warning { background: #fcf8ec; border-color: #f1e8ce; color: #8b6b2d; }
+.business-manager .bm-context-note button { min-height: 40px; font-size: .8125rem; }
+.business-manager .bm-tabs { gap: 22px; scrollbar-width: thin; }
+.business-manager .bm-tabs button { font-size: .875rem; min-height: 44px; padding: 12px 2px; }
+.business-manager .bm-toolbar { margin: 16px 0; gap: 14px; }
+.business-manager .bm-search { gap: 10px; flex-wrap: wrap; }
+.business-manager .bm-search label { font-size: .75rem; }
+.business-manager .bm-search label:first-child { min-width: 130px; max-width: 300px; }
+.business-manager .bm-search label:last-child { max-width: 180px; }
+
+.business-manager .bm-table-wrap { border-color: #e5edf2; border-radius: 7px; }
+.business-manager .bm-table-wrap table { font-size: .875rem; }
+.business-manager .bm-table-wrap th {
+  background: #f5f9fb;
+  color: #627e8e;
+  font-size: .8125rem;
+  font-weight: 500;
+  padding: 13px 12px;
+}
+.business-manager .bm-table-wrap td { padding: 15px 12px; border-color: #ecf2f5; }
+.business-manager .bm-row-actions { min-width: 130px; gap: 6px; }
+.business-manager .bm-row-actions button { min-height: 36px; padding: 7px 9px; font-size: .75rem; }
+.business-manager .bm-badge { font-size: .75rem; padding: 4px 8px; border-radius: 5px; }
+.business-manager .bm-pagination { font-size: .8125rem; line-height: 1.5; flex-wrap: wrap; }
+.business-manager .bm-pagination button { min-height: 40px; }
+.business-manager .bm-chart-key,
+.business-manager .bm-chart-caption,
+.business-manager .bm-chart-data { font-size: .75rem; }
+.business-manager .bm-chart-data summary { min-height: 40px; display: flex; align-items: center; }
+.business-manager .br-bars { max-height: 280px; }
+.business-manager .bm-alert-row { font-size: .875rem; gap: 10px; padding: 14px 0; }
+.business-manager .bm-alert-row small { font-size: .75rem; }
+.business-manager .bm-alert-row button { min-height: 40px; font-size: .75rem; padding: 7px 8px; }
+.business-manager .bm-shortcuts button { min-height: 43px; font-size: .875rem; gap: 10px; }
+.business-manager .bm-shortcuts svg { width: 18px; height: 18px; }
+.business-manager .bm-empty-state { font-size: .875rem; }
+.business-manager .bm-empty-state small { font-size: .8125rem; }
+.business-manager .bm-account-row { font-size: .875rem; gap: 10px; }
+.business-manager .bm-account-row small { font-size: .75rem; margin-top: 3px; }
+.business-manager .bm-account-row strong { font-size: .875rem; font-variant-numeric: tabular-nums; }
+.business-manager .bm-financial-lines > div { font-size: .875rem; padding: 12px 0; }
+.business-manager .bm-financial-lines .bm-financial-total strong { font-size: 1.25rem; }
+.business-manager .bm-category-list > div,
+.business-manager .bm-category-list strong { font-size: .8125rem; }
+.business-manager .bm-donut small { font-size: .75rem; }
+.business-manager .bm-donut strong { font-size: .875rem; }
+.business-manager .bm-workspace-footer { font-size: .75rem; line-height: 1.6; margin-top: 26px; }
+
+.bm-dialog { background: #f4f8fb; border-radius: 14px; }
+.bm-dialog > header { background: #24576b; }
+.bm-dialog h2 { font-size: 1.25rem; font-weight: 650; }
+.bm-dialog h3 { font-size: 1rem; }
+.bm-dialog .bm-detail dt,
+.bm-dialog legend,
+.bm-dialog summary,
+.bm-dialog li { font-size: .875rem; }
+.bm-dialog .bm-detail dd { font-size: 1rem; }
+
+/* Two columns keep the key figures together on tablets. */
+@media (min-width: 800px) and (max-width: 1099px) {
+  .business-manager .bm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .business-manager .bm-grid { grid-template-columns: minmax(0, 1fr); }
+  .business-manager .bm-distribution { flex-direction: row; align-items: center; }
+}
+@media (min-width: 1100px) {
+  .business-manager .bm-header { flex-direction: row; align-items: center; }
+  .business-manager .bm-header-controls { flex: 0 1 470px; }
+  .business-manager .bm-distribution { flex-direction: row; align-items: center; }
+}
+
+/* Opening mobile.html on a large screen uses the available space as well. */
+@media (min-width: 800px) {
+  #view-negocio .bm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #view-negocio .bm-kpis strong { font-size: 1.5rem; }
+  #view-negocio .bm-grid { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+  #view-negocio .bm-toolbar { flex-direction: row; align-items: end; }
+  #view-negocio .bm-context-note { flex-direction: row; align-items: center; }
+  #view-negocio .bm-table-wrap { overflow-x: auto; border: 1px solid #e5edf2; background: white; }
+  #view-negocio .bm-table-wrap table { display: table; }
+  #view-negocio .bm-table-wrap thead { display: table-header-group; }
+  #view-negocio .bm-table-wrap tbody { display: table-row-group; }
+  #view-negocio .bm-table-wrap tr { display: table-row; border: 0; padding: 0; margin: 0; }
+  #view-negocio .bm-table-wrap td,
+  #view-negocio .bm-table-wrap td[data-label="Acciones"] {
+    display: table-cell;
+    padding: 15px 12px;
+    font-size: .875rem;
+    border-bottom: 1px solid #ecf2f5;
+  }
+  #view-negocio .bm-table-wrap td::before { display: none; }
+  #view-negocio .bm-workspace-footer { flex-direction: row; }
+  #view-negocio .bm-mobile-sections button { font-size: .875rem; min-height: 44px; }
+}
+@media (min-width: 1100px) {
+  #view-negocio .bm-header { flex-direction: row; align-items: center; }
+  #view-negocio .bm-header-controls { width: auto; justify-content: end; }
+  #view-negocio .bm-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* Reflow every record with its labels; all amounts and actions remain visible. */
+@media (max-width: 799px) {
+  .business-manager .bm-header { flex-direction: column; align-items: stretch; gap: 18px; }
+  .business-manager .bm-header h1 { font-size: 1.55rem; }
+  .business-manager .bm-header p { font-size: .875rem; }
+  .business-manager .bm-header-controls { width: 100%; justify-content: start; }
+  .business-manager .bm-header-controls > button { flex: 1 1 120px; min-height: 44px; }
+  .business-manager .bm-business-picker { max-width: none; flex: 1 1 100%; }
+  .business-manager .bm-business-picker select { min-height: 44px; }
+  .business-manager .bm-period > span { margin-left: 0; flex: 1 1 100%; }
+  .business-manager .bm-kpis,
+  #view-negocio .bm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px; }
+  .business-manager .bm-kpis article { padding: 16px 13px; }
+  .business-manager .bm-kpis .bm-hero { grid-column: auto; }
+  .business-manager .bm-kpis span { font-size: .8125rem; }
+  .business-manager .bm-kpis strong,
+  #view-negocio .bm-kpis strong { font-size: 1.1875rem; margin: 12px 0 8px; }
+  .business-manager .bm-kpis small { font-size: .75rem; }
+  .business-manager .bm-kpi-label svg { width: 16px; height: 16px; }
+  .business-manager .bm-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 16px; }
+  .business-manager .bm-card { padding: 18px 15px; }
+  .business-manager .bm-context-note { align-items: start; flex-direction: column; gap: 8px; }
+  .business-manager .bm-toolbar { flex-direction: column; align-items: stretch; }
+  .business-manager .bm-search { width: 100%; justify-content: start; align-items: end; }
+  .business-manager .bm-search label:first-child { min-width: 0; max-width: none; flex: 1 1 140px; }
+  .business-manager .bm-search label:last-child { width: auto; max-width: none; flex: 1 1 110px; }
+  .business-manager .bm-actions button { min-height: 44px; }
+  .business-manager .bm-table-wrap { border: 0; background: transparent; overflow: visible; }
+  .business-manager .bm-table-wrap table,
+  .business-manager .bm-table-wrap tbody { display: block; width: 100%; }
+  .business-manager .bm-table-wrap thead { display: none; }
+  .business-manager .bm-table-wrap tr,
+  #view-negocio .bm-table-wrap tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 11px;
+    padding: 16px 13px;
+    margin: 12px 0;
+    border: 1px solid #e0eaf1;
+    border-radius: 9px;
+    background: #fff;
+  }
+  .business-manager .bm-table-wrap td,
+  #view-negocio .bm-table-wrap td {
+    display: grid;
+    grid-template-columns: minmax(80px, .9fr) minmax(0, 1.35fr);
+    gap: 12px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    font-size: .875rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .business-manager .bm-table-wrap td::before,
+  #view-negocio .bm-table-wrap td::before {
+    content: attr(data-label);
+    font-size: .8125rem;
+    color: var(--bm-muted);
+  }
+  .business-manager .bm-table-wrap td[data-label="Acciones"],
+  #view-negocio .bm-table-wrap td[data-label="Acciones"] {
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 12px;
+    border-top: 1px solid #eaf0f4;
+  }
+  .business-manager .bm-table-wrap td[data-label="Acciones"]::before,
+  .business-manager .bm-table-wrap .bm-empty-cell::before { display: none; }
+  .business-manager .bm-table-wrap .bm-empty-cell { display: block; }
+  .business-manager .bm-row-actions { min-width: 0; max-width: none; gap: 8px; }
+  .business-manager .bm-row-actions button,
+  #view-negocio .bm-row-actions button { min-height: 44px; font-size: .8125rem; padding: 8px 10px; }
+  .business-manager .bm-pagination { align-items: center; flex-direction: row; gap: 12px; }
+  .business-manager .bm-pagination button { min-height: 44px; }
+  .business-manager .bm-distribution { flex-direction: column; align-items: stretch; gap: 20px; }
+  .business-manager .bm-donut { align-self: center; }
+  .business-manager .bm-financial-lines > div { flex-wrap: wrap; }
+  .business-manager .bm-workspace-footer { flex-direction: column; gap: 5px; }
+  #view-negocio .bm-mobile-sections { margin-bottom: 20px; gap: 7px; scrollbar-width: none; }
+  #view-negocio .bm-mobile-sections button { font-size: .8125rem; min-height: 44px; padding: 9px 12px; border-radius: 7px; }
+  #view-negocio .bm-mobile-sections svg { width: 16px; height: 16px; }
+  .bm-dialog { width: calc(100vw - 16px); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+  .bm-dialog button,
+  .bm-dialog input,
+  .bm-dialog select { min-height: 44px; }
+  .bm-dialog input,
+  .bm-dialog select,
+  .bm-dialog textarea { font-size: 1rem; }
+  .bm-dialog > header { padding: 16px; gap: 12px; }
+  .bm-dialog h2 { font-size: 1.125rem; }
+  .bm-dialog-body { padding: 18px 15px; }
+  .bm-dialog .bm-form-grid,
+  .bm-dialog .bm-detail { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 359px) {
+  .business-manager .bm-kpis,
+  #view-negocio .bm-kpis { grid-template-columns: minmax(0, 1fr) !important; }
+  .business-manager .bm-kpis article { padding: 16px; }
+  .business-manager .bm-kpis strong,
+  #view-negocio .bm-kpis strong { font-size: 1.45rem; }
+}

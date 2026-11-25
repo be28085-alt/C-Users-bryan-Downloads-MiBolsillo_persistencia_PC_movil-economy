@@ -1,182 +1,78 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
-Item {
-    id: profileView
+ScrollView {
+    id: profile
+    property bool compact: width < 800
+    property Item focusedField: null
     signal abrirModuloEmpresarial()
-
-    ScrollView {
-        anchors.fill: parent
-        contentWidth: availableWidth
-
-        ColumnLayout {
-            width: parent.width
-            spacing: 20
-            anchors.margins: 28
-
-            // Título de la Sección
-            Column {
-                Text { text: "Tu Espacio · Mi Perfil"; font.pixelSize: 24; font.bold: true; color: "#0f172a" }
-                Text { text: "Administración de perfil de usuario y acceso a módulos extendidos."; color: "#64748b"; font.pixelSize: 13 }
-            }
-
-            // Tarjeta de Identidad de Usuario
-            Rectangle {
-                Layout.fillWidth: true
-                height: 100
-                radius: 12
-                color: "#ffffff"
-                border.color: "#e2e8f0"
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 18
-                    spacing: 16
-
-                    Rectangle {
-                        width: 60; height: 60; radius: 30
-                        color: "#0b3b3c"
-                        Text {
-                            anchors.centerIn: parent
-                            text: "LM"
-                            color: "#ffffff"
-                            font.bold: true
-                            font.pixelSize: 20
-                        }
-                    }
-
-                    ColumnLayout {
-                        spacing: 2
-                        Text { text: "Lucía Martín"; font.bold: true; font.pixelSize: 18; color: "#0f172a" }
-                        Text { text: "lucia.martin@email.com · Moneda: COP ($)"; color: "#64748b"; font.pixelSize: 13 }
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    Button {
-                        text: "✏️ Editar Perfil"
-                        flat: true
-                    }
-                }
-            }
-
-            // ================================================================
-            // NUEVO APARTADO: GESTIÓN EMPRESARIAL (BOTÓN Y HERO REQUERIDO)
-            // ================================================================
-            Rectangle {
-                Layout.fillWidth: true
-                radius: 16
-                color: "#0b3b3c"
-                border.color: Qt.rgba(1, 1, 1, 0.15)
-                implicitHeight: 220
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 24
-                    spacing: 16
-
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-
-                            Rectangle {
-                                width: 220; height: 26; radius: 13
-                                color: Qt.rgba(1, 1, 1, 0.15)
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "🚀 NUEVO MÓDULO EMPRESARIAL"
-                                    color: "#6ee7b7"
-                                    font.bold: true
-                                    font.pixelSize: 11
-                                }
-                            }
-
-                            Text {
-                                text: "Gestión de Pequeños Negocios y Emprendimientos"
-                                font.pixelSize: 20
-                                font.bold: true
-                                color: "#ffffff"
-                            }
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: "Administra materias primas, productos, compras, fórmulas de fabricación, ventas de contado y a crédito, clientes, empleados y cálculo de utilidad real."
-                                color: "#e2e8f0"
-                                font.pixelSize: 13
-                                wrapMode: Text.WordWrap
-                            }
-                        }
-
-                        // Botón de Acceso Directo
-                        Button {
-                            text: "🏢 Entrar a Gestión Empresarial →"
-                            implicitHeight: 46
-                            implicitWidth: 260
-                            background: Rectangle {
-                                radius: 10
-                                color: "#ffffff"
-                            }
-                            contentItem: Text {
-                                text: parent.text
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                font.bold: true
-                                font.pixelSize: 13
-                                color: "#0b3b3c"
-                            }
-                            onClicked: profileView.abrirModuloEmpresarial()
-                        }
-                    }
-
-                    // Fila de Indicadores Rápidos
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 12
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 60
-                            radius: 8
-                            color: Qt.rgba(1, 1, 1, 0.08)
-                            Column {
-                                anchors.centerIn: parent
-                                Text { text: "NEGOCIO ACTIVO"; color: "#94a3b8"; font.pixelSize: 10; font.bold: true }
-                                Text { text: "Panadería & Delicias La Aurora"; color: "#ffffff"; font.bold: true; font.pixelSize: 13 }
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 60
-                            radius: 8
-                            color: Qt.rgba(1, 1, 1, 0.08)
-                            Column {
-                                anchors.centerIn: parent
-                                Text { text: "VENTAS DEL MES"; color: "#94a3b8"; font.pixelSize: 10; font.bold: true }
-                                Text { text: "$ 543.000 COP"; color: "#6ee7b7"; font.bold: true; font.pixelSize: 13 }
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 60
-                            radius: 8
-                            color: Qt.rgba(1, 1, 1, 0.08)
-                            Column {
-                                anchors.centerIn: parent
-                                Text { text: "UTILIDAD NETA REAL"; color: "#94a3b8"; font.pixelSize: 10; font.bold: true }
-                                Text { text: "$ 281.400 COP"; color: "#ffffff"; font.bold: true; font.pixelSize: 13 }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Item { height: 20 }
+    contentWidth: availableWidth
+    clip: true
+    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+    onHeightChanged: scheduleReveal()
+    function reveal(item) {
+        if (!item || !item.visible || !contentItem || !contentItem.contentItem) return
+        var point = item.mapToItem(contentItem.contentItem, 0, 0)
+        var top = contentItem.contentY
+        var nextTop = top
+        if (point.y + item.height + 20 > top + contentItem.height)
+            nextTop = point.y + item.height + 20 - contentItem.height
+        else if (point.y < top + 12) nextTop = point.y - 12
+        var maxTop = Math.max(0, contentItem.contentHeight - contentItem.height)
+        contentItem.contentY = Math.max(0, Math.min(maxTop, nextTop))
+    }
+    function revealFocused() { reveal(focusedField) }
+    function scheduleReveal() { Qt.callLater(revealFocused) }
+    function focusField(item) { focusedField = item; scheduleReveal() }
+    Connections {
+        target: Qt.inputMethod
+        function onKeyboardRectangleChanged() { profile.scheduleReveal() }
+    }
+    Connections {
+        target: financeService
+        function onStateChanged() { profile.scheduleReveal() }
+    }
+    ColumnLayout {
+        width: profile.availableWidth - 32
+        x: 16
+        spacing: 14
+        Item { Layout.preferredHeight: 8 }
+        Label { text: "Mi perfil"; font.pixelSize: 26; font.bold: true; color: "#0b3b3c" }
+        Label { text: financeService.email; Layout.fillWidth: true; wrapMode: Text.Wrap }
+        Label { text: "Nombre" }
+        TextField {
+            id: profileName
+            objectName: "profileName"
+            Component.onCompleted: text = financeService.userName
+            Layout.fillWidth: true
+            Layout.maximumWidth: 520
+            implicitHeight: 50
+            maximumLength: 80
+            Accessible.name: "Nombre del perfil"
+            onActiveFocusChanged: if (activeFocus) profile.focusField(this)
         }
+        Button {
+            text: "Guardar perfil"
+            objectName: "saveProfile"
+            implicitHeight: 50
+            onActiveFocusChanged: if (activeFocus) profile.focusField(this)
+            onClicked: {
+                profileMessage.text = ""
+                if (financeService.updateProfile(profileName.text)) profileMessage.text = "Perfil guardado en SQLite."
+            }
+        }
+        Label { id: profileMessage; Layout.fillWidth: true; wrapMode: Text.Wrap; color: "#087b66" }
+        Label { text: "Almacenamiento local"; font.bold: true; font.pixelSize: 18; topPadding: 16 }
+        Label {
+            text: "Moneda: COP. Esta aplicación Qt usa su propia base SQLite. No modifica la base web ni importa automáticamente los datos históricos de MySQL."
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            color: "#526976"
+        }
+        Label { text: financeService.databasePath; Layout.fillWidth: true; wrapMode: Text.WrapAnywhere; font.pixelSize: 12 }
+        Button { text: "Abrir Mi Negocio"; implicitHeight: 50; onActiveFocusChanged: if (activeFocus) profile.focusField(this); onClicked: profile.abrirModuloEmpresarial() }
+        Button { objectName: "logoutButton"; text: "Cerrar sesión"; implicitHeight: 50; onActiveFocusChanged: if (activeFocus) profile.focusField(this); onClicked: financeService.logout() }
+        Item { Layout.preferredHeight: Math.max(24, Qt.inputMethod.keyboardRectangle.height) }
     }
 }

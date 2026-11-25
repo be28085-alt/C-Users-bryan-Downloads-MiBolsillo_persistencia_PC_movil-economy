@@ -1,0 +1,25 @@
+/* The sign-in and registration screens use the application's visual language. */
+#account-access { background: #f2f7fa; color: #243946; font-family: Inter, 'Segoe UI', system-ui, sans-serif; }
+.account-card { border-color: #dde8ee; border-radius: 14px; padding: 36px; box-shadow: 0 8px 32px #204f6008; }
+.account-brand { color: #204f60; font-size: 1.25rem; font-weight: 600; letter-spacing: -.5px; }
+.account-brand span { background: #204f60; border-radius: 8px; width: 32px; height: 32px; font-size: 1.125rem; }
+.account-tagline { color: #657f8e; font-size: .875rem; line-height: 1.75; }
+.account-card h1 { font-size: 1.75rem; font-weight: 500; letter-spacing: -.6px; }
+.account-card label { color: #405765; font-weight: 500; }
+.account-card input { background: #fff; border-color: #dbe7ee; color: #243946; border-radius: 8px; }
+.account-card input:focus { outline: 3px solid #549bb430; border-color: #39788d; }
+.account-card button { border-radius: 8px; font-weight: 500; }
+.account-card button:focus-visible { outline: 3px solid #549bb4; outline-offset: 3px; }
+.account-primary { background: #204f60; }
+.account-primary:hover { background: #285e71; }
+.account-link { color: #204f60; border: 1px solid #dde8ee; background: #fff; margin-top: 18px; }
+.account-note { color: #657f8e; }
+@media (max-width:480px) {
+  #account-access { padding: max(32px,env(safe-area-inset-top)) 22px max(24px,env(safe-area-inset-bottom)); }
+  .account-card { background: transparent; border: 0; box-shadow: none; border-radius: 0; padding: 16px 0; }
+  .account-brand { font-size: 1.125rem; }
+  .account-tagline { margin: 18px 0 28px; }
+  .account-card h1 { font-size: 1.625rem; margin-bottom: 32px; }
+  .account-card label { margin-bottom: 22px; }
+  .account-note { margin-top: 32px; }
+}

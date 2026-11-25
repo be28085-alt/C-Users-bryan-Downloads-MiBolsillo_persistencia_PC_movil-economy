@@ -82,5 +82,5 @@
     movimientosInventario: [], formulas: [], producciones: [], devolucionesNegocio: []
   };
   window.FinanzasDemoData = demoState;
-  window.INITIAL_STATE = demoState;
+  if (!window.MiBolsilloAccount) window.INITIAL_STATE = demoState;
 })();

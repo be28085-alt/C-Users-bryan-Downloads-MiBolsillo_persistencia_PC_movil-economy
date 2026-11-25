@@ -4,7 +4,7 @@ La organización separa la aplicación web activa, sus pruebas y documentación 
 
 ## Aplicación web activa
 
-`index.html` es el portal. `desktop.html` y `mobile.html` declaran mediante etiquetas `script` los archivos que usa cada interfaz y su orden de carga. Son scripts clásicos del navegador, sin empaquetador ni servidor de aplicación. Los estilos se cargan directamente desde `styles/`.
+`desktop.html` y `mobile.html` declaran mediante etiquetas `script` los archivos que usa cada interfaz y su orden de carga. Son scripts clásicos del navegador. Los estilos se cargan directamente desde `styles/`. Pueden servirse estáticamente o con el servidor local SQLite de `scripts/serve-sqlite.cjs`; el empaquetado Android usa `scripts/build-android-web.cjs`.
 
 | Capa | Archivos o carpeta | Responsabilidad |
 |---|---|---|
@@ -27,9 +27,11 @@ Finanzas Personales y Mi Negocio conservan dominios y flujos separados. Las oper
 
 ## Almacenamiento y entradas
 
-PC y móvil usan la clave `FINANZAS_ETAPA_DATA_V2` en el almacenamiento del navegador. Para compartir datos, ambas páginas deben abrirse desde el mismo origen: mismo protocolo, dominio y puerto. `localhost` y `127.0.0.1` cuentan como dominios distintos. La aplicación no conecta su almacenamiento local con MySQL ni con las implementaciones C++.
+Con `npm start`, PC y móvil usan cuentas autenticadas en el servidor local y el archivo `database/mibolsillo.sqlite`. Cada usuario tiene su propio sobre JSON transaccional en `user_states.raw`; las tablas `auth_users` y `auth_sessions` protegen la identidad y el acceso. El `app_state` anterior queda conservado sin asignación automática. Consulte [Cuentas y migración](CUENTAS_Y_MIGRACION.md) y [SQLite](SQLITE.md).
 
-El esquema `database/gestor_financiero.sql` se conserva y sigue enlazado desde el portal. Es un recurso independiente, no una dependencia de arranque de la web. Las copias y restauraciones JSON de la web se gestionan con el servicio de exportación.
+El modo estático y el paquete Android no incluyen una API de cuentas; el acceso privado permanece bloqueado hasta contar con un backend. La clave histórica `FINANZAS_ETAPA_DATA_V2` se conserva sin importación automática porque no identifica a un propietario. La aplicación no abre el MySQL histórico ni las bases del prototipo C++. SQLite nativo Android y la nube siguen pendientes.
+
+El esquema `database/gestor_financiero.sql` se conserva como recurso independiente; no es la base SQLite ni una dependencia de arranque de la web. Las copias y restauraciones JSON de la web se gestionan con el servicio de exportación.
 
 ## Código anterior conservado
 
@@ -49,7 +51,7 @@ g++ -std=c++17 -Wall -Wextra legacy/console/main.cpp -o finanzas.exe
 g++ -std=c++17 -Wall -Wextra legacy/console/mibolsillo.cpp -o mibolsillo.exe
 ```
 
-La carpeta `qt_app/` mantiene su organización propia con fuentes, cabeceras y QML. Sus archivos CMake y qmake ya referenciaban dependencias que no están en el repositorio: los modelos de `include/models/`, `PersonalFinanceService` y, para qmake, `qml.qrc`. Esta reorganización conserva ese prototipo; no supone que se haya completado o comprobado su compilación. No se debe borrar un servicio Qt por no utilizarse en la web.
+La carpeta `qt_app/` tiene como destino predeterminado un lanzador de la aplicación HTML completa: `WebAppLauncher` inicia o reutiliza el servidor original y abre `index.html` en una ventana de aplicación de Edge/Chrome. Usa el mismo `database/mibolsillo.sqlite`; no duplica las funciones financieras en QML ni impone otro inicio de sesión. `CMakeLists.txt` y `GestorFinanciero.pro` son las entradas Qt. El experimento C++/QML reducido se conserva bajo la opción `MIBOLSILLO_BUILD_NATIVE_PROTOTYPE`, desactivada por defecto, con base independiente. Los servicios históricos MySQL siguen conservados e inactivos. Android completo utiliza el proyecto Capacitor `android/`. Consulte [la guía Qt y HTML](../qt_app/README.md).
 
 ## Pruebas y documentación
 

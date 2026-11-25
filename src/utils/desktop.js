@@ -9,6 +9,22 @@
 class DesktopApp {
   constructor() {
     this.ui = window.MiBolsilloUiShared || null;
+    this._pendingForms = new Set();
+    for (const name of ["handleGuardarMovimientoForm","handleQuickMovementSubmit","handleNuevaMetaSubmit","handleAporteMetaSubmit","handleNuevaDeudaSubmit","handleAbonoDeudaSubmit","handlePresupuestoSubmit","handlePerfilSubmit"]) {
+      const handler = this[name];
+      if (typeof handler !== 'function') continue;
+      this[name] = async (...args) => {
+        args[0]?.preventDefault?.();
+        if (this._pendingForms.has(name)) return;
+        this._pendingForms.add(name);
+        const form = args[0]?.currentTarget?.tagName === 'FORM' ? args[0].currentTarget : null;
+        const buttons = form ? [...form.querySelectorAll('button[type="submit"]')] : [];
+        buttons.forEach(button => { button.disabled = true; });
+        try { return await handler.apply(this, args); }
+        catch (error) { this.showToast(error.message || 'No se confirmó el guardado. Conserva los datos y reintenta.'); }
+        finally { this._pendingForms.delete(name); buttons.forEach(button => { button.disabled = false; }); }
+      };
+    }
     this.currentView = 'inicio';
     this.currentMovFilter = 'TODOS';
     this.formType = 'GASTO';
@@ -27,7 +43,7 @@ class DesktopApp {
     document.addEventListener('DOMContentLoaded', () => this.init());
   }
 
-  init() {
+  async init() {
     if (this.ui && typeof this.ui.subscribeToStore === 'function') {
       this.ui.subscribeToStore(() => this.renderAll());
     } else {
@@ -69,7 +85,7 @@ class DesktopApp {
 
     // Renderizar toda la interfaz
     this.renderAll();
-    this.setModulo(initialModule, initialModule === 'EMPRESARIAL' ? 'negocio-dashboard' : 'inicio');
+    await this.setModulo(initialModule, initialModule === 'EMPRESARIAL' ? 'negocio-dashboard' : 'inicio');
 
     // Atajo de teclado: Ctrl + K para enfocar búsqueda
     window.addEventListener('keydown', (e) => {
@@ -121,8 +137,9 @@ class DesktopApp {
   // NAVEGACIÓN Y CONMUTACIÓN DE MÓDULOS
   // ==========================================================================
 
-  setModulo(modulo, targetView = null) {
-    Finanzas.setModuloActivo(modulo);
+  async setModulo(modulo, targetView = null) {
+    const result = await Finanzas.setModuloActivo(modulo);
+    if (result?.error) { this.showToast(result.error); return result; }
     this.actualizarModuloVisual(modulo);
     if (targetView) {
       this.switchView(targetView);
@@ -142,10 +159,8 @@ class DesktopApp {
     const brandTitle = document.getElementById('sidebarBrandTitle');
     const brandSub = document.getElementById('sidebarBrandSubtitle');
     const brandIcon = document.getElementById('sidebarBrandIcon');
-    const personalQuickAction = document.getElementById('btnPcPersonalQuick');
     const businessQuickAction = document.getElementById('btnPcBusinessQuick');
 
-    if (personalQuickAction) personalQuickAction.style.display = isEmpresarial ? 'none' : '';
     if (businessQuickAction) businessQuickAction.style.display = isEmpresarial ? '' : 'none';
 
     if (navPersonal && navEmpresarial) {
@@ -277,6 +292,8 @@ class DesktopApp {
     const nameEl = document.getElementById('lblDashboardUser');
     if (nameEl) nameEl.textContent = u.nombre.split(' ')[0] || 'Usuario';
     const sideName = document.getElementById('sidebarUserName');
+    const sideEmail = document.getElementById('sidebarUserEmail');
+    if (sideEmail) sideEmail.textContent = u.email || '';
     if (sideName) sideName.textContent = u.nombre;
     const sideAvatar = document.getElementById('sidebarAvatar');
     if (sideAvatar) sideAvatar.textContent = u.iniciales;
@@ -345,13 +362,7 @@ class DesktopApp {
       barLarge.className = 'progress-fill ' + (budgetStatus.porcentajeReal > 90 ? 'red' : (budgetStatus.porcentajeReal > 75 ? 'yellow' : 'green'));
     }
     const lblAvail = document.getElementById('lblBudgetAvailableText');
-    if (lblAvail) {
-      if (budgetStatus.disponible > 0) {
-        lblAvail.textContent = `Te quedan ${formatCOP(budgetStatus.disponible)} disponibles para este mes.`;
-      } else {
-        lblAvail.textContent = `Has sobrepasado el límite por ${formatCOP(budgetStatus.exceso)}.`;
-      }
-    }
+    if (lblAvail) lblAvail.textContent = Finanzas.getMensajePresupuesto(budgetStatus);
   }
 
   // ==========================================================================
@@ -475,7 +486,7 @@ class DesktopApp {
 
     topCats.forEach(catId => {
       const gastado = gastosCat[catId] || 0;
-      const limite = Finanzas.state.limitesCategorias[catId] || 300000;
+      const limite = (Finanzas.getLimitesCategorias()[catId] ?? 0);
       const pct = limite > 0 ? Math.min(100, Math.round((gastado / limite) * 100)) : 0;
       const colorClass = pct > 90 ? 'red' : (pct > 75 ? 'yellow' : 'green');
 
@@ -672,7 +683,7 @@ class DesktopApp {
     }
   }
 
-  handleGuardarMovimientoForm() {
+  async handleGuardarMovimientoForm() {
     const inputMonto = document.getElementById('regInputMonto');
     const inputConcepto = document.getElementById('regInputConcepto');
     const inputFecha = document.getElementById('regInputFecha');
@@ -692,7 +703,7 @@ class DesktopApp {
       return;
     }
 
-    const res = Finanzas.agregarMovimiento({
+    const res = await Finanzas.agregarMovimiento({
       tipo: this.formType,
       concepto,
       categoria: this.formCategory,
@@ -742,7 +753,7 @@ class DesktopApp {
 
     CATEGORIAS_GASTO.forEach(c => {
       const gastado = gastosCat[c.id] || 0;
-      const limite = Finanzas.state.limitesCategorias[c.id] || 300000;
+      const limite = (Finanzas.getLimitesCategorias()[c.id] ?? 0);
       const pct = limite > 0 ? Math.min(100, Math.round((gastado / limite) * 100)) : 0;
       const colorClass = pct > 90 ? 'red' : (pct > 75 ? 'yellow' : 'green');
 
@@ -793,7 +804,7 @@ class DesktopApp {
   renderMetasView() {
     const totAhorrado = Finanzas.calcTotalAhorradoMetas();
     const totObjetivo = Finanzas.calcTotalObjetivoMetas();
-    const restante = Math.max(0, totObjetivo - totAhorrado);
+    const restante = Finanzas.calcTotalRestanteMetas();
 
     const kpiTot = document.getElementById('metasKpiTotalAhorrado');
     if (kpiTot) kpiTot.textContent = formatCOP(totAhorrado);
@@ -801,6 +812,11 @@ class DesktopApp {
     if (kpiObj) kpiObj.textContent = formatCOP(totObjetivo);
     const kpiRes = document.getElementById('metasKpiRestante');
     if (kpiRes) kpiRes.textContent = formatCOP(restante);
+    const enProgreso = Finanzas.getMetas().filter(meta => !meta.completada).length;
+    const count = document.getElementById('metasKpiEnProgreso');
+    if (count) count.textContent = `${enProgreso} ${enProgreso === 1 ? 'meta' : 'metas'} en progreso`;
+    const progress = document.getElementById('metasKpiAvance');
+    if (progress) progress.textContent = `${totObjetivo ? ((totObjetivo - restante) / totObjetivo * 100).toFixed(1) : 0} % de avance global`;
 
     // Grid de Metas
     const grid = document.getElementById('metasCardsGrid');
@@ -877,6 +893,11 @@ class DesktopApp {
     if (kpiPend) kpiPend.textContent = formatCOP(totPendiente);
     const kpiPag = document.getElementById('deudasKpiPagado');
     if (kpiPag) kpiPag.textContent = formatCOP(totPagado);
+    const activas = Finanzas.state.deudas.filter(deuda => deuda.saldoPendiente > 0).length;
+    const count = document.getElementById('deudasKpiActivas');
+    if (count) count.textContent = `${activas} ${activas === 1 ? 'obligación activa' : 'obligaciones activas'}`;
+    const monthly = document.getElementById('deudasKpiCuotas');
+    if (monthly) monthly.textContent = `${formatCOP(Finanzas.getDeudas().cuotaMensualTotal)}/mes`;
 
     const grid = document.getElementById('deudasCardsGrid');
     if (!grid) return;
@@ -943,7 +964,7 @@ class DesktopApp {
               <td>${escapeHTML(ab.fecha)}</td>
               <td><strong>${escapeHTML(ab.deudaNombre)}</strong></td>
               <td class="table-amount-cell expense">-${formatCOP(ab.valor)}</td>
-              <td><span class="kpi-sub-badge green">Pagado</span></td>
+              <td><span class="kpi-sub-badge green">${ab.estadoVinculacion === 'vinculado' ? 'Egreso vinculado · ' + escapeHTML(ab.cuenta || 'Cuenta') : 'Histórico: revisar egreso'}</span></td>
             </tr>
           `;
         });
@@ -978,7 +999,7 @@ class DesktopApp {
       CATEGORIAS_GASTO.forEach(c => {
         const gastado = gastosCat[c.id] || 0;
         const pctDelTotal = gas > 0 ? ((gastado / gas) * 100).toFixed(1) : '0.0';
-        const limite = Finanzas.state.limitesCategorias[c.id] || 300000;
+        const limite = (Finanzas.getLimitesCategorias()[c.id] ?? 0);
         const estadoBadge = gastado >= limite ? '<span class="kpi-sub-badge red">Límite alcanzado</span>' : '<span class="kpi-sub-badge green">En rango</span>';
 
         html += `
@@ -1246,7 +1267,7 @@ class DesktopApp {
     }
   }
 
-  handleQuickMovementSubmit(e) {
+  async handleQuickMovementSubmit(e) {
     e.preventDefault();
     const valor = Number(document.getElementById('modalQuickValor')?.value);
     const concepto = document.getElementById('modalQuickConcepto')?.value ? document.getElementById('modalQuickConcepto').value.trim() : '';
@@ -1262,7 +1283,7 @@ class DesktopApp {
       return;
     }
 
-    const res = Finanzas.agregarMovimiento({
+    const res = await Finanzas.agregarMovimiento({
       tipo: this.modalQuickType,
       concepto,
       categoria,
@@ -1287,7 +1308,7 @@ class DesktopApp {
   closeModalNuevaMeta() {
     document.getElementById('modalPcNuevaMeta')?.classList.add('hidden');
   }
-  handleNuevaMetaSubmit(e) {
+  async handleNuevaMetaSubmit(e) {
     e.preventDefault();
     const nombre = document.getElementById('inputMetaNombre')?.value || '';
     const objetivo = Number(document.getElementById('inputMetaObjetivo')?.value);
@@ -1299,7 +1320,7 @@ class DesktopApp {
       return;
     }
 
-    const res = Finanzas.agregarMeta({ nombre, objetivo, ahorrado, plazo });
+    const res = await Finanzas.agregarMeta({ nombre, objetivo, ahorrado, plazo });
     if (res.error) {
       alert(res.error);
       return;
@@ -1317,7 +1338,7 @@ class DesktopApp {
   closeModalAportarMeta() {
     document.getElementById('modalPcAportarMeta')?.classList.add('hidden');
   }
-  handleAporteMetaSubmit(e) {
+  async handleAporteMetaSubmit(e) {
     e.preventDefault();
     const metaId = document.getElementById('aporteMetaId')?.value;
     const monto = Number(document.getElementById('inputAporteMetaValor')?.value);
@@ -1327,7 +1348,7 @@ class DesktopApp {
       return;
     }
 
-    const res = Finanzas.aportarMeta(metaId, monto);
+    const res = await Finanzas.aportarMeta(metaId, monto);
     if (res.error) {
       alert(res.error);
       return;
@@ -1344,7 +1365,7 @@ class DesktopApp {
   closeModalNuevaDeuda() {
     document.getElementById('modalPcNuevaDeuda')?.classList.add('hidden');
   }
-  handleNuevaDeudaSubmit(e) {
+  async handleNuevaDeudaSubmit(e) {
     e.preventDefault();
     const nombre = document.getElementById('inputDeudaNombre')?.value || '';
     const valorInicial = Number(document.getElementById('inputDeudaMontoInicial')?.value);
@@ -1362,7 +1383,8 @@ class DesktopApp {
       return;
     }
 
-    const res = Finanzas.agregarDeuda({ nombre, valorInicial, saldoPendiente, cuotaMensual, condiciones });
+    const proximoPago = document.getElementById('inputDeudaProximoPago')?.value || '';
+    const res = await Finanzas.agregarDeuda({ nombre, valorInicial, saldoPendiente, cuotaMensual, condiciones, proximoPago });
     if (res.error) {
       alert(res.error);
       return;
@@ -1374,13 +1396,18 @@ class DesktopApp {
 
   openModalAbonarDeuda(deudaId, deudaNombre) {
     document.getElementById('abonoDeudaId').value = deudaId;
+    const modal = document.getElementById('modalPcAbonarDeuda');
+    modal.dataset.operationKey = crypto.randomUUID();
+    const accounts = document.getElementById('inputAbonoDeudaCuenta');
+    accounts.replaceChildren(...Finanzas.getCuentas().map(c => new Option(c.nombre, c.id)));
+    document.getElementById('inputAbonoDeudaFecha').value = obtenerFechaHoyISO();
     document.getElementById('lblAbonoDeudaTitle').textContent = `Abonar a: ${deudaNombre}`;
     document.getElementById('modalPcAbonarDeuda')?.classList.remove('hidden');
   }
   closeModalAbonarDeuda() {
     document.getElementById('modalPcAbonarDeuda')?.classList.add('hidden');
   }
-  handleAbonoDeudaSubmit(e) {
+  async handleAbonoDeudaSubmit(e) {
     e.preventDefault();
     const deudaId = document.getElementById('abonoDeudaId')?.value;
     const monto = Number(document.getElementById('inputAbonoDeudaValor')?.value);
@@ -1390,7 +1417,7 @@ class DesktopApp {
       return;
     }
 
-    const res = Finanzas.abonarDeuda(deudaId, monto);
+    const res = await Finanzas.abonarDeuda(deudaId, monto, 'Transferencia', { cuenta: document.getElementById('inputAbonoDeudaCuenta').value, fecha: document.getElementById('inputAbonoDeudaFecha').value, operationKey: document.getElementById('modalPcAbonarDeuda').dataset.operationKey });
     if (res.error) {
       alert(res.error);
       return;
@@ -1409,11 +1436,12 @@ class DesktopApp {
   closeModalAjustarPresupuesto() {
     document.getElementById('modalPcAjustarPresupuesto')?.classList.add('hidden');
   }
-  handlePresupuestoSubmit(e) {
+  async handlePresupuestoSubmit(e) {
     e.preventDefault();
     const monto = Number(document.getElementById('inputPresupuestoGlobal')?.value);
     if (isFinite(monto) && monto >= 0) {
-      Finanzas.actualizarPresupuesto(monto);
+      const result = await Finanzas.actualizarPresupuesto(monto);
+      if (result.error) { alert(result.error); return; }
       this.closeModalAjustarPresupuesto();
       this.showToast(`✔ Presupuesto de ${Finanzas.getNombrePeriodo()} actualizado.`);
     } else {
@@ -1435,7 +1463,7 @@ class DesktopApp {
   closeModalEditarPerfil() {
     document.getElementById('modalPcEditarPerfil')?.classList.add('hidden');
   }
-  handlePerfilSubmit(e) {
+  async handlePerfilSubmit(e) {
     e.preventDefault();
     const nombre = document.getElementById('inputPerfilNombre')?.value || '';
     const email = document.getElementById('inputPerfilEmail')?.value || '';
@@ -1444,10 +1472,8 @@ class DesktopApp {
       ? Number(saldoInicialInput.value)
       : null;
 
-    Finanzas.actualizarPerfil({ nombre, email });
-    if (saldoInicial !== null && Number.isFinite(saldoInicial)) {
-      Finanzas.actualizarSaldoInicial(saldoInicial);
-    }
+    const result = await Finanzas.actualizarPerfil({ nombre, email, saldoInicial });
+    if (result.error) { alert(result.error); return; }
     this.closeModalEditarPerfil();
     this.showToast('✔ Perfil y capital inicial actualizados.');
   }
@@ -1463,49 +1489,51 @@ class DesktopApp {
   // ==========================================================================
   // OPERACIONES GENERALES
   // ==========================================================================
-  eliminarMovimiento(id) {
+  async eliminarMovimiento(id) {
     if (confirm('¿Desea eliminar este movimiento del registro?')) {
-      Finanzas.eliminarMovimiento(id);
-      this.showToast('Movimiento eliminado.');
+      if (await Finanzas.eliminarMovimiento(id)) this.showToast('Movimiento eliminado.');
+      else this.showToast('No se pudo confirmar la eliminación. Revisa el aviso de guardado.');
     }
   }
 
-  eliminarMeta(id) {
+  async eliminarMeta(id) {
     if (confirm('¿Desea eliminar esta meta de ahorro?')) {
-      Finanzas.eliminarMeta(id);
+      if (!await Finanzas.eliminarMeta(id)) { this.showToast('No se confirmó la eliminación. Revisa el aviso de persistencia.'); return; }
       this.showToast('Meta eliminada.');
     }
   }
 
-  eliminarDeuda(id) {
+  async eliminarDeuda(id) {
     if (confirm('¿Desea eliminar este pasivo?')) {
-      Finanzas.eliminarDeuda(id);
-      this.showToast('Deuda eliminada.');
+      if (!await Finanzas.eliminarDeuda(id)) { this.showToast('No se confirmó la eliminación. Revisa el aviso de persistencia.'); return; }
+      this.showToast(Finanzas.state.deudas.some(d => d.id === id && d.archivada) ? 'Deuda archivada; pagos e historial conservados.' : 'Deuda eliminada.');
     }
   }
 
-  toggleOcultarSaldo() {
-    Finanzas.toggleSaldoOculto();
+  async toggleOcultarSaldo() {
+    const result = await Finanzas.toggleSaldoOculto();
+    if (result.error) { this.showToast(result.error); return; }
     this.renderKPIs();
     this.renderPerfilView();
   }
 
-  cambiarMes(delta) {
-    Finanzas.cambiarPeriodo(delta);
+  async cambiarMes(delta) {
+    const result = await Finanzas.cambiarPeriodo(delta);
+    if (result.error) { this.showToast(result.error); return; }
     this.renderAll();
     this.showToast(`Visualizando período: ${Finanzas.getNombrePeriodo()}`);
   }
 
-  toggleAlertaPresupuesto(checked) {
-    Finanzas.state.usuario.alertasPresupuesto = checked;
-    Finanzas.saveState();
+  async toggleAlertaPresupuesto(checked) {
+    const result = await Finanzas.actualizarPreferencia('alertasPresupuesto', checked);
+    if (result.error) { this.renderAll(); this.showToast(result.error); return; }
     this.showToast(checked ? 'Alertas de presupuesto activadas.' : 'Alertas de presupuesto pausadas.');
   }
 
-  toggleRecordatoriosDeudas(checked) {
-    Finanzas.state.usuario.recordatoriosDeudas = checked;
-    Finanzas.saveState();
-    this.showToast(checked ? 'Recordatorios de deudas activados.' : 'Recordatorios de deudas pausados.');
+  async toggleRecordatoriosDeudas(checked) {
+    const result = await Finanzas.actualizarPreferencia('recordatoriosDeudas', checked);
+    if (result.error) { this.renderAll(); this.showToast(result.error); return; }
+    this.showToast(checked ? 'Avisos de vencimiento dentro de la app activados.' : 'Avisos de vencimiento pausados.');
   }
 
   toggleAlerta(chk) {
@@ -1562,9 +1590,9 @@ class DesktopApp {
     setTimeout(() => window.print(), 350);
   }
 
-  restablecerDatos() {
+  async restablecerDatos() {
     if (confirm('¿Restablecer todos los datos a la configuración inicial del proyecto?')) {
-      Finanzas.resetState();
+      await Finanzas.resetState();
       this.showToast('🔄 Datos iniciales restablecidos.');
     }
   }
@@ -1623,3 +1651,4 @@ class DesktopApp {
 
 // Inicialización global de la aplicación de escritorio
 const pcApp = new DesktopApp();
+

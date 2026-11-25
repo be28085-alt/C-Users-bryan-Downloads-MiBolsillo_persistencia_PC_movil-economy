@@ -27,7 +27,7 @@
         const porcentajePagado = inicial > 0 ? (pagado / inicial) * 100 : 0;
 
         totalDeuda += saldo;
-        cuotaMensualTotal += cuota;
+        if (saldo > 0) cuotaMensualTotal += cuota;
 
         return {
           ...d,
@@ -53,12 +53,13 @@
      * @returns {{deudaActualizada: Object, abono: Object}}
      */
     registrarPago(deuda, monto, metodo = 'Transferencia') {
-      const valor = Math.abs(Number(monto) || 0);
+      const valor = Number(monto);
       const saldoActual = Number(deuda.saldoPendiente) || 0;
-      const nuevoSaldo = Math.max(saldoActual - valor, 0);
+      if (!Number.isFinite(valor) || valor <= 0 || valor > saldoActual) throw new Error('El abono debe ser positivo y no superar el saldo pendiente.');
+      const nuevoSaldo = Math.round((saldoActual - valor + Number.EPSILON) * 100) / 100;
 
       const abono = {
-        id: `ab-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: window.crypto?.randomUUID?.() || `ab-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
         deudaId: deuda.id,
         monto: valor,
         fecha: window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0],

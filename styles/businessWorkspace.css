@@ -102,7 +102,6 @@ body:has(.pc-view[id^="view-negocio"].active) .pc-main-wrapper { min-width: 0; }
 }
 @media (max-width: 720px) {
   body:has(.pc-view[id^="view-negocio"].active) { --pc-sidebar-w: 64px; }
-  body:has(.pc-view[id^="view-negocio"].active) .pc-top-header,
   body:has(.pc-view[id^="view-negocio"].active) .top-notice-bar { display: none; }
   body:has(.pc-view[id^="view-negocio"].active) .pc-app-layout { padding-top: 0; }
   body:has(.pc-view[id^="view-negocio"].active) .pc-sidebar { top: 0; height: 100dvh; }

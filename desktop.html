@@ -2,6 +2,7 @@
 
 <html lang="es">
  <head>
+  <script src="src/ui/shared/authGuard.js?v=20261123-5"></script>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <title>
@@ -17,29 +18,15 @@
   <!-- Estilos de Escritorio -->
   <link href="styles/desktop.css?v=20261114-1" rel="stylesheet"/>
   <link rel="stylesheet" href="styles/invoicing.css?v=20261110-5">
-  <link rel="stylesheet" href="styles/businessReports.css?v=20261110-2">
-  <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261114-1">
- </head>
+  <link rel="stylesheet" href="styles/businessReports.css?v=20261123-3">
+  <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261123-2">
+   <link rel="stylesheet" href="styles/responsive.css?v=20261123-2">
+   <link rel="stylesheet" href="styles/reference-theme.css?v=20261123-4">
+   <link rel="stylesheet" href="styles/reference-business.css?v=20261123-1">
+   <link rel="stylesheet" href="styles/reference-mobile.css?v=20261123-1">
+  <link rel="stylesheet" href="styles/backup-controls.css?v=20261123-5">
+</head>
  <body>
-  <!-- BARRA SUPERIOR INFORMATIVA: CONMUTADOR DE VERSIONES SEPARADAS -->
-  <header class="top-notice-bar">
-   <div class="top-notice-left">
-    <span class="top-notice-badge">
-     ESCRITORIO / PC
-    </span>
-    <span>
-     MiBolsillo · Sistema Integral de Finanzas Personales (Ingeniería de Sistemas - Semestre I)
-    </span>
-   </div>
-   <div class="top-notice-right">
-    <a class="btn-switch-version active" href="desktop.html" title="Versión de escritorio">
-     💻 Versión PC
-    </a>
-    <a class="btn-switch-version" href="mobile.html" title="Ir a la Versión Móvil de smartphone">
-     📱 Abrir Versión Móvil
-    </a>
-   </div>
-  </header>
   <!-- CONTENEDOR PRINCIPAL: SIDEBAR + MAIN AREA -->
   <div class="pc-app-layout">
    <!-- ================================================================
@@ -165,10 +152,10 @@
       </div>
       <div class="user-mini-meta">
        <strong id="sidebarUserName">
-        bryan escobar
+        Usuario
        </strong>
-       <small>
-        bryan.escobar@email.com
+       <small id="sidebarUserEmail">
+        —
        </small>
       </div>
      </div>
@@ -180,6 +167,10 @@
    <main class="pc-main-wrapper">
     <!-- TOP HEADER FIJO DEL CONTENIDO -->
     <header class="pc-top-header">
+     <button class="app-profile-shortcut" type="button" onclick="pcApp.switchView('perfil')" aria-label="Abrir mi perfil">
+      <span class="app-profile-avatar" data-profile-initials data-business-profile aria-hidden="true"></span>
+      <span class="app-profile-name" data-profile-name>Usuario</span>
+     </button>
      <div class="header-left">
       <div class="page-breadcrumb">
        <span>
@@ -216,15 +207,8 @@
        <span class="notification-dot" id="headerNotificationDot">
        </span>
       </button>
-      <button class="btn-pc-primary" id="btnPcPersonalQuick" onclick="pcApp.openModalNuevoMovimiento()">
-       <span>
-        +
-       </span>
-       Nuevo movimiento
-      </button>
       
-      <button type="button" class="bm-profile-avatar bm-pc-only" data-business-profile onclick="pcApp.switchView('perfil')" aria-label="Abrir mi perfil"></button>
-      <button class="btn-pc-primary" id="btnPcBusinessQuick" onclick="pcApp.openQuickBusinessActions()" style="display:none;">
+      <button class="btn-pc-primary" id="btnPcBusinessQuick" onclick="pcApp.openQuickBusinessActions()" style="display:none;" aria-label="Acción rápida" title="Acción rápida">
        <span>
         +
        </span>
@@ -243,11 +227,11 @@
         <h1>
          Hola,
          <span id="lblDashboardUser">
-          bryan
+          Usuario
          </span>
         </h1>
         <p>
-         Resumen general de tu actividad financiera y flujo de caja.
+         Personal / Inicio
         </p>
        </div>
        <div class="view-controls-bar">
@@ -300,7 +284,7 @@
         </div>
         <div class="kpi-sub-badge green">
          <span>
-          +12 % vs mes anterior
+          Total del período seleccionado
          </span>
         </div>
        </div>
@@ -324,13 +308,14 @@
         </div>
        </div>
       </div>
+      <button class="reference-register-action btn-pc-primary" type="button" onclick="pcApp.openModalNuevoMovimiento()"><span aria-hidden="true">+</span> Registrar movimiento</button>
       <!-- ÁREA DE ALERTAS Y DIAGNÓSTICO PROPOSICIONAL -->
       <div id="pcDashboardAlerts">
       </div>
       <!-- FILA MEDIA: GRÁFICO (65%) + PRESUPUESTO (35%) -->
       <div class="pc-grid-2col">
        <!-- Gráfico: Tu dinero en perspectiva -->
-       <div class="pc-card">
+       <div class="pc-card home-chart-card">
         <div class="pc-card-header">
          <div>
           <h3 class="pc-card-title">
@@ -350,7 +335,7 @@
         </div>
        </div>
        <!-- Presupuesto del mes -->
-       <div class="pc-card">
+       <div class="pc-card home-budget-card">
         <div class="pc-card-header">
          <div>
           <h3 class="pc-card-title">
@@ -383,7 +368,7 @@
       <!-- FILA INFERIOR: ÚLTIMOS MOVIMIENTOS (65%) + TUS METAS (35%) -->
       <div class="pc-grid-2col">
        <!-- Tabla de últimos movimientos -->
-       <div class="pc-card">
+       <div class="pc-card home-recent-card">
         <div class="pc-card-header">
          <div>
           <h3 class="pc-card-title">
@@ -428,7 +413,7 @@
         </div>
        </div>
        <!-- Tus metas de ahorro resumen -->
-       <div class="pc-card">
+       <div class="pc-card home-goals-card">
         <div class="pc-card-header">
          <div>
           <h3 class="pc-card-title">
@@ -461,13 +446,10 @@
          Movimientos
         </h1>
         <p>
-         Historial contable de ingresos y gastos con trazabilidad completa.
+         Personal / Movimientos
         </p>
        </div>
        <div class="view-controls-bar">
-        <button class="btn-pc-secondary" onclick="pcApp.exportarCSV()">
-         📥 Exportar CSV
-        </button>
         <button class="btn-pc-secondary" onclick="pcApp.imprimirPDF()">
          📄 Imprimir / PDF
         </button>
@@ -529,8 +511,8 @@
       </div>
       <!-- TARJETA PRINCIPAL CON TABLA Y FILTROS -->
       <div class="pc-card">
-       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
+       <div class="movement-filters" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+        <div class="movement-type-filters" style="display: flex; gap: 0.5rem; align-items: center;">
          <button class="btn-pc-secondary active" id="btnFilterTodos" onclick="pcApp.setMovFilter('TODOS')">
           Todos
          </button>
@@ -541,7 +523,7 @@
           Gastos
          </button>
         </div>
-        <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <div class="movement-search-filters" style="display: flex; gap: 0.75rem; align-items: center;">
          <select class="pc-select" id="selectMovCategory" onchange="pcApp.renderizarMovimientos()" style="width: 180px;">
           <option value="TODAS">
            Todas las categorías
@@ -626,7 +608,7 @@
          Registrar movimiento
         </h1>
         <p>
-         Elige tipo de transacción y completa los datos contables.
+         Personal / Registrar movimiento
         </p>
        </div>
        <button class="btn-pc-secondary" onclick="pcApp.switchView('movimientos')">
@@ -650,7 +632,7 @@
            <label style="font-size: 0.78rem; font-weight: 700; color: var(--pc-text-muted); text-transform: uppercase;">
             Importe en Pesos Colombianos
            </label>
-           <input class="amount-input-giant" id="regInputMonto" min="100" onfocus="if(this.value === '0.00' || this.value === '0') this.value = ''" oninput="pcApp.updateLiveImpact()" placeholder="0.00" step="0.01" type="number" value="0.00"/>
+           <input class="amount-input-giant" id="regInputMonto" min="0.01" onfocus="if(this.value === '0.00' || this.value === '0') this.value = ''" oninput="pcApp.updateLiveImpact()" placeholder="0.00" step="0.01" type="number" value="0.00"/>
            <span style="font-weight: 700; color: var(--pc-text-muted);">
             COP ($)
            </span>
@@ -663,7 +645,7 @@
             <!-- Categorías interactivas -->
            </div>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="movement-entry-fields" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
            <div class="pc-form-group">
             <label for="regInputConcepto">
              Concepto / Descripción
@@ -761,7 +743,7 @@
          Mi plan
         </h1>
         <p>
-         Planificación de gastos mensuales por categoría y control preventivo.
+         Personal / Mi plan
         </p>
        </div>
        <button class="btn-pc-primary" onclick="pcApp.openModalAjustarPresupuesto()">
@@ -888,7 +870,7 @@
          Metas de ahorro
         </h1>
         <p>
-         Proyecta objetivos, acumula aportes y asegura tu futuro financiero.
+         Personal / Metas de ahorro
         </p>
        </div>
        <button class="btn-pc-primary" onclick="pcApp.openModalNuevaMeta()">
@@ -909,7 +891,7 @@
          2.750.000 COP
         </div>
         <div class="kpi-sub-badge teal">
-         +600.000 COP este mes
+         Ahorro acumulado registrado
         </div>
        </div>
        <div class="kpi-card">
@@ -924,8 +906,8 @@
         <div class="kpi-amount" id="metasKpiObjetivoTotal">
          4.700.000 COP
         </div>
-        <div class="kpi-sub-badge green">
-         3 metas en progreso
+        <div class="kpi-sub-badge green" id="metasKpiEnProgreso">
+         0 metas en progreso
         </div>
        </div>
        <div class="kpi-card">
@@ -940,8 +922,8 @@
         <div class="kpi-amount text-expense" id="metasKpiRestante">
          1.950.000 COP
         </div>
-        <div class="kpi-sub-badge red">
-         58.5 % de avance global
+        <div class="kpi-sub-badge red" id="metasKpiAvance">
+         0 % de avance global
         </div>
        </div>
       </div>
@@ -990,7 +972,7 @@
          Deudas
         </h1>
         <p>
-         Seguimiento de pasivos, cuotas periódicas y calendario de pagos.
+         Personal / Deudas
         </p>
        </div>
        <button class="btn-pc-primary" onclick="pcApp.openModalNuevaDeuda()">
@@ -1010,8 +992,8 @@
         <div class="kpi-amount" id="deudasKpiPendiente">
          1.260.000 COP
         </div>
-        <div class="kpi-sub-badge teal">
-         2 obligaciones activas
+        <div class="kpi-sub-badge teal" id="deudasKpiActivas">
+         0 obligaciones activas
         </div>
        </div>
        <div class="kpi-card">
@@ -1027,7 +1009,7 @@
          195.000 COP
         </div>
         <div class="kpi-sub-badge green">
-         Pagos al día
+         Abonos registrados
         </div>
        </div>
        <div class="kpi-card">
@@ -1085,22 +1067,22 @@
        <div class="pc-card">
         <div class="pc-card-header">
          <h3 class="pc-card-title">
-          Estrategia recomendada
+          Organización de tus deudas
          </h3>
          <span class="badge-setting">
-          Asesor Contable
+          Tus obligaciones
          </span>
         </div>
         <p style="font-size: 0.85rem; color: var(--pc-text-muted); margin-bottom: 1rem;">
-         Basado en tus deudas actuales, la estrategia óptima es el
+         Consulta el listado de deudas para revisar los
          <strong>
-          Método Avalancha
+          saldos y vencimientos registrados
          </strong>
-         para minimizar intereses financieros:
+         y mantener tus obligaciones al día.
         </p>
         <div style="background: var(--pc-bg); padding: 1rem; border-radius: var(--radius-md); font-size: 0.82rem; margin-bottom: 1rem;">
          <strong>
-          1. Prioridad: Tratamiento dental (5% TIN)
+          Revisa los vencimientos de tus deudas
          </strong>
          <p>
           Amortiza saldo adicional aquí para evitar sobrecostos por intereses.
@@ -1108,10 +1090,10 @@
         </div>
         <div style="background: var(--pc-bg); padding: 1rem; border-radius: var(--radius-md); font-size: 0.82rem;">
          <strong>
-          2. Portátil (0% TIN)
+          Consulta las cuotas registradas
          </strong>
          <p>
-          Mantén el pago puntual de la cuota mínima de 80.000 COP sin mora.
+          Los importes y fechas de tus obligaciones aparecen en el listado de deudas.
          </p>
         </div>
        </div>
@@ -1124,18 +1106,15 @@
       <div class="view-top-banner">
        <div class="view-heading">
         <h1>
-         Tu dinero, en perspectiva
+         Informes
         </h1>
         <p>
-         Analítica descriptiva, distribución de gastos y tasa de ahorro.
+         Personal / Informes
         </p>
        </div>
        <div class="view-controls-bar">
-        <button class="btn-pc-secondary" onclick="pcApp.exportarCSV()">
-         📥 Descargar datos (CSV)
-        </button>
         <button class="btn-pc-primary" onclick="pcApp.imprimirPDF()">
-         📄 Generar Reporte PDF
+         Imprimir / PDF
         </button>
        </div>
       </div>
@@ -1293,26 +1272,23 @@
         <h1>
          Tu espacio
         </h1>
-        <p>
-         Perfil de usuario, preferencias del sistema y respaldo de información.
+        <p data-profile-location>
+         Personal / Perfil
         </p>
        </div>
       </div>
-      <div class="pc-card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-       <div style="display: flex; align-items: center; gap: 1.25rem;">
+      <div class="pc-card profile-identity-card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+       <div class="profile-identity" style="display: flex; align-items: center; gap: 1.25rem;">
         <div id="profileAvatarBig" style="width: 64px; height: 64px; border-radius: var(--radius-full); background: var(--pc-teal-dark); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800;">
          LM
         </div>
         <div>
          <h2 id="profileNameBig" style="font-size: 1.35rem; font-weight: 800; color: var(--pc-text-title);">
-          Lucía Martín
+          Usuario
          </h2>
          <p id="profileEmailBig" style="font-size: 0.88rem; color: var(--pc-text-muted);">
-          lucia.martin@email.com
+          —
          </p>
-         <span class="top-notice-badge" style="margin-top: 0.35rem; display: inline-block;">
-          Usuario Activo · Moneda Oficial COP
-         </span>
         </div>
        </div>
        <button class="btn-pc-secondary" onclick="pcApp.openModalEditarPerfil()">
@@ -1325,10 +1301,10 @@
        </h3>
        <div aria-label="Seleccionar espacio" class="pc-space-toggle" role="group">
         <button class="pc-space-option" data-space="PERSONAL" onclick="pcApp.setModulo('PERSONAL', 'inicio')" type="button">
-         Mi dinero
+         Personal
         </button>
         <button class="pc-space-option" data-space="EMPRESARIAL" onclick="pcApp.setModulo('EMPRESARIAL', 'negocio-dashboard')" type="button">
-         Negocio
+         Mi Negocio
         </button>
        </div>
       </div>
@@ -1402,10 +1378,10 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
          <div>
           <strong>
-           Recordatorio de vencimiento de deudas
+           Avisos de deudas dentro de la app
           </strong>
           <p style="font-size: 0.78rem; color: var(--pc-text-muted);">
-           Notificar con 5 días de anticipación
+           Al abrir la app: vencidas o próximas en 7 días. No envía avisos fuera de la app.
           </p>
          </div>
          <label class="toggle-switch">
@@ -1414,26 +1390,6 @@
           </span>
          </label>
         </div>
-       </div>
-      </div>
-      <div class="pc-card" style="margin-top: 1.5rem;">
-       <h3 class="pc-card-title" style="margin-bottom: 1rem;">
-        Gestión y respaldo de datos
-       </h3>
-       <p style="font-size: 0.85rem; color: var(--pc-text-muted); margin-bottom: 1.25rem;">
-        Tus datos están sincronizados localmente en tu navegador y son compartidos automáticamente entre la Versión PC y la Versión Móvil.
-       </p>
-       <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-
-        <button class="btn-pc-secondary" onclick="pcApp.exportarCSV()">
-         📥 Descargar Movimientos (CSV)
-        </button>
-        <button class="btn-pc-secondary" onclick="pcApp.imprimirPDF()">
-         📄 Imprimir / guardar informe PDF
-        </button>
-        <button class="btn-pc-secondary" onclick="pcApp.restablecerDatos()" style="color: var(--pc-red); border-color: #fecdd3;">
-         🔄 Restablecer Datos Iniciales de Fábrica
-        </button>
        </div>
       </div>
      </section>
@@ -1469,7 +1425,7 @@
        <label for="modalQuickValor">
         Importe (COP)
        </label>
-       <input class="pc-input" id="modalQuickValor" min="100" placeholder="Ej. 50000.00" required="" step="0.01" type="number"/>
+       <input class="pc-input" id="modalQuickValor" min="0.01" placeholder="Ej. 50000.00" required="" step="0.01" type="number"/>
       </div>
       <div class="pc-form-group">
        <label for="modalQuickConcepto">
@@ -1548,7 +1504,7 @@
        <label for="inputMetaObjetivo">
         Monto objetivo total (COP)
        </label>
-       <input class="pc-input" id="inputMetaObjetivo" min="10000" placeholder="Ej. 1500000.00" required="" step="0.01" type="number"/>
+       <input class="pc-input" id="inputMetaObjetivo" min="0.01" placeholder="Ej. 1500000.00" required="" step="0.01" type="number"/>
       </div>
       <div class="pc-form-group">
        <label for="inputMetaAhorrado">
@@ -1591,7 +1547,7 @@
        <label for="inputAporteMetaValor">
         Monto a aportar (COP)
        </label>
-       <input class="pc-input" id="inputAporteMetaValor" min="1000" placeholder="Ej. 100000.00" required="" step="0.01" type="number"/>
+       <input class="pc-input" id="inputAporteMetaValor" min="0.01" placeholder="Ej. 100000.00" required="" step="0.01" type="number"/>
       </div>
      </div>
      <div class="pc-modal-footer">
@@ -1627,7 +1583,7 @@
        <label for="inputDeudaMontoInicial">
         Monto total inicial (COP)
        </label>
-       <input class="pc-input" id="inputDeudaMontoInicial" min="10000" placeholder="Ej. 1200000.00" required="" step="0.01" type="number"/>
+       <input class="pc-input" id="inputDeudaMontoInicial" min="0.01" placeholder="Ej. 1200000.00" required="" step="0.01" type="number"/>
       </div>
       <div class="pc-form-group">
        <label for="inputDeudaSaldoPendiente">
@@ -1639,13 +1595,17 @@
        <label for="inputDeudaCuota">
         Valor cuota mensual (COP)
        </label>
-       <input class="pc-input" id="inputDeudaCuota" min="1000" placeholder="Ej. 100000.00" required="" step="0.01" type="number"/>
+       <input class="pc-input" id="inputDeudaCuota" min="0.01" placeholder="Ej. 100000.00" required="" step="0.01" type="number"/>
       </div>
       <div class="pc-form-group">
        <label for="inputDeudaCondiciones">
         Condiciones / Tasa
        </label>
        <input class="pc-input" id="inputDeudaCondiciones" placeholder="Ej. 0% TIN en 12 cuotas" type="text"/>
+      </div>
+      <div class="pc-form-group">
+       <label for="inputDeudaProximoPago">Próximo vencimiento (opcional)</label>
+       <input class="pc-input" id="inputDeudaProximoPago" type="date"/>
       </div>
      </div>
      <div class="pc-modal-footer">
@@ -1676,8 +1636,11 @@
        <label for="inputAbonoDeudaValor">
         Monto del abono (COP)
        </label>
-       <input class="pc-input" id="inputAbonoDeudaValor" min="1000" placeholder="Ej. 80000.00" required="" step="0.01" type="number"/>
+       <input class="pc-input" id="inputAbonoDeudaValor" min="0.01" placeholder="Ej. 80000.00" required="" step="0.01" type="number"/>
       </div>
+      <div class="pc-form-group"><label for="inputAbonoDeudaCuenta">Cuenta de salida</label><select class="pc-input" id="inputAbonoDeudaCuenta" required></select></div>
+      <div class="pc-form-group"><label for="inputAbonoDeudaFecha">Fecha del pago</label><input class="pc-input" id="inputAbonoDeudaFecha" type="date" required/></div>
+      <p style="font-size:.875rem;color:var(--pc-text-muted)">El abono descontará el mismo importe de tu saldo disponible.</p>
      </div>
      <div class="pc-modal-footer">
       <button class="btn-pc-secondary" onclick="pcApp.closeModalAbonarDeuda()" type="button">
@@ -1706,7 +1669,7 @@
        <label for="inputPresupuestoGlobal">
         Límite mensual total (COP)
        </label>
-       <input class="pc-input" id="inputPresupuestoGlobal" min="100000" required="" step="0.01" type="number"/>
+       <input class="pc-input" id="inputPresupuestoGlobal" min="0.01" required="" step="0.01" type="number"/>
       </div>
      </div>
      <div class="pc-modal-footer">
@@ -1816,15 +1779,7 @@
        1. Modularidad y Arquitectura Separada:
       </strong>
       <p>
-       El código separa explícitamente la
-       <em>
-        Versión Escritorio (desktop.html / styles/desktop.css / src/utils/desktop.js)
-       </em>
-       y la
-       <em>
-        Versión Móvil (mobile.html / styles/mobile.css / src/utils/mobile.js)
-       </em>
-       , desacopladas mediante el núcleo reactivo
+       La interfaz adapta su distribución al ancho disponible, conservando los formularios y el núcleo reactivo
        <code>
         src/services/finanzasCore.js
        </code>
@@ -1872,7 +1827,7 @@
        El orden es importante: utilidades y datos, dominios, servicios
        y finalmente la interfaz de escritorio.
        ================================================================ -->
-  <script src="src/utils/formatters.js?v=20261104-1">
+  <script src="src/utils/formatters.js?v=20261123-5">
   </script>
   <script src="src/utils/dates.js?v=20261104-1">
   </script>
@@ -1887,15 +1842,16 @@
   <script src="src/domains/business/reportPreferences.js?v=20261110-2"></script>
   <script src="src/domains/business/businessSchema.js?v=20261110-2"></script>
   <script src="src/storage/migrations.js?v=20261109-3"></script>
-  <script src="src/storage/localStorage.js?v=20261109-3">
+  <script src="src/storage/sqliteBackend.js?v=20261123-5"></script>
+  <script src="src/storage/localStorage.js?v=20261123-5">
   </script>
-  <script src="src/domains/personal/movementsDomain.js?v=20261104-1">
+  <script src="src/domains/personal/movementsDomain.js?v=20261123-5">
   </script>
-  <script src="src/domains/personal/budgetDomain.js?v=20261104-1">
+  <script src="src/domains/personal/budgetDomain.js?v=20261123-5">
   </script>
   <script src="src/domains/personal/goalsDomain.js?v=20261104-1">
   </script>
-  <script src="src/domains/personal/debtsDomain.js?v=20261104-1">
+  <script src="src/domains/personal/debtsDomain.js?v=20261123-5">
   </script>
   <script src="src/domains/business/businessDomain.js?v=20261104-1">
   </script>
@@ -1909,19 +1865,19 @@
   </script>
   <script src="src/domains/user/userService.js?v=20261104-1">
   </script>
-  <script src="src/services/finanzasCore.js?v=20261109-3">
+  <script src="src/services/finanzasCore.js?v=20261123-5">
   </script>
   <script src="src/utils/shared.js?v=20261104-1">
   </script>
-  <script src="src/utils/desktop.js?v=20261114-1">
+  <script src="src/utils/desktop.js?v=20261123-5">
   </script>
-   <script src="src/services/exportService.js?v=20261109-3"></script>
-  <script src="src/ui/shared/persistenceStatus.js?v=20261108-1"></script>
+   <script src="src/services/exportService.js?v=20261123-5"></script>
+  <script src="src/ui/shared/persistenceStatus.js?v=20261123-5"></script>
   <script src="src/vendor/qrcode.js?v=20261109-1"></script>
   <script src="src/invoicing/money.js?v=20261109-1"></script>
   <script src="src/invoicing/schema.js?v=20261109-1"></script>
   <script src="src/invoicing/providers.js?v=20261109-1"></script>
-  <script src="src/storage/businessRepository.js?v=20261109-3"></script>
+  <script src="src/storage/businessRepository.js?v=20261123-5"></script>
   <script src="src/invoicing/repository.js?v=20261109-3"></script>
   <script src="src/invoicing/service.js?v=20261109-3"></script>
   <script src="src/invoicing/exports.js?v=20261110-4"></script>
@@ -1931,10 +1887,17 @@
   <script src="src/domains/business/reportOperationsDomain.js?v=20261110-2"></script>
   <script src="src/domains/business/reportsDomain.js?v=20261110-2"></script>
   <script src="src/ui/views/business/businessReportOperationsView.js?v=20261110-2"></script>
-  <script src="src/ui/views/business/businessReportsView.js?v=20261110-2"></script>
+  <script src="src/ui/views/business/businessReportsView.js?v=20261123-3"></script>
   <script src="src/domains/business/readModel.js?v=20261109-3"></script>
   <script src="src/domains/business/workspaceMetrics.js?v=20261110-3"></script>
-  <script src="src/ui/views/business/businessWorkspaceScreens.js?v=20261110-3"></script>
-  <script src="src/ui/views/business/businessWorkspace.js?v=20261110-5"></script>
+  <script src="src/ui/views/business/businessWorkspaceScreens.js?v=20261123-4"></script>
+  <script src="src/ui/views/business/businessWorkspace.js?v=20261123-4"></script>
+  <script src="src/ui/shared/personalMovementEditor.js?v=20261123-5"></script>
+  <script src="src/ui/shared/accountSession.js"></script>
+  <script src="src/ui/shared/adaptiveEntry.js?v=20261123-4"></script>
+  <script src="src/ui/shared/referenceCharts.js?v=20261123-1"></script>
+  <script src="src/ui/shared/referenceIcons.js?v=20261123-1"></script>
+  <script src="src/ui/shared/debtReminders.js?v=20261123-5"></script>
+  <script src="src/ui/shared/backupControls.js?v=20261123-5"></script>
 </body>
 </html>

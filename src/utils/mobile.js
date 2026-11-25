@@ -9,6 +9,22 @@
 class MobileApp {
   constructor() {
     this.ui = window.MiBolsilloUiShared || null;
+    this._pendingForms = new Set();
+    for (const name of ["handleGuardarMovimiento","handleNuevaMeta","handleAporteMeta","handleNuevaDeuda","handleAbonoDeuda","handlePresupuesto","handlePerfil"]) {
+      const handler = this[name];
+      if (typeof handler !== 'function') continue;
+      this[name] = async (...args) => {
+        args[0]?.preventDefault?.();
+        if (this._pendingForms.has(name)) return;
+        this._pendingForms.add(name);
+        const form = args[0]?.currentTarget?.tagName === 'FORM' ? args[0].currentTarget : null;
+        const buttons = form ? [...form.querySelectorAll('button[type="submit"]')] : [];
+        buttons.forEach(button => { button.disabled = true; });
+        try { return await handler.apply(this, args); }
+        catch (error) { this.mostrarToast(error.message || 'No se confirmó el guardado. Conserva los datos y reintenta.'); }
+        finally { this._pendingForms.delete(name); buttons.forEach(button => { button.disabled = false; }); }
+      };
+    }
     this.currentTab = 'inicio';
     this.currentBusinessTab = 'negocio';
     this.currentModule = 'PERSONAL';
@@ -23,7 +39,7 @@ class MobileApp {
     this._lastMovementAt = 0;
   }
 
-  init() {
+  async init() {
     if (this.initialized) return this;
     this.initialized = true;
 
@@ -64,7 +80,7 @@ class MobileApp {
     this.currentTab = openBusiness ? 'negocio' : 'inicio';
     this.actualizarModuloVisual(this.currentModule);
     this.renderNavigationState();
-    this.switchTab(this.currentTab);
+    await this.switchTab(this.currentTab);
 
     // Renderizar estado inicial
     this.renderAll();
@@ -120,16 +136,13 @@ class MobileApp {
   // ==========================================================================
   // NAVEGACIÓN Y CAMBIO DE MÓDULOS MÓVILES
   // ==========================================================================
-  setModulo(modulo, targetView = null) {
+  async setModulo(modulo, targetView = null) {
     const nextModulo = modulo === 'EMPRESARIAL' ? 'EMPRESARIAL' : 'PERSONAL';
+    const result = await Finanzas.setModuloActivo(nextModulo);
+    if (result?.error) { this.mostrarToast(result.error); return result; }
     this.currentModule = nextModulo;
-
-    if (Finanzas && typeof Finanzas.setModuloActivo === 'function') {
-      Finanzas.setModuloActivo(nextModulo);
-    }
-
     this.actualizarModuloVisual(nextModulo);
-    this.switchTab(targetView || (nextModulo === 'EMPRESARIAL' ? 'negocio' : 'inicio'));
+    return this.switchTab(targetView || (nextModulo === 'EMPRESARIAL' ? 'negocio' : 'inicio'));
   }
 
   actualizarModuloVisual(modulo) {
@@ -146,11 +159,14 @@ class MobileApp {
       if (brandTitle) brandTitle.textContent = 'Negocio';
     } else {
       const brandTitle = document.getElementById('lblMobileUserNombre');
-      if (brandTitle) brandTitle.textContent = (Finanzas?.state?.usuario?.nombre || 'Lucía').split(' ')[0] || 'Lucía';
+      if (brandTitle) brandTitle.textContent = (Finanzas?.state?.usuario?.nombre || 'Usuario').split(' ')[0] || 'Usuario';
     }
   }
 
-  switchTab(tabId, subtab = null) {
+  async switchTab(tabId, subtab = null) {
+    const requested = tabId === 'negocio' ? 'EMPRESARIAL' : ['inicio', 'movimientos', 'plan', 'informes'].includes(tabId) ? 'PERSONAL' : this.currentModule;
+    const result = await Finanzas.setModuloActivo(requested);
+    if (result?.error) { this.mostrarToast(result.error); return result; }
     this.currentTab = tabId;
 
     document.querySelectorAll('.screen-view').forEach(view => {
@@ -165,7 +181,7 @@ class MobileApp {
       this.currentBusinessTab = this.currentBusinessTab === 'perfil' ? 'negocio' : (this.currentBusinessTab || 'negocio');
       this.actualizarModuloVisual('EMPRESARIAL');
       if (Finanzas && typeof Finanzas.setModuloActivo === 'function') {
-        Finanzas.setModuloActivo('EMPRESARIAL');
+        await Finanzas.setModuloActivo('EMPRESARIAL');
       }
       document.querySelectorAll('.business-panel').forEach(panel => {
         panel.classList.toggle('active', panel.dataset.businessPanel === this.currentBusinessTab);
@@ -174,7 +190,7 @@ class MobileApp {
       this.currentModule = 'PERSONAL';
       this.actualizarModuloVisual('PERSONAL');
       if (Finanzas && typeof Finanzas.setModuloActivo === 'function') {
-        Finanzas.setModuloActivo('PERSONAL');
+        await Finanzas.setModuloActivo('PERSONAL');
       }
     } else if (tabId === 'perfil') {
       if (this.currentModule === 'EMPRESARIAL') {
@@ -183,7 +199,7 @@ class MobileApp {
         this.currentModule = 'PERSONAL';
         this.actualizarModuloVisual('PERSONAL');
         if (Finanzas && typeof Finanzas.setModuloActivo === 'function') {
-          Finanzas.setModuloActivo('PERSONAL');
+          await Finanzas.setModuloActivo('PERSONAL');
         }
       }
     }
@@ -221,13 +237,15 @@ class MobileApp {
     });
   }
 
-  switchBusinessTab(tabId) {
+  async switchBusinessTab(tabId) {
+    const result = await Finanzas.setModuloActivo('EMPRESARIAL');
+    if (result?.error) { this.mostrarToast(result.error); return result; }
     if (tabId === 'perfil') {
       this.currentModule = 'EMPRESARIAL';
       this.currentBusinessTab = 'perfil';
       this.currentTab = 'perfil';
       if (Finanzas && typeof Finanzas.setModuloActivo === 'function') {
-        Finanzas.setModuloActivo('EMPRESARIAL');
+        await Finanzas.setModuloActivo('EMPRESARIAL');
       }
       this.actualizarModuloVisual('EMPRESARIAL');
       document.querySelectorAll('.screen-view').forEach(view => view.classList.remove('active'));
@@ -243,7 +261,7 @@ class MobileApp {
     this.currentModule = 'EMPRESARIAL';
     this.currentTab = 'negocio';
     if (Finanzas && typeof Finanzas.setModuloActivo === 'function') {
-      Finanzas.setModuloActivo('EMPRESARIAL');
+      await Finanzas.setModuloActivo('EMPRESARIAL');
     }
     this.actualizarModuloVisual('EMPRESARIAL');
     this.renderNavigationState();
@@ -276,12 +294,12 @@ class MobileApp {
     if (targetSub) targetSub.classList.add('active');
 
     const subLabels = {
-      presupuestos: 'QUÉ EN LUGAR DE ESTÁ PASO',
-      metas: 'AHORRA PARA LO QUE IMPORTA',
-      deudas: 'MÁS CLARIDAD, MENOS CARGAS'
+      presupuestos: 'Personal / Mi plan',
+      metas: 'Personal / Metas de ahorro',
+      deudas: 'Personal / Deudas'
     };
     const lblSub = document.getElementById('lblMobilePlanHeaderSub');
-    if (lblSub) lblSub.textContent = subLabels[subtabId] || 'MI PLAN';
+    if (lblSub) lblSub.textContent = subLabels[subtabId] || 'Personal / Mi plan';
   }
 
   // ==========================================================================
@@ -305,7 +323,7 @@ class MobileApp {
     const u = Finanzas.state.usuario;
     const nameEl = document.getElementById('lblMobileUserNombre');
     if (nameEl) {
-      nameEl.textContent = this.currentModule === 'EMPRESARIAL' ? 'Negocio' : (u.nombre.split(' ')[0] || 'Lucía');
+      nameEl.textContent = this.currentModule === 'EMPRESARIAL' ? 'Negocio' : (u.nombre.split(' ')[0] || 'Usuario');
     }
     const initialsEl = document.getElementById('lblMobileAvatarInitials');
     if (initialsEl) initialsEl.textContent = this.currentModule === 'EMPRESARIAL' ? 'NG' : u.iniciales;
@@ -351,13 +369,7 @@ class MobileApp {
     if (barBud) barBud.style.width = `${budgetStatus.porcentaje}%`;
 
     const elAvail = document.getElementById('lblMobileBudgetAvailable');
-    if (elAvail) {
-      if (budgetStatus.disponible > 0) {
-        elAvail.textContent = `Te quedan ${formatCOP(budgetStatus.disponible)} para este mes...`;
-      } else {
-        elAvail.textContent = `Has sobrepasado el límite por ${formatCOP(budgetStatus.exceso)}!`;
-      }
-    }
+    if (elAvail) elAvail.textContent = Finanzas.getMensajePresupuesto(budgetStatus);
 
     // Alertas proposicionales
     const alertsCont = document.getElementById('mobileDashboardAlerts');
@@ -537,9 +549,7 @@ class MobileApp {
     if (barHero) barHero.style.width = `${budgetStatus.porcentaje}%`;
     const availEl = document.getElementById('lblMobileBudgetHeroAvailable');
     if (availEl) {
-      availEl.textContent = budgetStatus.disponible > 0 
-        ? `${formatCOP(budgetStatus.disponible)} disponibles para este mes`
-        : `Límite excedido por ${formatCOP(budgetStatus.exceso)}`;
+      availEl.textContent = Finanzas.getMensajePresupuesto(budgetStatus);
     }
     const budgetPercentEl = document.getElementById('lblMobileBudgetPercentPlan');
     if (budgetPercentEl) budgetPercentEl.textContent = `${budgetStatus.porcentajeReal}% consumido`;
@@ -562,7 +572,7 @@ class MobileApp {
       let html = '';
       CATEGORIAS_GASTO.forEach(c => {
         const gastado = gastosCat[c.id] || 0;
-        const limite = Finanzas.state.limitesCategorias[c.id] || 300000;
+        const limite = (Finanzas.getLimitesCategorias()[c.id] ?? 0);
         const pct = limite > 0 ? Math.min(100, Math.round((gastado / limite) * 100)) : 0;
 
         html += `
@@ -590,11 +600,10 @@ class MobileApp {
     const countMetas = document.getElementById('lblMobileMetasCount');
     if (countMetas) countMetas.textContent = `${Finanzas.state.metas.length} metas`;
     const totalMetaObjetivo = Finanzas.calcTotalObjetivoMetas();
-    const totalMetaAhorrado = Finanzas.calcTotalAhorradoMetas();
     const metaObjetivoEl = document.getElementById('lblMobileMetasObjetivo');
     if (metaObjetivoEl) metaObjetivoEl.textContent = formatCOP(totalMetaObjetivo);
     const metaRestanteEl = document.getElementById('lblMobileMetasRestante');
-    if (metaRestanteEl) metaRestanteEl.textContent = formatCOP(Math.max(0, totalMetaObjetivo - totalMetaAhorrado));
+    if (metaRestanteEl) metaRestanteEl.textContent = formatCOP(Finanzas.calcTotalRestanteMetas());
 
     const listMetas = document.getElementById('mobileListMetasCards');
     if (listMetas) {
@@ -643,14 +652,14 @@ class MobileApp {
     if (totDeudas) totDeudas.textContent = formatCOP(Finanzas.calcTotalDeudasPendientes());
     const totalDebtPaid = document.getElementById('lblMobileDeudasPagado');
     if (totalDebtPaid) totalDebtPaid.textContent = formatCOP(Finanzas.calcTotalDeudasPagado());
-    const totalMonthlyDebtPayments = Finanzas.state.deudas.reduce((sum, debt) => sum + (Number(debt.cuotaMensual) || 0), 0);
+    const totalMonthlyDebtPayments = Finanzas.getDeudas().cuotaMensualTotal;
     const monthlyDebtPayments = document.getElementById('lblMobileDeudasCuotas');
     if (monthlyDebtPayments) monthlyDebtPayments.textContent = `${formatCOP(totalMonthlyDebtPayments)}/mes`;
 
     const listDeudas = document.getElementById('mobileListDeudasCards');
     if (listDeudas) {
       let dHtml = '';
-      Finanzas.state.deudas.forEach(d => {
+      Finanzas.state.deudas.filter(d => !d.archivada).forEach(d => {
         const pagado = Math.max(0, d.valorInicial - d.saldoPendiente);
         const pct = d.valorInicial > 0 ? Math.min(100, Math.round((pagado / d.valorInicial) * 100)) : 0;
         dHtml += `
@@ -684,7 +693,7 @@ class MobileApp {
       debtHistory.innerHTML = payments.length
         ? payments.map(ab => `
           <div style="display:flex; justify-content:space-between; gap:0.75rem; padding:0.55rem 0; border-bottom:1px solid var(--border-card); font-size:0.8rem;">
-            <span>${escapeHTML(ab.fecha)} · ${escapeHTML(ab.deudaNombre)}</span>
+            <span>${escapeHTML(ab.fecha)} · ${escapeHTML(ab.deudaNombre)}<small style="display:block">${ab.estadoVinculacion === 'vinculado' ? 'Egreso vinculado · ' + escapeHTML(ab.cuenta || 'Cuenta') : 'Histórico: revisar egreso'}</small></span>
             <strong style="color:var(--color-expense);">-${formatCOP(ab.valor)}</strong>
           </div>`).join('')
         : '<p style="font-size:0.82rem; color:var(--text-muted);">Sin abonos registrados aún.</p>';
@@ -712,7 +721,7 @@ class MobileApp {
       let html = '';
       CATEGORIAS_GASTO.forEach(c => {
         const gastado = gastosCat[c.id] || 0;
-        const limite = Finanzas.state.limitesCategorias[c.id] || 300000;
+        const limite = (Finanzas.getLimitesCategorias()[c.id] ?? 0);
         const pctTotal = totalGastos > 0 ? (gastado / totalGastos * 100).toFixed(1) : '0.0';
         const pctLimit = limite > 0 ? Math.round(gastado / limite * 100) : 0;
         const status = gastado >= limite ? 'Límite alcanzado' : 'En rango';
@@ -999,7 +1008,7 @@ class MobileApp {
     this.updateLiveImpact();
   }
 
-  handleGuardarMovimiento(e) {
+  async handleGuardarMovimiento(e) {
     e.preventDefault();
     if (this._savingMovement) return;
     this._savingMovement = true;
@@ -1019,21 +1028,14 @@ class MobileApp {
       return;
     }
 
-    const fechaLocal = new Date(`${fecha}T12:00:00`);
-    if (!Number.isNaN(fechaLocal.getTime())) {
-      Finanzas.state.periodoAnio = fechaLocal.getFullYear();
-      Finanzas.state.periodoMes = fechaLocal.getMonth();
-    }
     const signature = [this.modalType, valor, concepto.toLocaleLowerCase(), categoria, fecha].join('|');
     const now = Date.now();
     if (signature === this._lastMovementSignature && now - this._lastMovementAt < 1200) {
       this._savingMovement = false;
       return;
     }
-    this._lastMovementSignature = signature;
-    this._lastMovementAt = now;
 
-    const res = Finanzas.agregarMovimiento({
+    const res = await Finanzas.agregarMovimiento({
       tipo: this.modalType,
       concepto,
       categoria,
@@ -1048,6 +1050,8 @@ class MobileApp {
       return;
     }
 
+    this._lastMovementSignature = signature;
+    this._lastMovementAt = now;
     setTimeout(() => { this._savingMovement = false; }, 600);
     const amountInput = document.getElementById('mobInputMonto');
     const conceptInput = document.getElementById('mobInputConcepto');
@@ -1082,7 +1086,7 @@ class MobileApp {
           : `+${(status.limite > 0 ? amount / status.limite * 100 : 0).toFixed(1)}% del presupuesto`;
       }
       const categorySpent = Finanzas.calcGastosPorCategoria()[category] || 0;
-      const categoryLimit = Finanzas.state.limitesCategorias[category] || 300000;
+      const categoryLimit = (Finanzas.getLimitesCategorias()[category] ?? 0);
       alertEl.textContent = !isIncome && (
         (status.limite > 0 && status.gastado + amount > status.limite) ||
         categorySpent + amount > categoryLimit
@@ -1097,7 +1101,7 @@ class MobileApp {
   closeModalNuevaMeta() {
     document.getElementById('modalMobileNuevaMeta')?.classList.add('hidden');
   }
-  handleNuevaMeta(e) {
+  async handleNuevaMeta(e) {
     e.preventDefault();
     const nombre = document.getElementById('mobMetaNombre')?.value || '';
     const objetivo = Number(document.getElementById('mobMetaObjetivo')?.value);
@@ -1109,7 +1113,7 @@ class MobileApp {
       return;
     }
 
-    const res = Finanzas.agregarMeta({ nombre, objetivo, ahorrado, plazo });
+    const res = await Finanzas.agregarMeta({ nombre, objetivo, ahorrado, plazo });
     if (res.error) {
       this.mostrarToast(res.error);
       return;
@@ -1127,7 +1131,7 @@ class MobileApp {
   closeModalAportarMeta() {
     document.getElementById('modalMobileAportarMeta')?.classList.add('hidden');
   }
-  handleAporteMeta(e) {
+  async handleAporteMeta(e) {
     e.preventDefault();
     const metaId = document.getElementById('mobAporteMetaId')?.value;
     const monto = Number(document.getElementById('mobAporteMetaValor')?.value);
@@ -1137,7 +1141,7 @@ class MobileApp {
       return;
     }
 
-    const res = Finanzas.aportarMeta(metaId, monto);
+    const res = await Finanzas.aportarMeta(metaId, monto);
     if (res.error) {
       this.mostrarToast(res.error);
       return;
@@ -1154,7 +1158,7 @@ class MobileApp {
   closeModalNuevaDeuda() {
     document.getElementById('modalMobileNuevaDeuda')?.classList.add('hidden');
   }
-  handleNuevaDeuda(e) {
+  async handleNuevaDeuda(e) {
     e.preventDefault();
     const nombre = document.getElementById('mobDeudaNombre')?.value ? document.getElementById('mobDeudaNombre').value.trim() : '';
     const valorInicial = Number(document.getElementById('mobDeudaValorInicial')?.value);
@@ -1177,7 +1181,8 @@ class MobileApp {
 
     // Nota: El formulario móvil no envía "condiciones". Finanzas.agregarDeuda maneja condiciones opcionales correctamente.
     const condiciones = document.getElementById('mobDeudaCondiciones')?.value?.trim() || '';
-    const res = Finanzas.agregarDeuda({ nombre, valorInicial, saldoPendiente, cuotaMensual, condiciones });
+    const proximoPago = document.getElementById('mobDeudaProximoPago')?.value || '';
+    const res = await Finanzas.agregarDeuda({ nombre, valorInicial, saldoPendiente, cuotaMensual, condiciones, proximoPago });
     if (res.error) {
       this.mostrarToast(res.error);
       return;
@@ -1189,13 +1194,18 @@ class MobileApp {
 
   openModalAbonarDeuda(deudaId, deudaNombre) {
     document.getElementById('mobAbonoDeudaId').value = deudaId;
+    const modal = document.getElementById('modalMobileAbonarDeuda');
+    modal.dataset.operationKey = crypto.randomUUID();
+    const accounts = document.getElementById('mobAbonoDeudaCuenta');
+    accounts.replaceChildren(...Finanzas.getCuentas().map(c => new Option(c.nombre, c.id)));
+    document.getElementById('mobAbonoDeudaFecha').value = obtenerFechaHoyISO();
     document.getElementById('mobLblAbonoDeudaTitle').textContent = `Abonar a ${deudaNombre}`;
     document.getElementById('modalMobileAbonarDeuda')?.classList.remove('hidden');
   }
   closeModalAbonarDeuda() {
     document.getElementById('modalMobileAbonarDeuda')?.classList.add('hidden');
   }
-  handleAbonoDeuda(e) {
+  async handleAbonoDeuda(e) {
     e.preventDefault();
     const deudaId = document.getElementById('mobAbonoDeudaId')?.value;
     const monto = Number(document.getElementById('mobAbonoDeudaValor')?.value);
@@ -1205,7 +1215,7 @@ class MobileApp {
       return;
     }
 
-    const res = Finanzas.abonarDeuda(deudaId, monto);
+    const res = await Finanzas.abonarDeuda(deudaId, monto, 'Transferencia', { cuenta: document.getElementById('mobAbonoDeudaCuenta').value, fecha: document.getElementById('mobAbonoDeudaFecha').value, operationKey: document.getElementById('modalMobileAbonarDeuda').dataset.operationKey });
     if (res.error) {
       this.mostrarToast(res.error);
       return;
@@ -1224,11 +1234,12 @@ class MobileApp {
   closeModalConfigPresupuesto() {
     document.getElementById('modalMobilePresupuesto')?.classList.add('hidden');
   }
-  handlePresupuesto(e) {
+  async handlePresupuesto(e) {
     e.preventDefault();
     const monto = Number(document.getElementById('mobInputPresupuestoMonto')?.value);
     if (isFinite(monto) && monto >= 0) {
-      Finanzas.actualizarPresupuesto(monto);
+      const result = await Finanzas.actualizarPresupuesto(monto);
+      if (result.error) { this.mostrarToast(result.error); return; }
       this.closeModalConfigPresupuesto();
       this.mostrarToast(`✔ Presupuesto de ${Finanzas.getNombrePeriodo()} actualizado`);
     } else {
@@ -1250,7 +1261,7 @@ class MobileApp {
   closeModalEditarPerfil() {
     document.getElementById('modalMobileEditarPerfil')?.classList.add('hidden');
   }
-  handlePerfil(e) {
+  async handlePerfil(e) {
     e.preventDefault();
     const nombre = document.getElementById('mobInputPerfilNombre')?.value ? document.getElementById('mobInputPerfilNombre').value.trim() : '';
     const email = document.getElementById('mobInputPerfilEmail')?.value ? document.getElementById('mobInputPerfilEmail').value.trim() : '';
@@ -1259,10 +1270,8 @@ class MobileApp {
       ? Number(saldoInicialInput.value)
       : null;
 
-    Finanzas.actualizarPerfil({ nombre, email });
-    if (saldoInicial !== null && Number.isFinite(saldoInicial)) {
-      Finanzas.actualizarSaldoInicial(saldoInicial);
-    }
+    const result = await Finanzas.actualizarPerfil({ nombre, email, saldoInicial });
+    if (result.error) { this.mostrarToast(result.error); return; }
     this.closeModalEditarPerfil();
     this.mostrarToast('✔ Perfil guardado');
   }
@@ -1276,49 +1285,51 @@ class MobileApp {
   }
 
   // Acciones generales
-  eliminarMovimiento(id) {
+  async eliminarMovimiento(id) {
     if (confirm('¿Eliminar movimiento?')) {
-      Finanzas.eliminarMovimiento(id);
-      this.mostrarToast('Movimiento eliminado');
+      if (await Finanzas.eliminarMovimiento(id)) this.mostrarToast('Movimiento eliminado');
+      else this.mostrarToast('No se pudo confirmar la eliminación. Revisa el aviso de guardado.');
     }
   }
 
-  eliminarMeta(id) {
+  async eliminarMeta(id) {
     if (confirm('¿Eliminar esta meta de ahorro?')) {
-      Finanzas.eliminarMeta(id);
+      if (!await Finanzas.eliminarMeta(id)) { this.mostrarToast('No se confirmó la eliminación. Revisa el aviso de persistencia.'); return; }
       this.mostrarToast('Meta eliminada');
     }
   }
 
-  eliminarDeuda(id) {
+  async eliminarDeuda(id) {
     if (confirm('¿Eliminar esta deuda?')) {
-      Finanzas.eliminarDeuda(id);
-      this.mostrarToast('Deuda eliminada');
+      if (!await Finanzas.eliminarDeuda(id)) { this.mostrarToast('No se confirmó la eliminación. Revisa el aviso de persistencia.'); return; }
+      this.mostrarToast(Finanzas.state.deudas.some(d => d.id === id && d.archivada) ? 'Deuda archivada; pagos e historial conservados.' : 'Deuda eliminada');
     }
   }
 
-  toggleOcultarSaldo() {
-    Finanzas.toggleSaldoOculto();
+  async toggleOcultarSaldo() {
+    const result = await Finanzas.toggleSaldoOculto();
+    if (result.error) { this.mostrarToast(result.error); return; }
     this.renderAll();
     this.mostrarToast('Visibilidad de saldo conmutada');
   }
 
-  cambiarMes(delta) {
-    Finanzas.cambiarPeriodo(delta);
+  async cambiarMes(delta) {
+    const result = await Finanzas.cambiarPeriodo(delta);
+    if (result.error) { this.mostrarToast(result.error); return; }
     this.renderAll();
     this.mostrarToast(`Visualizando: ${Finanzas.getNombrePeriodo()}`);
   }
 
-  toggleAlertaPresupuesto(checked) {
-    Finanzas.state.usuario.alertasPresupuesto = checked;
-    Finanzas.saveState();
+  async toggleAlertaPresupuesto(checked) {
+    const result = await Finanzas.actualizarPreferencia('alertasPresupuesto', checked);
+    if (result.error) { this.renderAll(); this.mostrarToast(result.error); return; }
     this.mostrarToast(checked ? 'Alertas activadas' : 'Alertas pausadas');
   }
 
-  toggleRecordatoriosDeudas(checked) {
-    Finanzas.state.usuario.recordatoriosDeudas = checked;
-    Finanzas.saveState();
-    this.mostrarToast(checked ? 'Recordatorios activados' : 'Recordatorios pausados');
+  async toggleRecordatoriosDeudas(checked) {
+    const result = await Finanzas.actualizarPreferencia('recordatoriosDeudas', checked);
+    if (result.error) { this.renderAll(); this.mostrarToast(result.error); return; }
+    this.mostrarToast(checked ? 'Avisos de vencimiento dentro de la app activados' : 'Avisos de vencimiento pausados');
   }
 
   exportarCSV() {
@@ -1350,9 +1361,9 @@ class MobileApp {
     this.mostrarToast('Copia JSON descargada.');
   }
 
-  restablecerDatos() {
+  async restablecerDatos() {
     if (confirm('¿Restablecer datos a la configuración inicial?')) {
-      Finanzas.resetState();
+      await Finanzas.resetState();
       this.mostrarToast('🔄 Datos iniciales restaurados');
     }
   }
@@ -1381,3 +1392,4 @@ if (document.readyState === 'loading') {
 } else {
   window.mobileApp.init();
 }
+

@@ -92,6 +92,19 @@
       if (!Array.isArray(next.proveedores)) next.proveedores = [];
       if (!Array.isArray(next.cuentas)) next.cuentas = [];
       if (!Array.isArray(next.ingresosNegocio)) next.ingresosNegocio = [];
+      for (const [key, collection, idKey, nameKey] of [
+        ['aportesMetas', 'metas', 'metaId', 'metaNombre'],
+        ['abonosDeudas', 'deudas', 'deudaId', 'deudaNombre']
+      ]) {
+        next[key] = (Array.isArray(next[key]) ? next[key] : []).map(record => ({
+          ...record, valor: Number(record.valor ?? record.monto) || 0,
+          monto: Number(record.monto ?? record.valor) || 0,
+          [nameKey]: record[nameKey] || next[collection].find(item => item.id === record[idKey])?.nombre || 'Registro histórico'
+        }));
+      }
+      const now = new Date();
+      if (!Number.isInteger(next.periodoAnio)) next.periodoAnio = now.getFullYear();
+      if (!Number.isInteger(next.periodoMes) || next.periodoMes < 0 || next.periodoMes > 11) next.periodoMes = now.getMonth();
 
       next.movimientos = next.movimientos.map((item, index) => ({
         ...item,
@@ -114,6 +127,25 @@
       next.moduloActivo = next.moduloActivo === 'EMPRESARIAL' ? 'EMPRESARIAL' : 'PERSONAL';
       next.negocioActivoId = next.negocioActivoId || (next.negocios[0] ? next.negocios[0].id : null);
       next.presupuestoMensual = Math.max(Number(next.presupuestoMensual) || 0, 0);
+      // One-time migration: only the explicitly stored period owns the legacy budget.
+      if (next.presupuestosVersion !== 1) {
+        next.presupuestosPorPeriodo = next.presupuestosPorPeriodo || {};
+        next.presupuestosPorPeriodo[this.clavePeriodo(next.periodoAnio, next.periodoMes)] ||= {
+          limite: next.presupuestoMensual, limitesCategorias: { ...(next.limitesCategorias || {}) }
+        };
+        next.presupuestosVersion = 1;
+      }
+      next.presupuestosPorPeriodo ||= {};
+      const budget = next.presupuestosPorPeriodo[this.clavePeriodo(next.periodoAnio, next.periodoMes)];
+      next.presupuestoMensual = Math.max(Number(budget?.limite) || 0, 0);
+      next.limitesCategorias = { ...(budget?.limitesCategorias || {}) };
+      next.recordatoriosDeudasVistos ||= {};
+      if (!next.cuentas.length) next.cuentas.push({ id: 'cuenta-principal', nombre: 'Principal', tipo: 'EFECTIVO' });
+      // Never infer historical cash exits from equal amounts/descriptions.
+      next.abonosDeudas.forEach(payment => {
+        const linked = payment.movimientoId && next.movimientos.find(m => m.id === payment.movimientoId && m.tipo === 'GASTO' && Number(m.valor) === Number(payment.valor) && m.deudaId === payment.deudaId);
+        payment.estadoVinculacion = linked ? 'vinculado' : 'historico-sin-egreso';
+      });
 
       window.BusinessSchema?.migrate(next);
       return next;
@@ -138,15 +170,15 @@
       });
     }
 
-    guardarEstado() {
+    async guardarEstado() {
       const store = window.MiBolsilloStore || window.MiBolsilloState;
       const storage = window.FinanzasStorage || window.MiBolsilloStorage;
       const state = this.normalizeState(this.state || {});
       this.state = state;
       if (store && typeof store.setState === 'function') {
-        store.setState(state);
+        await store.setState(state);
       } else if (storage && typeof storage.saveState === 'function') {
-        storage.saveState(state);
+        await storage.saveState(state);
       }
       this.lastPersistence = storage && typeof storage.getPersistenceStatus === 'function'
         ? storage.getPersistenceStatus() : { ok: false, status: 'unavailable' };
@@ -154,17 +186,8 @@
       return state;
     }
 
-    reiniciarDatos() {
-      const defaultState = window.INITIAL_STATE || window.FinanzasDemoData || {};
-      const store = window.MiBolsilloStore || window.MiBolsilloState;
-      const storage = window.FinanzasStorage || window.MiBolsilloStorage;
-      const fresh = store && typeof store.reset === 'function'
-        ? store.reset(defaultState)
-        : (storage && typeof storage.resetState === 'function'
-          ? storage.resetState(defaultState)
-          : JSON.parse(JSON.stringify(defaultState)));
-      this.state = this.normalizeState(fresh || defaultState);
-      this.notify();
+    async reiniciarDatos(defaultState = window.INITIAL_STATE || window.FinanzasDemoData || {}) {
+      await this.persistirEstado(defaultState);
       return this.state;
     }
 
@@ -183,7 +206,24 @@
     }
 
     getCuentas() {
-      return this.state.cuentas || [];
+      return (this.state.cuentas || []).map(cuenta => ({ ...cuenta, saldoCalculado: this.getSaldoCuenta(cuenta.id) }));
+    }
+
+    getSaldoCuenta(id) {
+      const cuenta = this.state.cuentas.find(c => c.id === id);
+      if (!cuenta) return 0;
+      const base = cuenta.id === 'cuenta-principal' ? Number(this.state.saldoInicial) || 0 : Number(cuenta.saldoInicial ?? cuenta.saldo) || 0;
+      const names = new Set([cuenta.id, cuenta.nombre]);
+      if (cuenta.id === 'cuenta-principal' || /principal/i.test(cuenta.nombre)) names.add('Principal');
+      return window.PersonalMovementsDomain.calcularSaldoTotal(base, this.state.movimientos.filter(m => m.cuentaId === id || names.has(m.cuenta)));
+    }
+
+    clavePeriodo(anio = this.state.periodoAnio, mes = this.state.periodoMes) {
+      return String(anio) + '-' + String(mes + 1).padStart(2, '0');
+    }
+
+    getLimitesCategorias(anio = this.state.periodoAnio, mes = this.state.periodoMes) {
+      return { ...(this.state.presupuestosPorPeriodo?.[this.clavePeriodo(anio, mes)]?.limitesCategorias || {}) };
     }
 
     getCategorias() {
@@ -203,20 +243,30 @@
     }
 
     setSaldoInicial(monto) {
-      this.state.saldoInicial = Number(monto) || 0;
-      this.guardarEstado();
+      return this.actualizarSaldoInicial(monto);
     }
 
     actualizarSaldoInicial(monto) {
-      this.setSaldoInicial(monto);
-      return this.state.saldoInicial;
+      return this.escribirPersonal(next => {
+        next.saldoInicial = this.importePersonal(monto, true);
+        return { ok: true, saldoInicial: next.saldoInicial };
+      });
     }
 
     getNombrePeriodo() {
-      if (this.state && this.state.mesActual) return this.state.mesActual;
-      const now = new Date();
-      const label = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(now);
+      const period = new Date(this.state.periodoAnio, this.state.periodoMes, 1);
+      const label = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(period);
       return label.charAt(0).toUpperCase() + label.slice(1);
+    }
+
+    cambiarPeriodo(delta) {
+      if (!Number.isInteger(delta)) return { error: 'El cambio de mes no es válido.' };
+      return this.escribirPersonal(next => {
+        const period = new Date(next.periodoAnio, next.periodoMes + delta, 1);
+        if (!Number.isFinite(period.getTime()) || period.getFullYear() < 100 || period.getFullYear() > 9999) throw new Error('El período está fuera del rango permitido.');
+        next.periodoAnio = period.getFullYear(); next.periodoMes = period.getMonth();
+        return { ok: true };
+      });
     }
 
     getMovimientosPeriodo(anio = null, mes = null) {
@@ -226,25 +276,19 @@
     }
 
     calcTotalIngresos() {
-      return this.getMovimientos().filter(m => m.tipo === 'INGRESO').reduce((sum, curr) => sum + (Number(curr.valor) || 0), 0);
+      return this.calcularMetricasMes().ingresos;
     }
 
     calcTotalGastos() {
-      return this.getMovimientos().filter(m => m.tipo === 'GASTO').reduce((sum, curr) => sum + (Number(curr.valor) || 0), 0);
+      return this.calcularMetricasMes().gastos;
     }
 
     calcSaldoTotal() {
-      const saldoInicial = Number(this.state.saldoInicial || 0);
-      return this.getMovimientos().reduce((total, mov) => {
-        const valor = Number(mov.valor) || 0;
-        if (mov.tipo === 'INGRESO') return total + valor;
-        if (mov.tipo === 'GASTO') return total - valor;
-        return total;
-      }, saldoInicial);
+      return this.getSaldoTotal();
     }
 
     calcBalanceNeto() {
-      return this.calcSaldoTotal();
+      return this.calcularMetricasMes().balance;
     }
 
     calcTotalAhorradoMetas() {
@@ -253,6 +297,10 @@
 
     calcTotalObjetivoMetas() {
       return (this.getMetas() || []).reduce((sum, meta) => sum + (Number(meta.objetivo ?? meta.montoObjetivo ?? 0) || 0), 0);
+    }
+
+    calcTotalRestanteMetas() {
+      return this.getMetas().reduce((sum, meta) => sum + meta.restante, 0);
     }
 
     calcTotalDeudasPendientes() {
@@ -264,27 +312,29 @@
     }
 
     calcGastosPorCategoria() {
-      return this.getMovimientos().reduce((acc, mov) => {
+      return this.getMovimientosPeriodo().reduce((acc, mov) => {
         if (mov.tipo !== 'GASTO') return acc;
         const cat = mov.categoria || 'Otros';
-        acc[cat] = (acc[cat] || 0) + (Number(mov.valor) || 0);
+        acc[cat] = Math.round(((acc[cat] || 0) + (Number(mov.valor) || 0) + Number.EPSILON) * 100) / 100;
         return acc;
       }, {});
     }
 
     calcPresupuestoStatus() {
-      const presupuesto = Number(this.state.presupuestoMensual || 0);
+      const presupuesto = this.getPresupuestoPeriodo();
       const gastos = this.calcTotalGastos();
       const restante = Math.max(presupuesto - gastos, 0);
       const porcentaje = presupuesto > 0 ? (gastos / presupuesto) * 100 : 0;
-      const porcentajeReal = Math.min(Math.round(porcentaje), 100);
-      const estado = porcentajeReal >= 100 ? 'EXCEDIDO' : (porcentajeReal >= 80 ? 'ALERTA' : 'NORMAL');
+      const porcentajeReal = Math.round(porcentaje);
+      const configurado = presupuesto > 0;
+      const estado = !configurado ? 'SIN_CONFIGURAR' : gastos > presupuesto ? 'EXCEDIDO' : gastos === presupuesto ? 'AGOTADO' : (porcentaje >= 80 ? 'ALERTA' : 'NORMAL');
       return {
+        configurado,
         limite: presupuesto,
         gastado: gastos,
         restante,
         disponible: Math.max(presupuesto - gastos, 0),
-        porcentaje,
+        porcentaje: Math.min(porcentaje, 100),
         porcentajeReal,
         estado,
         exceso: Math.max(gastos - presupuesto, 0)
@@ -293,78 +343,154 @@
 
     calcTasaAhorro() {
       const ingresos = this.calcTotalIngresos();
-      const ahorro = this.calcTotalAhorradoMetas();
+      const aportes = window.PersonalMovementsDomain.getMovimientos(this.state.aportesMetas, this.state.periodoAnio, this.state.periodoMes);
+      const ahorro = aportes.reduce((sum, aporte) => sum + aporte.valor, 0);
       if (ingresos <= 0) return 0;
       return Number(((ahorro / ingresos) * 100).toFixed(1));
     }
 
-    getPresupuestoPeriodo() {
-      return this.calcPresupuestoStatus();
+    getPresupuestoPeriodo(anio = this.state.periodoAnio, mes = this.state.periodoMes) {
+      return Number(this.state.presupuestosPorPeriodo?.[this.clavePeriodo(anio, mes)]?.limite) || 0;
+    }
+
+    getMensajePresupuesto(status = this.calcPresupuestoStatus()) {
+      if (!status.configurado) return 'Configura tu presupuesto para este mes.';
+      if (status.exceso > 0) return 'Has sobrepasado el límite por ' + window.formatCOP(status.exceso) + '.';
+      if (status.disponible === 0) return 'Has alcanzado el límite de tu presupuesto.';
+      return 'Te quedan ' + window.formatCOP(status.disponible) + ' disponibles para este mes.';
     }
 
     getAlertasStockBajo() {
       return [];
     }
 
-    resetState(defaultState = null) {
-      return this.reiniciarDatos(defaultState || window.INITIAL_STATE || window.FinanzasDemoData || {});
+    agregarMovimiento(datos) {
+      return this.escribirPersonal(next => {
+        const valor = this.importePersonal(datos.valor);
+        const concepto = String(datos.concepto || '').trim();
+        const fecha = datos.fecha || window.obtenerFechaHoyISO();
+        if (!['INGRESO', 'GASTO'].includes(datos.tipo) || !concepto || concepto.length > 255 || !window.esFechaISOValida(fecha)) throw new Error('Revisa el tipo, el concepto y la fecha del movimiento.');
+        const nuevo = window.PersonalMovementsDomain.crearMovimiento({ ...datos, valor, concepto, fecha });
+        next.movimientos.unshift(nuevo);
+        const period = window.parseFechaLocal(fecha);
+        next.periodoAnio = period.getFullYear(); next.periodoMes = period.getMonth();
+        return nuevo;
+      });
     }
 
-    agregarMovimiento(datos) {
-      const domain = window.PersonalMovementsDomain;
-      const nuevo = domain ? domain.crearMovimiento(datos) : { id: `tx-${Date.now()}`, ...datos };
-      if (!Array.isArray(this.state.movimientos)) this.state.movimientos = [];
-      this.state.movimientos.unshift(nuevo);
-      this.guardarEstado();
-      return nuevo;
+    importePersonal(value, permitirCero = false) {
+      if (value === '' || value === null || value === undefined) throw new Error('Escribe un importe válido.');
+      const number = Number(value);
+      if (!Number.isFinite(number) || number < 0 || (!permitirCero && number === 0) || number > 1000000000000) throw new Error('El importe debe ser positivo y estar dentro del límite permitido.');
+      const rounded = Math.round((number + Number.EPSILON) * 100) / 100;
+      if (!permitirCero && rounded === 0) throw new Error('El importe mínimo es 0,01 COP.');
+      return rounded;
+    }
+
+    // Publish only a confirmed commit. On failure the caller keeps its form,
+    // and retrying cannot duplicate an operation previously held in memory.
+    async persistirEstado(next, { locked = false } = {}) {
+      if (!locked && window.navigator?.locks?.request) return window.navigator.locks.request('mibolsillo-invoicing-v1', { mode: 'exclusive' }, () => this.persistirEstado(next, { locked: true }));
+      const storage = window.FinanzasStorage || window.MiBolsilloStorage;
+      if (!storage || storage.hasPendingChanges?.()) return false;
+      next = this.normalizeState(next);
+      if (!await storage.saveState(next, { keepPending: false })) return false;
+      this.state = next;
+      if (window.MiBolsilloStore) window.MiBolsilloStore.state = next;
+      this.lastPersistence = storage.getPersistenceStatus();
+      this.notify();
+      return true;
+    }
+
+    async escribirPersonal(mutate) {
+      const write = async () => {
+        try {
+          await window.FinanzasStorage?.refreshFromBackend?.();
+          const next = this.normalizeState(this.state);
+          const result = mutate(next);
+          if (!await this.persistirEstado(next, { locked: true })) return { error: window.FinanzasStorage?.getPersistenceStatus().message || 'No se confirmó el guardado. Conserva el formulario y revisa el aviso de persistencia.' };
+          return result;
+        } catch (error) { return { error: error.message || 'No se pudo completar la operación.' }; }
+      };
+      if (window.navigator?.locks?.request) return window.navigator.locks.request('mibolsillo-invoicing-v1', { mode: 'exclusive' }, write);
+      this._personalTail = (this._personalTail || Promise.resolve()).then(write, write);
+      return this._personalTail;
     }
 
     eliminarMovimiento(id) {
       if (!Array.isArray(this.state.movimientos)) return false;
-      const prevLen = this.state.movimientos.length;
-      this.state.movimientos = this.state.movimientos.filter(m => m.id !== id);
-      if (this.state.movimientos.length !== prevLen) {
-        this.guardarEstado();
-        return true;
-      }
-      return false;
+      if (!this.state.movimientos.some(m => m.id === id)) return false;
+      return this.escribirPersonal(next => {
+        if (next.movimientos.find(m => m.id === id)?.abonoDeudaId) throw new Error('Este egreso está vinculado a un pago de deuda y no se puede eliminar por separado.');
+        next.movimientos = next.movimientos.filter(m => m.id !== id);
+        return { ok: true };
+      }).then(result => !result.error);
+    }
+
+    persistirMovimientos(movimientos) {
+      return this.persistirEstado({ ...this.state, movimientos });
+    }
+
+    async actualizarMovimiento(id, datos) {
+      const original = (this.state.movimientos || []).find(m => m.id === id);
+      if (!original) return { error: 'El movimiento no pertenece a tus datos actuales.' };
+      if (original.abonoDeudaId) return { error: 'Este egreso está vinculado a un pago de deuda y no se puede editar por separado.' };
+      const valor = Number(datos.valor);
+      const date = window.parseFechaLocal?.(datos.fecha);
+      if (!Number.isFinite(valor) || valor <= 0 || valor > 1000000000000
+        || !String(datos.concepto || '').trim() || !['INGRESO','GASTO'].includes(datos.tipo)
+        || !date || !window.esFechaISOValida?.(datos.fecha)) return { error: 'Revisa el concepto, el importe positivo y la fecha válida.' };
+      const editado = { ...original, ...datos, id: original.id, valor: Math.round((valor + Number.EPSILON) * 100) / 100,
+        concepto: String(datos.concepto).trim(), grupoFecha: window.formatearGrupoFecha(datos.fecha) };
+      return this.escribirPersonal(next => {
+        const current = next.movimientos.find(m => m.id === id);
+        if (!current || current.abonoDeudaId || JSON.stringify(current) !== JSON.stringify(original)) throw new Error('El movimiento cambió. Reabre el formulario antes de editarlo.');
+        next.movimientos = next.movimientos.map(m => m.id === id ? editado : m);
+        return { movimiento: editado, error: null };
+      });
     }
 
     calcularMetricasMes(anio = null, mes = null) {
-      const movs = this.getMovimientos(anio, mes);
+      const movs = this.getMovimientosPeriodo(anio, mes);
       const domain = window.PersonalMovementsDomain;
       return domain ? domain.calcularResumenPeriodo(movs) : { ingresos: 0, gastos: 0, balance: 0 };
     }
 
     getPresupuesto(anio = null, mes = null) {
-      const movs = this.getMovimientos(anio, mes);
+      const movs = this.getMovimientosPeriodo(anio, mes);
       const domain = window.PersonalBudgetDomain;
-      return domain ? domain.calcularEstadoPresupuestoGlobal(this.state.presupuestoMensual, movs) : { limite: 0, gastado: 0, restante: 0, porcentaje: 0, estado: 'NORMAL' };
+      return domain ? domain.calcularEstadoPresupuestoGlobal(this.getPresupuestoPeriodo(anio ?? this.state.periodoAnio, mes ?? this.state.periodoMes), movs) : { limite: 0, gastado: 0, restante: 0, porcentaje: 0, estado: 'NORMAL' };
     }
 
     getPresupuestoDesglose(anio = null, mes = null) {
-      const movs = this.getMovimientos(anio, mes);
+      const movs = this.getMovimientosPeriodo(anio, mes);
       const domain = window.PersonalBudgetDomain;
-      return domain ? domain.calcularDesgloseCategorias(this.state.limitesCategorias, movs) : [];
+      return domain ? domain.calcularDesgloseCategorias(this.getLimitesCategorias(anio ?? this.state.periodoAnio, mes ?? this.state.periodoMes), movs) : [];
     }
 
     evaluarAlertas() {
       const estado = this.getPresupuesto(this.state.periodoAnio, this.state.periodoMes);
       const desglose = this.getPresupuestoDesglose(this.state.periodoAnio, this.state.periodoMes);
       const domain = window.PersonalBudgetDomain;
-      const alertasHabilitadas = this.state.usuario ? Boolean(this.state.usuario.alertasPresupuesto) : true;
+      const alertasHabilitadas = this.state.usuario?.alertasPresupuesto !== false;
       return domain ? domain.evaluarAlertas(estado, desglose, alertasHabilitadas) : [];
     }
 
     actualizarPresupuesto(monto) {
-      this.state.presupuestoMensual = Math.max(Number(monto) || 0, 0);
-      this.guardarEstado();
+      return this.escribirPersonal(next => {
+        const key = this.clavePeriodo(next.periodoAnio, next.periodoMes);
+        next.presupuestosPorPeriodo[key] = { ...(next.presupuestosPorPeriodo[key] || { limitesCategorias: {} }), limite: this.importePersonal(monto, true) };
+        return { ok: true };
+      });
     }
 
     actualizarLimiteCategoria(categoria, monto) {
-      if (!this.state.limitesCategorias) this.state.limitesCategorias = {};
-      this.state.limitesCategorias[categoria] = Math.max(Number(monto) || 0, 0);
-      this.guardarEstado();
+      return this.escribirPersonal(next => {
+        const key = this.clavePeriodo(next.periodoAnio, next.periodoMes);
+        const budget = next.presupuestosPorPeriodo[key] ||= { limite: 0, limitesCategorias: {} };
+        budget.limitesCategorias[categoria] = this.importePersonal(monto, true);
+        return { ok: true };
+      });
     }
 
     // Metas de Ahorro
@@ -375,57 +501,64 @@
     }
 
     agregarMeta(datos = {}) {
-      const meta = {
-        id: `meta-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        nombre: (datos.nombre || 'Meta').trim() || 'Meta',
-        objetivo: Math.max(Number(datos.montoObjetivo ?? datos.objetivo ?? 0) || 0, 0),
-        ahorrado: Math.max(Number(datos.montoActual ?? datos.ahorrado ?? 0) || 0, 0),
-        montoObjetivo: Math.max(Number(datos.montoObjetivo ?? datos.objetivo ?? 0) || 0, 0),
-        montoActual: Math.max(Number(datos.montoActual ?? datos.ahorrado ?? 0) || 0, 0),
-        fechaLimite: datos.fechaLimite || '',
-        color: datos.color || '#10b981',
-        icono: datos.icono || '🎯',
-        categoria: datos.categoria || 'Ahorro'
-      };
-      if (!Array.isArray(this.state.metas)) this.state.metas = [];
-      this.state.metas.push(this.normalizeMeta(meta, this.state.metas.length));
-      this.guardarEstado();
-      return this.state.metas[this.state.metas.length - 1];
+      return this.escribirPersonal(next => {
+        const objetivo = this.importePersonal(datos.montoObjetivo ?? datos.objetivo);
+        const ahorrado = this.importePersonal(datos.montoActual ?? datos.ahorrado ?? 0, true);
+        const nombre = String(datos.nombre || '').trim();
+        if (!nombre) throw new Error('Escribe el nombre de la meta.');
+        const meta = {
+          id: `meta-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          nombre, objetivo, ahorrado, montoObjetivo: objetivo, montoActual: ahorrado,
+          plazo: String(datos.plazo || datos.fechaLimite || '').trim(),
+          fechaLimite: datos.fechaLimite || '',
+          color: datos.color || '#10b981',
+          icono: datos.icono || '🎯',
+          categoria: datos.categoria || 'Ahorro'
+        };
+        next.metas.push(meta);
+        if (ahorrado) next.aportesMetas.push({ id: `ap-${meta.id}`, metaId: meta.id, metaNombre: nombre,
+          monto: ahorrado, valor: ahorrado, fecha: window.obtenerFechaHoyISO(), nota: 'Ahorro inicial' });
+        return meta;
+      });
     }
 
     abonarAMeta(metaId, monto, nota = '') {
-      const meta = (this.state.metas || []).find(m => m.id === metaId);
-      if (!meta) return null;
-      const baseMeta = this.normalizeMeta(meta);
-      const valor = Math.abs(Number(monto) || 0);
-      const nuevoActual = (Number(baseMeta.montoActual ?? baseMeta.ahorrado ?? 0) || 0) + valor;
-      baseMeta.montoActual = nuevoActual;
-      baseMeta.ahorrado = nuevoActual;
-      baseMeta.objetivo = Number(baseMeta.montoObjetivo ?? baseMeta.objetivo ?? 0) || 0;
-      Object.assign(meta, baseMeta);
-      if (!Array.isArray(this.state.aportesMetas)) this.state.aportesMetas = [];
-      const aporte = {
-        id: `ap-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        metaId,
-        monto: valor,
-        fecha: window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0],
-        nota: (nota || '').trim()
-      };
-      this.state.aportesMetas.push(aporte);
-      this.guardarEstado();
-      return aporte;
+      return this.escribirPersonal(next => {
+        const meta = next.metas.find(m => m.id === metaId);
+        if (!meta) throw new Error('La meta no pertenece a tus datos actuales.');
+        const baseMeta = this.normalizeMeta(meta);
+        const valor = this.importePersonal(monto);
+        const nuevoActual = this.importePersonal(baseMeta.montoActual + valor);
+        baseMeta.montoActual = nuevoActual;
+        baseMeta.ahorrado = nuevoActual;
+        baseMeta.objetivo = Number(baseMeta.montoObjetivo ?? baseMeta.objetivo ?? 0) || 0;
+        Object.assign(meta, baseMeta);
+        const aporte = {
+          id: `ap-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          metaId, metaNombre: meta.nombre,
+          monto: valor, valor,
+          fecha: window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0],
+          nota: (nota || '').trim()
+        };
+        next.aportesMetas.push(aporte);
+        return { ...aporte, mensaje: 'Aporte guardado correctamente.' };
+      });
     }
 
-    eliminarMeta(id) {
-      if (!Array.isArray(this.state.metas)) return false;
-      this.state.metas = this.state.metas.filter(m => m.id !== id);
-      this.guardarEstado();
-      return true;
+    aportarMeta(metaId, monto, nota = '') { return this.abonarAMeta(metaId, monto, nota); }
+
+    async eliminarMeta(id) {
+      if (!this.state.metas.some(m => m.id === id)) return false;
+      return !(await this.escribirPersonal(next => {
+        next.metas = next.metas.filter(m => m.id !== id);
+        next.aportesMetas = next.aportesMetas.filter(a => a.metaId !== id);
+        return { ok: true };
+      })).error;
     }
 
     // Deudas
     getDeudas() {
-      const debts = Array.isArray(this.state.deudas) ? this.state.deudas.map(deuda => this.normalizeDeuda(deuda)) : [];
+      const debts = Array.isArray(this.state.deudas) ? this.state.deudas.filter(deuda => !deuda.archivada).map(deuda => this.normalizeDeuda(deuda)) : [];
       const domain = window.PersonalDebtsDomain;
       return domain ? domain.calcularResumenDeudas(debts) : {
         totalDeuda: debts.reduce((sum, deuda) => sum + (Number(deuda.saldoPendiente ?? deuda.saldo ?? 0) || 0), 0),
@@ -435,49 +568,94 @@
     }
 
     agregarDeuda(datos = {}) {
-      const montoInicial = Math.max(Number(datos.montoInicial ?? datos.valorInicial ?? 0) || 0, 0);
-      const saldo = Math.max(Number(datos.saldoPendiente ?? datos.saldo ?? montoInicial) || 0, 0);
-      const deuda = {
-        id: `deuda-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        nombre: (datos.nombre || datos.concepto || datos.acreedor || 'Deuda').trim() || 'Deuda',
-        acreedor: (datos.acreedor || datos.nombre || 'Entidad').trim() || 'Entidad',
-        concepto: (datos.concepto || datos.nombre || 'Deuda').trim() || 'Deuda',
-        montoInicial: Math.max(montoInicial || saldo, 0),
-        valorInicial: Math.max(montoInicial || saldo, 0),
-        saldoPendiente: saldo,
-        cuotaMensual: Math.max(Number(datos.cuotaMensual) || 0, 0),
-        tasaInteres: Number(datos.tasaInteres) || 0,
-        fechaVencimiento: datos.fechaVencimiento || '',
-        proximoPago: datos.proximoPago || datos.fechaVencimiento || '',
-        categoria: datos.categoria || 'Otros',
-        estado: saldo === 0 ? 'PAGADA' : 'AL_DIA'
-      };
-      if (!Array.isArray(this.state.deudas)) this.state.deudas = [];
-      this.state.deudas.push(this.normalizeDeuda(deuda, this.state.deudas.length));
-      this.guardarEstado();
-      return this.state.deudas[this.state.deudas.length - 1];
+      return this.escribirPersonal(next => {
+        const montoInicial = this.importePersonal(datos.montoInicial ?? datos.valorInicial);
+        const saldo = this.importePersonal(datos.saldoPendiente ?? datos.saldo ?? montoInicial, true);
+        const cuota = this.importePersonal(datos.cuotaMensual ?? 0, true);
+        const nombre = String(datos.nombre || datos.concepto || datos.acreedor || '').trim();
+        if (!nombre || saldo > montoInicial) throw new Error('Revisa el nombre y el saldo pendiente de la deuda.');
+        if ((datos.proximoPago && !window.esFechaISOValida(datos.proximoPago)) || (datos.fechaVencimiento && !window.esFechaISOValida(datos.fechaVencimiento))) throw new Error('Revisa la fecha de vencimiento de la deuda.');
+        const deuda = {
+          id: `deuda-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          nombre,
+          acreedor: (datos.acreedor || datos.nombre || 'Entidad').trim() || 'Entidad',
+          concepto: (datos.concepto || datos.nombre || 'Deuda').trim() || 'Deuda',
+          montoInicial: Math.max(montoInicial || saldo, 0),
+          valorInicial: Math.max(montoInicial || saldo, 0),
+          saldoPendiente: saldo,
+          cuotaMensual: cuota,
+          condiciones: String(datos.condiciones || '').trim(),
+          tasaInteres: Number(datos.tasaInteres) || 0,
+          fechaVencimiento: datos.fechaVencimiento || '',
+          proximoPago: datos.proximoPago || datos.fechaVencimiento || '',
+          categoria: datos.categoria || 'Otros',
+          estado: saldo === 0 ? 'PAGADA' : 'AL_DIA'
+        };
+        next.deudas.push(deuda);
+        return deuda;
+      });
     }
 
-    pagarDeuda(deudaId, monto, metodo = 'Transferencia') {
-      const deuda = (this.state.deudas || []).find(d => d.id === deudaId);
-      if (!deuda) return null;
-      const domain = window.PersonalDebtsDomain;
-      if (domain) {
-        const { deudaActualizada, abono } = domain.registrarPago(deuda, monto, metodo);
+    pagarDeuda(deudaId, monto, metodo = 'Transferencia', options = {}) {
+      const operationKey = options.operationKey || window.crypto?.randomUUID?.() || ('debt-' + Date.now() + '-' + Math.random());
+      return this.escribirPersonal(next => {
+        const valor = this.importePersonal(monto);
+        const selected = options.cuenta || next.cuentas[0]?.id;
+        const cuenta = next.cuentas.find(c => c.id === selected || c.nombre === selected);
+        if (!cuenta) throw new Error('Selecciona una cuenta existente para el pago.');
+        const previous = next.abonosDeudas.find(p => p.operationKey === operationKey);
+        if (previous) {
+          if (previous.deudaId !== deudaId || Number(previous.valor) !== valor || previous.cuentaId !== cuenta.id) throw new Error('La clave del pago ya se utilizó con otros datos.');
+          return { ...previous, duplicate: true, mensaje: 'El pago ya estaba guardado; no se duplicó.' };
+        }
+        const deuda = next.deudas.find(d => d.id === deudaId);
+        if (!deuda) throw new Error('La deuda no pertenece a tus datos actuales.');
+        if (valor > deuda.saldoPendiente) throw new Error('El abono no puede superar el saldo pendiente.');
+        const fecha = options.fecha || window.obtenerFechaHoyISO();
+        if (!window.esFechaISOValida(fecha)) throw new Error('La fecha del pago no es válida.');
+        const { deudaActualizada, abono } = window.PersonalDebtsDomain.registrarPago(deuda, valor, metodo);
+        const movement = window.PersonalMovementsDomain.crearMovimiento({ tipo: 'GASTO', valor, concepto: 'Pago de deuda: ' + deuda.nombre, categoria: 'Deudas', cuenta: cuenta.nombre, fecha });
+        Object.assign(movement, { cuentaId: cuenta.id, deudaId, abonoDeudaId: abono.id, operationKey });
         Object.assign(deuda, deudaActualizada);
-        if (!Array.isArray(this.state.abonosDeudas)) this.state.abonosDeudas = [];
-        this.state.abonosDeudas.push(abono);
-        this.guardarEstado();
-        return abono;
-      }
-      return null;
+        Object.assign(abono, { valor, monto: valor, fecha, deudaNombre: deuda.nombre, cuentaId: cuenta.id, cuenta: cuenta.nombre, movimientoId: movement.id, operationKey, estadoVinculacion: 'vinculado' });
+        next.movimientos.unshift(movement);
+        next.abonosDeudas.push(abono);
+        if (valor >= Math.min(Number(deuda.cuotaMensual) || valor, Number(deuda.saldoPendiente) + valor) && deuda.proximoPago) next.recordatoriosDeudasVistos[deuda.id + ':' + deuda.proximoPago] = window.obtenerFechaHoyISO();
+        return { ...abono, mensaje: 'Pago y salida de dinero guardados correctamente.' };
+      });
     }
 
-    eliminarDeuda(id) {
-      if (!Array.isArray(this.state.deudas)) return false;
-      this.state.deudas = this.state.deudas.filter(d => d.id !== id);
-      this.guardarEstado();
-      return true;
+    abonarDeuda(deudaId, monto, metodo = 'Transferencia', options = {}) { return this.pagarDeuda(deudaId, monto, metodo, options); }
+
+    getRecordatoriosDeudas(hoy = window.obtenerFechaHoyISO()) {
+      if (this.state.usuario.recordatoriosDeudas === false) return [];
+      const today = window.parseFechaLocal(hoy);
+      return this.state.deudas.filter(d => !d.archivada && d.saldoPendiente > 0 && window.esFechaISOValida(d.proximoPago)).map(d => {
+        const fecha = window.parseFechaLocal(d.proximoPago);
+        return { id: d.id + ':' + d.proximoPago, deudaId: d.id, nombre: d.nombre, fecha: d.proximoPago, monto: Math.min(d.cuotaMensual || d.saldoPendiente, d.saldoPendiente), dias: Math.round((fecha - today) / 86400000) };
+      }).filter(r => r.dias <= 7 && !this.state.recordatoriosDeudasVistos[r.id]);
+    }
+
+    descartarRecordatorio(id) {
+      return this.escribirPersonal(next => {
+        if (!this.getRecordatoriosDeudas().some(r => r.id === id)) throw new Error('El recordatorio ya no está vigente.');
+        next.recordatoriosDeudasVistos[id] = window.obtenerFechaHoyISO();
+        return { ok: true };
+      });
+    }
+
+    async eliminarDeuda(id) {
+      if (!this.state.deudas.some(d => d.id === id)) return false;
+      return !(await this.escribirPersonal(next => {
+        if (next.abonosDeudas.some(a => a.deudaId === id)) {
+          const debt = next.deudas.find(d => d.id === id);
+          debt.archivada = true; debt.estado = 'ARCHIVADA';
+          return { ok: true, archivada: true };
+        }
+        next.deudas = next.deudas.filter(d => d.id !== id);
+        next.abonosDeudas = next.abonosDeudas.filter(a => a.deudaId !== id);
+        return { ok: true };
+      })).error;
     }
 
     // Usuario y Ajustes
@@ -486,16 +664,32 @@
     }
 
     actualizarUsuario(datos) {
-      const service = window.FinanzasUserService;
-      this.state.usuario = service ? service.actualizarUsuario(this.state.usuario, datos) : { ...this.state.usuario, ...datos };
-      this.guardarEstado();
-      return this.state.usuario;
+      return this.actualizarPerfil(datos);
+    }
+
+    actualizarPerfil(datos = {}) {
+      return this.escribirPersonal(next => {
+        const nombre = String(datos.nombre ?? next.usuario.nombre).trim();
+        const email = String(datos.email ?? next.usuario.email).trim().toLowerCase();
+        if (!nombre || nombre.length > 100 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Revisa el nombre y el correo electrónico.');
+        const service = window.FinanzasUserService;
+        next.usuario = service ? service.actualizarUsuario(next.usuario, { ...datos, nombre, email }) : { ...next.usuario, ...datos, nombre, email };
+        delete next.usuario.saldoInicial;
+        if (datos.saldoInicial !== undefined && datos.saldoInicial !== null) next.saldoInicial = this.importePersonal(datos.saldoInicial, true);
+        return { ...next.usuario, ok: true };
+      });
     }
 
     toggleSaldoOculto() {
-      this.state.saldoOculto = !this.state.saldoOculto;
-      this.guardarEstado();
-      return this.state.saldoOculto;
+      return this.escribirPersonal(next => {
+        next.saldoOculto = !next.saldoOculto;
+        return { ok: true, saldoOculto: next.saldoOculto };
+      });
+    }
+
+    actualizarPreferencia(key, value) {
+      if (!['alertasPresupuesto', 'recordatoriosDeudas'].includes(key)) return { error: 'Preferencia desconocida.' };
+      return this.escribirPersonal(next => { next.usuario[key] = Boolean(value); return { ok: true }; });
     }
 
     // ========================================================================
@@ -503,8 +697,9 @@
     // ========================================================================
 
     setModuloActivo(modulo) {
-      this.state.moduloActivo = modulo === 'EMPRESARIAL' ? 'EMPRESARIAL' : 'PERSONAL';
-      this.guardarEstado();
+      const target = modulo === 'EMPRESARIAL' ? 'EMPRESARIAL' : 'PERSONAL';
+      if (this.state.moduloActivo === target) return Promise.resolve({ ok: true });
+      return this.escribirPersonal(next => { next.moduloActivo = target; return { ok: true }; });
     }
 
     getModuloActivo() {

@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 test('el paquete Android conserva el código activo de PC/móvil y funciona sin recursos CDN', () => {
   execFileSync(process.execPath, ['scripts/build-android-web.cjs'], { cwd: root });
   const output = path.join(root, 'dist/android-web');
-  for (const page of ['desktop.html', 'mobile.html']) {
+  for (const page of ['index.html', 'desktop.html', 'mobile.html']) {
     const original = fs.readFileSync(path.join(root, page), 'utf8');
     const packaged = fs.readFileSync(path.join(output, page), 'utf8');
     assert.ok(!/https:\/\/(?:fonts\.|cdn\.jsdelivr)/.test(packaged));
@@ -23,7 +23,11 @@ test('el paquete Android conserva el código activo de PC/móvil y funciona sin 
   for (const forbidden of ['legacy', 'tests', 'database', 'tmp', '.git']) {
     assert.equal(fs.existsSync(path.join(output, forbidden)), false, forbidden);
   }
-  assert.match(fs.readFileSync(path.join(output, 'index.html'), 'utf8'), /mobile\.html/);
+  assert.match(fs.readFileSync(path.join(output, 'index.html'), 'utf8'), /account-access/);
+  assert.match(fs.readFileSync(path.join(output, 'index.html'), 'utf8'), /accountAccess\.js/);
+  assert.deepEqual(fs.readFileSync(path.join(output, 'src/ui/shared/adaptiveEntry.js')),
+    fs.readFileSync(path.join(root, 'src/ui/shared/adaptiveEntry.js')));
+  assert.match(fs.readFileSync(path.join(output, 'index.html'), 'utf8'), /mibolsillo-app/);
   const config = JSON.parse(fs.readFileSync(path.join(root, 'capacitor.config.json')));
   assert.equal(config.server.androidScheme, 'https');
   assert.equal(config.server.url, undefined, 'la app debe cargar los archivos incluidos');

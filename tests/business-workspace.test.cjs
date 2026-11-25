@@ -5,7 +5,7 @@ const { app } = require('./helpers/browser-core.cjs');
 const KEY = 'FINANZAS_ETAPA_DATA_V2';
 const date = '2026-11-09';
 async function setup(page = 'desktop.html') {
-  const a = app(page); a.core.setModuloActivo('EMPRESARIAL');
+  const a = app(page); (await a.core.setModuloActivo('EMPRESARIAL'));
   const s = a.core.getBusinessService();
   const supplier = (await s.execute('saveSupplier', { nombre: 'Proveedor A', cedula: '900123', email: 'a@example.co' })).record;
   const customer = (await s.execute('saveCustomer', { nombre: 'Cliente A', cedula: '123456', email: 'c@example.co' })).record;
@@ -15,7 +15,7 @@ async function setup(page = 'desktop.html') {
 const saleData = a => ({ clienteId: a.customer.id, fecha: date, fechaVencimiento: '2026-12-09', tipoPago: 'CREDITO', detalles: [{ productoId: a.product.id, cantidad: '3', precioUnitario: '10', descuentoPorcentaje: '10', tarifaImpuesto: '19' }] });
 const purchaseData = a => ({ proveedorId: a.supplier.id, fecha: date, fechaVencimiento: '2026-12-09', montoPagado: '5', detalles: [{ productoId: a.product.id, cantidad: '5', precioUnitario: '4' }] });
 
-test('inicio limpio: Mi Negocio no precarga clientes, ventas, caja ni inventario ficticios', () => {
+test('inicio limpio: Mi Negocio no precarga clientes, ventas, caja ni inventario ficticios', async () => {
   const a = app(); assert.equal(a.core.state.ventas.length, 0); assert.equal(a.core.state.productos.length, 0); assert.equal(a.core.state.clientes.length, 0);
   assert.equal(a.core.getCajaYFlujo().flujoNeto, 0); assert.equal(a.core.getCajaYFlujo().cuentas.length, 0); assert.equal(a.core.state.businessSchemaVersion, 1);
 });
@@ -117,14 +117,14 @@ test('copias, migración y aislamiento preservan relaciones y rechazan restaurac
   const bad = JSON.parse(backup); bad.compras[0].saldoPendiente = 999; assert.ok(a.context.FinanzasExportService.validarCopiaSeguridadJSON(JSON.stringify(bad)).error);
   a.core.state.moduloActivo = 'PERSONAL'; a.core.guardarEstado(); await assert.rejects(() => a.s.execute('saveProduct', { nombre: 'Inválido' }), /exclusivamente/);
   a.core.state.moduloActivo = 'EMPRESARIAL'; a.core.guardarEstado(); a.core.state.usuario.facturacionRol = 'LECTOR'; a.core.guardarEstado(); await assert.rejects(() => a.s.execute('payPurchase', { id: purchase.id, monto: '1' }), /lectura/);
-  const restored = a.context.FinanzasExportService.restaurarCopiaSeguridadJSON(backup); assert.equal(restored.error, null); assert.equal(a.core.state.compras[0].saldoPendiente, 15);
+  const restored = (await a.context.FinanzasExportService.restaurarCopiaSeguridadJSON(backup)); assert.equal(restored.error, null); assert.equal(a.core.state.compras[0].saldoPendiente, 15);
 });
 test('migración de precisión heredada conserva originales y permite operar después de recargar', async () => {
   const a = app(), original = JSON.parse(a.disk.get(KEY));
   original.data.productos = [{ id: 'old', negocioId: 'neg-1', nombre: 'Histórico', stock: 0.30000000000000004, costoUnitario: 1.234567, precioVenta: 5 }];
   delete original.data.businessSchemaVersion; delete original.data.businessLedger;
   a.disk.set(KEY, JSON.stringify(original));
-  const loaded = app('mobile.html', { disk: a.disk }); loaded.core.setModuloActivo('EMPRESARIAL');
+  const loaded = app('mobile.html', { disk: a.disk }); (await loaded.core.setModuloActivo('EMPRESARIAL'));
   assert.equal(loaded.core.state.productos[0].stock, 0.3); assert.equal(loaded.core.state.productos[0].legacyPrecisionOriginal.stock, 0.30000000000000004);
   assert.equal(loaded.core.state.productos[0].costoUnitario, 1.2346);
   await loaded.core.getBusinessService().execute('inventoryMovement', { productoId: 'old', tipo: 'SALIDA', cantidad: '0.1', motivo: 'Salida comprobada' });
@@ -138,7 +138,7 @@ test('costos de compra incluyen descuentos; anulación sin consumo restaura el c
   assert.equal(a.core.getProductoById(a.product.id).stock, 10); assert.equal(a.core.getProductoById(a.product.id).costoUnitario, before);
 });
 test('una copia sin negocios puede crear el primero sin duplicarlo al reintentar', async () => {
-  const a = app(); a.core.state.negocios = []; a.core.state.negocioActivoId = null; a.core.setModuloActivo('EMPRESARIAL');
+  const a = app(); a.core.state.negocios = []; a.core.state.negocioActivoId = null; (await a.core.setModuloActivo('EMPRESARIAL'));
   const key = randomUUID(), s = a.core.getBusinessService();
   const first = await s.execute('saveBusiness', { nombre: 'Primer negocio' }, key);
   const again = await s.execute('saveBusiness', { nombre: 'Primer negocio' }, key);

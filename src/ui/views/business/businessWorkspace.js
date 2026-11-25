@@ -28,7 +28,7 @@
     const filtered = rows.filter(r => (!query || JSON.stringify(r).toLocaleLowerCase('es').includes(query)) && (filter === 'ALL' || (filter === 'ACTIVE' ? isActive(r) : !isActive(r))));
     const pages = Math.max(1, Math.ceil(filtered.length / 10)), page = Math.min(pages, Math.max(1, Number(root.dataset.page) || 1)); root.dataset.page = page;
     root._exportRows = filtered; root._exportColumns = columns.filter(c => !c.html);
-    return `<div class="bm-toolbar"><div class="bm-actions">${createButtons}${button('Descargar CSV', 'export')}</div><div class="bm-search"><label>Buscar en esta sección<input type="search" data-bm-search value="${E(root.dataset.query || '')}" placeholder="Nombre, identificación, número…"></label><label>Mostrar<select data-bm-filter><option value="ALL" ${filter === 'ALL' ? 'selected' : ''}>Todos</option><option value="ACTIVE" ${filter === 'ACTIVE' ? 'selected' : ''}>Activos</option><option value="ARCHIVED" ${filter === 'ARCHIVED' ? 'selected' : ''}>Archivados / anulados</option></select></label></div></div>${tableHtml(filtered.slice((page - 1) * 10, page * 10), columns)}<footer class="bm-pagination"><span>${filtered.length} registros · página ${page} de ${pages}</span><div>${button('Anterior', 'page', `data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}`)}${button('Siguiente', 'page', `data-page="${page + 1}" ${page === pages ? 'disabled' : ''}`)}</div></footer>`;
+    return `<div class="bm-toolbar"><div class="bm-actions">${createButtons}</div><div class="bm-search"><label>Buscar en esta sección<input type="search" data-bm-search value="${E(root.dataset.query || '')}" placeholder="Nombre, identificación, número…"></label><label>Mostrar<select data-bm-filter><option value="ALL" ${filter === 'ALL' ? 'selected' : ''}>Todos</option><option value="ACTIVE" ${filter === 'ACTIVE' ? 'selected' : ''}>Activos</option><option value="ARCHIVED" ${filter === 'ARCHIVED' ? 'selected' : ''}>Archivados / anulados</option></select></label></div></div>${tableHtml(filtered.slice((page - 1) * 10, page * 10), columns)}<footer class="bm-pagination"><span>${filtered.length} registros · página ${page} de ${pages}</span><div>${button('Anterior', 'page', `data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}`)}${button('Siguiente', 'page', `data-page="${page + 1}" ${page === pages ? 'disabled' : ''}`)}</div></footer>`;
   }
   function catalogActions(r, collection, kind) { return `<div class="bm-row-actions">${action('Consultar', 'detail', collection, r.id)}${action('Editar', 'form', collection, r.id, kind)}${r.estado !== 'ARCHIVADO' ? action('Eliminar / archivar', 'archive', collection, r.id) : ''}</div>`; }
   function commercialActions(r, collection) { return `<div class="bm-row-actions">${action('Consultar', 'detail', collection, r.id)}${Number(r.saldoPendiente) > 0 && r.estado !== 'ANULADA' ? action('Registrar pago', 'form', collection, r.id, 'payment') : ''}${r.estado !== 'ANULADA' ? action(r.invoiceDocumentId ? 'Notas de ajuste' : 'Anular', r.invoiceDocumentId ? 'invoice' : 'cancel', collection, r.invoiceDocumentId || r.id) : ''}${action('Comprobante', 'print', collection, r.id)}</div>`; }
@@ -40,7 +40,7 @@
     return nav + list(root, expense ? m.expenses : m.incomes, [col('Fecha', r => r.fecha), col('Categoría', r => r.categoria), col('Descripción', r => r.descripcion), col('Monto', r => money(r.monto)), col('Estado', status, true), col('Acciones', r => `${action('Consultar', 'detail', collection, r.id)}${r.estado !== 'ANULADA' ? action('Editar', 'form', collection, r.id, kind) + action('Anular', 'cancel', collection, r.id) : ''}`, true)], actions);
   }
   function management(root, m) {
-    const nav = tabs(root, [['purchases', 'Compras'], ['receivables', 'Por cobrar'], ['payables', 'Por pagar'], ['employees', 'Empleados'], ['production', 'Producción'], ['business', 'Mi negocio']], 'purchases') + `<div class="bm-report-shortcut"><span>Registra y administra aquí tus operaciones. Consulta los resultados y el detalle consolidado en Informes.</span>${button('Ver informe de esta sección', 'report')}</div>`;
+    const nav = tabs(root, [['purchases', 'Compras'], ['receivables', 'Por cobrar'], ['payables', 'Por pagar'], ['employees', 'Empleados'], ['production', 'Producción'], ['business', 'Mi negocio']], 'purchases') + `<div class="bm-report-shortcut">${button('Ver informe de esta sección', 'report')}</div>`;
     const tab = root.dataset.tab;
     if (tab === 'purchases') return nav + list(root, m.purchases, [col('Referencia', r => r.id), col('Proveedor', r => r.proveedorNombre), col('Fecha', r => r.fecha), col('Total', r => money(r.total)), col('Pagado', r => money(r.montoPagado)), col('Pendiente', r => money(r.saldoPendiente)), col('Estado', status, true), col('Acciones', r => commercialActions(r, 'compras'), true)], button('+ Compra', 'form', 'data-kind="purchase"', true));
     if (tab === 'receivables' || tab === 'payables') {
@@ -64,7 +64,7 @@
     document.querySelectorAll('[data-business-profile]').forEach(b => { b.textContent = window.Finanzas.state.usuario?.iniciales || 'Yo'; });
     root.classList.add('business-manager');
     const section = root.dataset.businessSection;
-    root.innerHTML = screens.header(root) + ({ ...screens, movements, management }[section])(root, m) + '<footer class="bm-workspace-footer"><span>Mi Negocio · Tu información, en orden</span><span>Datos guardados en este navegador</span></footer>';
+    root.innerHTML = screens.header(root) + ({ ...screens, movements, management }[section])(root, m);
     const nav = root.querySelector('.bm-mobile-sections'), selected = nav?.querySelector('[aria-current="page"]');
     if (selected) nav.scrollLeft = Math.max(0, selected.offsetLeft - nav.offsetLeft - (nav.clientWidth - selected.offsetWidth) / 2);
   }
@@ -189,7 +189,7 @@
     try {
       const out = await window.Finanzas.getBusinessService().execute(command, data, ctx.key);
       dialog.close();
-      const destinations = { product: ['inventory'], stock: ['inventory', 'history'], customer: ['contacts', 'customers'], supplier: ['contacts', 'suppliers'], employee: ['management', 'employees'], payroll: ['management', 'employees'], sale: ['sales'], purchase: ['management', 'purchases'], expense: ['movements', 'expenses'], income: ['movements', 'incomes'], formula: ['management', 'production'], production: ['management', 'production'], business: ['dashboard'], deleteBusiness: ['dashboard'] };
+      const destinations = { product: ['inventory'], stock: ['inventory'], customer: ['contacts', 'customers'], supplier: ['contacts', 'suppliers'], employee: ['management', 'employees'], payroll: ['management', 'employees'], sale: ['sales'], purchase: ['management', 'purchases'], expense: ['movements', 'expenses'], income: ['movements', 'incomes'], formula: ['management', 'production'], production: ['management', 'production'], business: ['dashboard'], deleteBusiness: ['dashboard'] };
       if (destinations[ctx.kind]) navigate(...destinations[ctx.kind]); else renderAll();
       notice(out.message || 'Guardado y verificado en el almacenamiento local.');
       if (ctx.kind === 'sale') saleComplete(out.record);

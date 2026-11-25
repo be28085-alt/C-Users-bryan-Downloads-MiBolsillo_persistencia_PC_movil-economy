@@ -1,31 +1,12 @@
-QT += core gui qml quick sql
+# Alternative qmake entry for the complete HTML application's desktop launcher.
+QT += core gui qml quick quickcontrols2
 CONFIG += c++17
-
 TARGET = GestorFinanciero
 TEMPLATE = app
-
-INCLUDEPATH += include \
-               include/data \
-               include/models \
-               include/services
-
-HEADERS += \
-    include/data/DatabaseManager.h \
-    include/models/Negocio.h \
-    include/models/Producto.h \
-    include/models/Proveedor.h \
-    include/models/Cliente.h \
-    include/models/Compra.h \
-    include/models/Venta.h \
-    include/models/Empleado.h \
-    include/services/PersonalFinanceService.h \
-    include/services/BusinessService.h
-
-SOURCES += \
-    src/main.cpp \
-    src/data/DatabaseManager.cpp \
-    src/services/PersonalFinanceService.cpp \
-    src/services/BusinessService.cpp
-
-RESOURCES += \
-    qml.qrc
+INCLUDEPATH += include
+HEADERS += include/WebAppLauncher.h
+SOURCES += src/main.cpp src/WebAppLauncher.cpp
+RESOURCES += web-launcher.qrc
+# The executable discovers the original project through its parent folders.
+# For a separate output folder set MIBOLSILLO_PROJECT_ROOT at run time.
+android: error("Para la aplicación HTML completa de Android, abra ../android/ (Capacitor).")

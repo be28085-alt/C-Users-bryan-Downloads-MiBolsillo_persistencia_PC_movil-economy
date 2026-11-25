@@ -1,0 +1,7 @@
+/build*/
+/node-runtime.local.cmake
+/.qtcreator/
+*.user
+*.user.*
+*.sqlite
+*.sqlite-*

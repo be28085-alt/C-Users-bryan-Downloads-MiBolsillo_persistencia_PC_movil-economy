@@ -15,7 +15,9 @@ body:has(#view-negocio-informes.active) .pc-main-wrapper { min-width: 0; }
 .business-reports .br-eyebrow { font-size: 10px; font-weight: 800; letter-spacing: 1.7px; color: var(--br-green); }
 .business-reports h1 { font-size: clamp(23px, 2.2vw, 32px); line-height: 1.25; margin: 9px 0; font-weight: 800; letter-spacing: -.7px; }
 .business-reports .br-header p { font-size: 13px; color: var(--br-muted); margin: 0; }
-.business-reports .br-controls { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.business-reports .br-controls { display: grid; align-items: center; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; width: min(100%, 420px); }
+.business-reports .br-controls > select { width: 100%; min-width: 0; }
+.business-reports .br-controls > button { white-space: nowrap; min-height: 44px; }
 .business-reports label { display: grid; gap: 6px; font-size: 11px; font-weight: 700; color: var(--br-muted); }
 .business-reports select, .business-reports button { font: inherit; border: 1px solid #d6e1e6; background: #fff; border-radius: 10px; padding: 11px 14px; color: var(--br-ink); font-size: 12px; min-height: 43px; }
 .business-reports button { cursor: pointer; font-weight: 700; }

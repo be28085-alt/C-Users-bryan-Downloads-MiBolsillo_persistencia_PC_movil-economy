@@ -36,7 +36,7 @@ function copy(file) {
 // Solo se limpia el directorio generado conocido dentro del proyecto.
 if (path.relative(root, output) !== path.join('dist', 'android-web')) throw new Error('Directorio de salida inesperado');
 fs.rmSync(output, { recursive: true, force: true });
-for (const page of ['desktop.html', 'mobile.html']) {
+for (const page of ['index.html', 'desktop.html', 'mobile.html']) {
   let html = fs.readFileSync(path.join(root, page), 'utf8');
   // Fuentes del sistema y Chart.js incluido: el arranque no depende de una CDN.
   html = html.replace(/<link\b[^>]*href=["']https:\/\/fonts\.(?:googleapis|gstatic)\.com[^>]*>\s*/g, '')
@@ -50,5 +50,4 @@ for (const page of ['desktop.html', 'mobile.html']) {
 write('vendor/chart.umd.js', fs.readFileSync(path.join(root, 'node_modules/chart.js/dist/chart.umd.js')));
 write('vendor/chart.LICENSE.md', fs.readFileSync(path.join(root, 'node_modules/chart.js/LICENSE.md')));
 copy('src/vendor/qrcode.LICENSE.txt');
-write('index.html', '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MiBolsillo</title></head><body><script>location.replace("mobile.html" + location.search + location.hash);</script><a href="mobile.html">Abrir MiBolsillo</a></body></html>\n');
 console.log('Paquete Android web preparado: ' + path.relative(root, output));

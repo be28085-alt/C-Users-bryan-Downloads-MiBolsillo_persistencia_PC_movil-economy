@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, '..'), output = path.join(root, 'tmp', 'bus
 fs.mkdirSync(output, { recursive: true });
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
 const server = http.createServer((req, res) => {
+  if (req.url === '/api/auth/session') { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({legacyMode:true})); return; }
   const file = path.resolve(root, '.' + decodeURIComponent(new URL(req.url, 'http://localhost').pathname));
   if (!file.startsWith(root + path.sep)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (err, data) => { if (err) { res.writeHead(404); res.end(); } else { res.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream'); res.end(data); } });
@@ -62,7 +63,10 @@ const server = http.createServer((req, res) => {
         else mobileApp.switchBusinessTab('informes');
       });
       const report = page.locator('[data-business-report]');
-      await report.getByRole('heading', { name: 'Tu negocio, en perspectiva' }).waitFor();
+      await report.getByRole('heading', { name: 'Informes', exact: true }).waitFor();
+      assert.equal(await report.locator('.br-header [data-report-action]').count(), 1);
+      assert.equal(await report.locator('[data-report-action="csv"], [data-report-action="save-view"], .br-eyebrow, .br-storage-note').count(), 0);
+      assert.equal(await report.locator('.br-header p').innerText(), 'Mi Negocio / Informes');
       const values = await Promise.all(['netProfit', 'income', 'expenses', 'salesCount'].map(field => report.locator(`[data-report-value="${field}"]`).innerText()));
       assert.deepEqual(values, ['+2.000.000 COP', '7.000.000 COP', '5.000.000 COP', '2']); results.push(values);
       assert.equal(await report.locator('svg.br-bars').count(), 1);
@@ -81,10 +85,9 @@ const server = http.createServer((req, res) => {
       await report.locator('[data-report-from]').fill('2026-11-10'); await report.locator('[data-report-action="range"]').click();
       assert.match(await report.locator('.br-feedback').innerText(), /Desde/);
       assert.equal(await report.locator('[data-report-value="netProfit"]').innerText(), '-1.350.000 COP');
-      const customDownload = page.waitForEvent('download'); await report.locator('[data-report-action="csv"]').click();
-      const customCSV = await customDownload, customPath = path.join(output, `${name}-${width}-custom.csv`); await customCSV.saveAs(customPath);
-      assert.match(fs.readFileSync(customPath, 'utf8'), /"Desde";"2026-11-03"/);
-      assert.match(fs.readFileSync(customPath, 'utf8'), /"Utilidad neta";"-1350000.00"/);
+      const customCSV = await report.evaluate(root => BusinessReportsView.csv(BusinessReportsDomain.build(Finanzas.state, Finanzas.state.negocioActivoId, { period: root.dataset.reportPeriod, from: root.dataset.reportFrom, to: root.dataset.reportTo })));
+      assert.match(customCSV, /"Desde";"2026-11-03"/);
+      assert.match(customCSV, /"Utilidad neta";"-1350000.00"/);
       await report.locator('[data-report-period]').selectOption('MES_ACTUAL');
       assert.equal(await report.locator('.br-results tr').count(), 7);
       await report.locator('[data-report-tab="purchases"]').click();
@@ -107,15 +110,8 @@ const server = http.createServer((req, res) => {
         assert.equal(await page.evaluate(() => Finanzas.state.compras.find(r => r.id === 'comp-101').saldoPendiente), 900000);
         assert.equal(await page.evaluate(() => Finanzas.state.pagosCompra.filter(r => r.compraId === 'comp-101').length), 1);
       }
-      const preferenceBefore = await page.evaluate(() => JSON.stringify(Finanzas.getNegocioActivo().reportPreferences));
-      await page.evaluate(() => { window.__nativeReportSetItem = Storage.prototype.setItem; Storage.prototype.setItem = function(k, v) { if (k === 'FINANZAS_ETAPA_DATA_V2') throw new Error('QuotaExceededError'); return window.__nativeReportSetItem.call(this, k, v); }; });
-      await report.locator('[data-report-action="save-view"]').click();
-      await page.waitForFunction(() => document.querySelector('[data-business-report] .br-feedback').textContent.includes('No se pudo guardar'));
-      assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.getNegocioActivo().reportPreferences)), preferenceBefore);
-      await page.evaluate(() => { Storage.prototype.setItem = window.__nativeReportSetItem; });
-      await report.locator('[data-report-action="save-view"]').evaluate(button => { button.click(); button.click(); });
-      await page.waitForFunction(() => document.querySelector('[data-business-report] .br-feedback').textContent.includes('Vista guardada'));
-      assert.equal(await page.evaluate(() => Finanzas.state.businessLedger.audit.filter(r => r.action === 'saveReportPreferences').length), 1);
+      // Existing saved report preferences remain readable after removing the UI action.
+      await page.evaluate(async () => Finanzas.getBusinessService().execute('saveReportPreferences', { version: 1, period: 'MES_ACTUAL', section: 'purchases' }));
       await page.reload();
       await page.evaluate(() => { if (typeof pcApp !== 'undefined') pcApp.switchView('negocio-informes'); else mobileApp.switchBusinessTab('informes'); });
       assert.equal(await report.locator('[data-report-tab="purchases"]').getAttribute('aria-selected'), 'true');
@@ -130,9 +126,8 @@ const server = http.createServer((req, res) => {
       await report.locator('summary').click();
       await report.locator('[data-report-period]').selectOption('MES_ANTERIOR');
       assert.equal(await report.locator('[data-report-value="income"]').innerText(), '5.200.000 COP');
-      const downloaded = page.waitForEvent('download'); await report.locator('[data-report-action="csv"]').click();
-      const csv = await downloaded; const csvPath = path.join(output, `${width}-october.csv`); await csv.saveAs(csvPath);
-      assert.match(fs.readFileSync(csvPath, 'utf8'), /"Ingresos totales";"5200000.00"/);
+      const csv = await page.evaluate(() => BusinessReportsView.csv(BusinessReportsDomain.build(Finanzas.state, Finanzas.state.negocioActivoId, { period: 'MES_ANTERIOR' })));
+      assert.match(csv, /"Ingresos totales";"5200000.00"/);
       await page.evaluate(() => { const original = window.open.bind(window); window.open = (...args) => { const p = original(...args); if (p) p.print = () => { p.__reportPrinted = true; }; return p; }; });
       const popupPromise = page.waitForEvent('popup'); await report.locator('[data-report-action="print"]').click(); const popup = await popupPromise;
       await popup.waitForLoadState();
@@ -162,6 +157,10 @@ const server = http.createServer((req, res) => {
       assert.ok(layout.scroll <= layout.width + 2, `${name} ${width}: report overflow ${JSON.stringify(layout)}`);
       assert.ok(await report.evaluate(el => el.getBoundingClientRect().right <= innerWidth + 2), `${width}: report must fit viewport`);
       await page.evaluate(() => BusinessUI.navigate('management', 'purchases'));
+      const header = page.locator('[data-business-section="management"] .bm-header');
+      assert.equal(await header.locator('small').count(), 0);
+      assert.equal(await header.locator('.bm-location').innerText(), 'Mi Negocio / Gestión');
+      assert.ok(await header.evaluate(el => el.querySelector('h1').getBoundingClientRect().bottom <= el.querySelector('.bm-location').getBoundingClientRect().top));
       await page.locator('[data-business-section="management"] [data-bm="report"]').click();
       assert.equal(await report.locator('[data-report-tab="purchases"]').getAttribute('aria-selected'), 'true');
       const previousPersonal = await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos));

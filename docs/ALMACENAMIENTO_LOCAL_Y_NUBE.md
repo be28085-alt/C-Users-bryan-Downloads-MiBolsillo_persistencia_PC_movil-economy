@@ -1,13 +1,13 @@
 # Plan de almacenamiento local y en la nube
 
-Estado: propuesta pendiente de implementación. Esta guía define el objetivo para PC y móvil; no significa que SQLite, las cuentas o la sincronización ya estén disponibles.
+Estado: implementación parcial. Está disponible el [servidor local SQLite para la web](SQLITE.md). SQLite nativo Android, el almacenamiento web sin servidor con IndexedDB, las cuentas y la sincronización en la nube siguen siendo una propuesta pendiente.
 
 ## Situación actual
 
-- La web guarda sus datos en `localStorage`, con la clave `FINANZAS_ETAPA_DATA_V2`.
-- PC y móvil comparten datos únicamente dentro del mismo navegador, perfil y origen. La instalación Android tiene su propio almacenamiento, separado del navegador.
+- Al ejecutar `npm start`, las interfaces web PC y móvil guardan en `database/mibolsillo.sqlite` mediante el servidor local del equipo. El servidor debe permanecer activo para guardar.
+- Con un servidor estático y en el paquete Android, los datos siguen en `localStorage`, con la clave `FINANZAS_ETAPA_DATA_V2`. En ese modo PC y móvil comparten datos únicamente dentro del mismo navegador, perfil y origen. La instalación Android tiene almacenamiento separado.
 - Existen copias y restauraciones JSON. No hay un servidor remoto conectado ni sincronización entre dispositivos.
-- El esquema de `database/` no está conectado a la web activa.
+- El esquema MySQL `database/gestor_financiero.sql` no está conectado a la web activa y no es la base SQLite.
 
 ## Objetivo
 
@@ -19,6 +19,7 @@ Ejemplo: un gasto se guarda primero en el celular; queda pendiente de sincroniza
 
 | Componente | Responsabilidad |
 |---|---|
+| Servidor local SQLite (implementado) | Guardar el estado completo de ambas interfaces web en una transacción y rechazar sobrescrituras de una versión antigua. Las vistas SQL permiten inspeccionar las colecciones en DB Browser. No es un servicio de nube. |
 | Base local Android | Evaluar SQLite para movimientos, ventas, compras, inventario y demás registros; guardar cada operación y su envío pendiente en una misma transacción. |
 | Base local web | Evaluar IndexedDB para PC y móvil en navegador, mediante un adaptador con el mismo contrato funcional que Android. |
 | Repositorios compartidos | Separar el acceso a datos de las reglas financieras y de los controladores `src/utils/desktop.js` y `src/utils/mobile.js`. |
@@ -42,7 +43,7 @@ La nube requiere un backend o servicio administrado con controles de acceso. No 
 ## Plan de ejecución
 
 1. **Definir el contrato de datos.** Inventariar entidades, separación personal/negocio, versiones, identificadores y operaciones que necesitan transacciones. Elegir motor local y proveedor remoto después de evaluar requisitos y costes.
-2. **Implementar almacenamiento local.** Crear adaptadores y migraciones versionadas, manteniendo las reglas financieras compartidas. Exportar una copia antes de migrar desde `localStorage` y comprobar saldos, cartera e inventario antes de dar la migración por terminada.
+2. **Completar almacenamiento local.** El servidor SQLite ya proporciona persistencia web local; faltan el adaptador nativo Android y la alternativa web sin servidor. Crear migraciones versionadas, manteniendo las reglas financieras compartidas. El servidor importa `localStorage` automáticamente solo si la base está vacía y los datos pertenecen al mismo origen; conserva la copia original. Para otros orígenes se usa exportación/importación JSON. Exportar una copia antes de migrar y comprobar saldos, cartera e inventario antes de dar la migración por terminada.
 3. **Preparar respaldos.** Adaptar exportación/importación a Android y navegador, validar formato y versión y probar recuperación. La importación JSON será la vía inicial para trasladar datos del navegador al celular.
 4. **Implementar la nube.** Añadir cuentas, permisos por usuario y negocio, API, validaciones, transacciones remotas y copias de seguridad. Usar conexiones cifradas y almacenamiento adecuado para las credenciales de sesión.
 5. **Añadir sincronización.** Implementar cola persistente, confirmaciones, reintentos, recepción incremental, eliminaciones y conciliación de conflictos. Una actualización de la app debe conservar los pendientes.
@@ -57,4 +58,4 @@ La nube requiere un backend o servicio administrado con controles de acceso. No 
 - Migrar y restaurar copias comprobando movimientos, saldos, deudas, cartera e inventario; recuperar de un fallo de almacenamiento o de red sin informar un guardado inexistente.
 - Ejecutar `node --test tests/*.test.cjs`, `node test_shared.js` y `node test_dates.js` al modificar lógica financiera, más pruebas de integración de persistencia y sincronización. Verificar los flujos afectados en PC, móvil web y Android real.
 
-Esta documentación no activa almacenamiento remoto ni cambia dónde se guardan los datos actuales.
+Este plan no activa almacenamiento remoto. El almacenamiento SQLite local se activa al abrir la aplicación desde su servidor; abrir un HTML o usar otro servidor conserva el modo de almacenamiento del navegador.

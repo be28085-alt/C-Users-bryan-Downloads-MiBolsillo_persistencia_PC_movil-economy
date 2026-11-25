@@ -44,7 +44,7 @@
       } catch (error) { return { state: null, error: error.message }; }
     },
 
-    restaurarCopiaSeguridadJSON(contenido) {
+    async restaurarCopiaSeguridadJSON(contenido) {
       const result = this.validarCopiaSeguridadJSON(contenido);
       if (result.error) return result;
       const core = window.Finanzas;
@@ -52,7 +52,7 @@
       let normalized;
       try { normalized = core.normalizeState(result.state); }
       catch (error) { return { error: 'Los datos de la copia no se pueden normalizar.' }; }
-      if (!storage.saveState(normalized, { keepPending: false })) return { error: 'No se pudo guardar la restauración. Conserva la copia y resuelve el aviso de almacenamiento.' };
+      if (!await storage.saveState(normalized, { keepPending: false })) return { error: 'No se pudo guardar la restauración. Conserva la copia y resuelve el aviso de almacenamiento.' };
       core.state = normalized;
       core.notify();
       if (window.MiBolsilloStore) {

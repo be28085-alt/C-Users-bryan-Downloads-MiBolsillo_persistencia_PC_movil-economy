@@ -32,7 +32,7 @@ async function adjustment(a, d, overrides = {}) {
   return a.service.saveDraft(input({ kind: 'CREDIT_NOTE', originalId: d.id, reason: 'Devolución acordada', lines: [line({ productId: null, description: 'Descuento comercial', unitPrice: '1', discountPercent: '0' })], ...overrides }), randomUUID());
 }
 
-test('motor decimal: HALF_UP por línea, descuentos, impuestos agrupados y fracciones exactas', () => {
+test('motor decimal: HALF_UP por línea, descuentos, impuestos agrupados y fracciones exactas', async () => {
   const { ctx } = setup(), M = ctx.InvoiceMoney;
   const t = M.calculate([line(), line({ quantity: '0.3333', unitPrice: '1', discountPercent: '0', taxRate: '5' })]);
   assert.equal(t.lines[0].gross, '10.01'); assert.equal(t.lines[0].discount, '1.00'); assert.equal(t.lines[0].base, '9.01'); assert.equal(t.lines[0].tax, '1.71'); assert.equal(t.total, '11.07');
@@ -139,10 +139,10 @@ test('copias de facturación: restaura todo el agregado y rechaza importes, clav
     s => { s.ventas = []; }
   ]) {
     const bad = JSON.parse(backup); mutate(bad); const before = a.disk.get(storageKey);
-    assert.ok(exp.restaurarCopiaSeguridadJSON(JSON.stringify(bad)).error); assert.equal(a.disk.get(storageKey), before);
+    assert.ok((await exp.restaurarCopiaSeguridadJSON(JSON.stringify(bad))).error); assert.equal(a.disk.get(storageKey), before);
   }
   await a.service.pay(d.id, '1', 'Efectivo', randomUUID());
-  assert.equal(exp.restaurarCopiaSeguridadJSON(backup).error, null);
+  assert.equal((await exp.restaurarCopiaSeguridadJSON(backup)).error, null);
   assert.equal(a.core.state.ventas[0].saldoPendiente, 10.72); assert.equal(a.core.state.pagosVenta.length, 0);
   a.core.state.negocios.push({ id: 'second', nombre: 'Segundo' }); a.core.guardarEstado();
   assert.ok((await a.core.eliminarNegocio('n')).error); const archived = await a.core.eliminarCliente(a.core.state.clientes[0].id); assert.equal(archived.record.estado, 'ARCHIVADO');

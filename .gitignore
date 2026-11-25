@@ -3,3 +3,7 @@ node_modules/
 dist/
 *.jks
 *.keystore
+database/*.sqlite
+database/*.sqlite-*
+database/*.db
+database/*.db-*

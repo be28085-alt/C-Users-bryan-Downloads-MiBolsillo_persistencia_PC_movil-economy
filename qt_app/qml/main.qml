@@ -1,214 +1,192 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 ApplicationWindow {
     id: rootWindow
-    width: 1280
+    objectName: "mainWindow"
+    width: 1180
     height: 800
+    minimumWidth: 320
+    minimumHeight: 320
     visible: true
-    title: "Gestor Financiero Integral: Personal & Empresarial"
+    title: "MiBolsillo"
     color: "#f3f6f8"
+    // Cards use light backgrounds on every platform, including Windows dark mode.
+    palette {
+        window: "#f3f6f8"
+        windowText: "#172c32"
+        base: "#ffffff"
+        alternateBase: "#edf3f1"
+        text: "#172c32"
+        button: "#e3eeeb"
+        buttonText: "#173e38"
+        highlight: "#087768"
+        highlightedText: "#ffffff"
+        placeholderText: "#60766f"
+        light: "#ffffff"
+        midlight: "#edf3f1"
+        mid: "#b8cbc5"
+        dark: "#94afa6"
+        shadow: "#59766c"
+        brightText: "#ffffff"
+        link: "#087768"
+        linkVisited: "#385c55"
+        toolTipBase: "#173e38"
+        toolTipText: "#ffffff"
+    }
+    readonly property bool compact: width < 800
+    property string currentPage: "dashboard"
 
-    property string moduloActivo: "PERSONAL" // "PERSONAL" | "EMPRESARIAL"
-    property string vistaActual: "dashboard"
-
-    RowLayout {
-        anchors.fill: parent
-        spacing: 0
-
-        // ====================================================================
-        // SIDEBAR DE NAVEGACIÓN
-        // ====================================================================
-        Rectangle {
-            Layout.fillHeight: true
-            Layout.preferredWidth: 260
-            color: "#0b3b3c"
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 16
-                spacing: 12
-
-                // Logotipo / Marca
-                RowLayout {
-                    spacing: 10
-                    Rectangle {
-                        width: 36; height: 36; radius: 8
-                        color: "#114b4e"
-                        Text {
-                            anchors.centerIn: parent
-                            text: moduloActivo === "PERSONAL" ? "❖" : "🏢"
-                            color: "#ffffff"
-                            font.bold: true
-                            font.pixelSize: 18
-                        }
-                    }
-                    Column {
-                        Text {
-                            text: moduloActivo === "PERSONAL" ? "mi dinero" : "gestor pro"
-                            color: "#ffffff"
-                            font.bold: true
-                            font.pixelSize: 16
-                        }
-                        Text {
-                            text: moduloActivo === "PERSONAL" ? "Finanzas personales" : "Gestión empresarial"
-                            color: "#94a3b8"
-                            font.pixelSize: 11
-                        }
-                    }
-                }
-
-                // Conmutador de Módulos (Personal / Negocios)
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 38
-                    radius: 8
-                    color: Qt.rgba(1, 1, 1, 0.1)
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 3
-                        spacing: 4
-
-                        Button {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            text: "👤 Personal"
-                            flat: true
-                            background: Rectangle {
-                                radius: 6
-                                color: moduloActivo === "PERSONAL" ? "#ffffff" : "transparent"
-                            }
-                            contentItem: Text {
-                                text: parent.text
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                color: moduloActivo === "PERSONAL" ? "#0b3b3c" : "#cbd5e1"
-                                font.bold: true
-                                font.pixelSize: 12
-                            }
-                            onClicked: {
-                                moduloActivo = "PERSONAL";
-                                vistaActual = "dashboard";
-                            }
-                        }
-
-                        Button {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            text: "🏢 Negocios"
-                            flat: true
-                            background: Rectangle {
-                                radius: 6
-                                color: moduloActivo === "EMPRESARIAL" ? "#ffffff" : "transparent"
-                            }
-                            contentItem: Text {
-                                text: parent.text
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                color: moduloActivo === "EMPRESARIAL" ? "#0b3b3c" : "#cbd5e1"
-                                font.bold: true
-                                font.pixelSize: 12
-                            }
-                            onClicked: {
-                                moduloActivo = "EMPRESARIAL";
-                                vistaActual = "biz-dashboard";
-                            }
-                        }
-                    }
-                }
-
-                // Menú Vertical Finanzas Personales
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    visible: moduloActivo === "PERSONAL"
-                    spacing: 4
-
-                    NavButton { text: "🏠 Inicio / Dashboard"; active: vistaActual === "dashboard"; onClicked: vistaActual = "dashboard" }
-                    NavButton { text: "⇋ Movimientos"; active: vistaActual === "movimientos"; onClicked: vistaActual = "movimientos" }
-                    NavButton { text: "🎯 Presupuesto"; active: vistaActual === "presupuesto"; onClicked: vistaActual = "presupuesto" }
-                    NavButton { text: "🐖 Metas de Ahorro"; active: vistaActual === "metas"; onClicked: vistaActual = "metas" }
-                    NavButton { text: "💳 Deudas Personales"; active: vistaActual === "deudas"; onClicked: vistaActual = "deudas" }
-                    NavButton { text: "⚙️ Mi Perfil y Ajustes"; active: vistaActual === "perfil"; onClicked: vistaActual = "perfil" }
-                }
-
-                // Menú Vertical Gestión Empresarial
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    visible: moduloActivo === "EMPRESARIAL"
-                    spacing: 4
-
-                    NavButton { text: "📊 Dashboard"; active: vistaActual === "biz-dashboard"; onClicked: vistaActual = "biz-dashboard" }
-                    NavButton { text: "🏢 Mi Negocio"; active: vistaActual === "biz-perfil"; onClicked: vistaActual = "biz-perfil" }
-                    NavButton { text: "📦 Productos"; active: vistaActual === "biz-productos"; onClicked: vistaActual = "biz-productos" }
-                    NavButton { text: "🧪 Materias Primas"; active: vistaActual === "biz-materias"; onClicked: vistaActual = "biz-materias" }
-                    NavButton { text: "📋 Inventario & Stock"; active: vistaActual === "biz-inventario"; onClicked: vistaActual = "biz-inventario" }
-                    NavButton { text: "🛒 Compras"; active: vistaActual === "biz-compras"; onClicked: vistaActual = "biz-compras" }
-                    NavButton { text: "⚙️ Producción & Recetas"; active: vistaActual === "biz-produccion"; onClicked: vistaActual = "biz-produccion" }
-                    NavButton { text: "💰 Ventas & Facturación"; active: vistaActual === "biz-ventas"; onClicked: vistaActual = "biz-ventas" }
-                    NavButton { text: "👥 Clientes & Créditos"; active: vistaActual === "biz-clientes"; onClicked: vistaActual = "biz-clientes" }
-                    NavButton { text: "👷 Empleados & Nómina"; active: vistaActual === "biz-empleados"; onClicked: vistaActual = "biz-empleados" }
-                    NavButton { text: "💸 Gastos Negocio"; active: vistaActual === "biz-gastos"; onClicked: vistaActual = "biz-gastos" }
-                    NavButton { text: "📈 Ganancias & Reportes"; active: vistaActual === "biz-reportes"; onClicked: vistaActual = "biz-reportes" }
-                }
-
-                Item { Layout.fillHeight: true }
-            }
-        }
-
-        // ====================================================================
-        // ÁREA PRINCIPAL DE CONTENIDO
-        // ====================================================================
-        StackLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            currentIndex: moduloActivo === "PERSONAL" ? (vistaActual === "perfil" ? 1 : 0) : 2
-
-            // Vista Personal Dashboard
-            Rectangle {
-                color: "#f3f6f8"
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 24
-                    spacing: 16
-                    Text { text: "Panel de Finanzas Personales"; font.pixelSize: 22; font.bold: true; color: "#0f172a" }
-                    Text { text: "Control de ingresos, gastos, presupuestos y metas de ahorro."; color: "#64748b" }
-                }
-            }
-
-            // Vista Mi Perfil (Contiene el botón hacia el módulo empresarial)
-            ProfileView {
-                onAbrirModuloEmpresarial: {
-                    moduloActivo = "EMPRESARIAL";
-                    vistaActual = "biz-dashboard";
-                }
-            }
-
-            // Módulo Empresarial Completo
-            BusinessModule {
-                vistaSubmodulo: vistaActual
-            }
+    function navigate(page) {
+        currentPage = page
+        Qt.inputMethod.hide()
+    }
+    function selectContext(context) {
+        if (financeService.setContext(context)) navigate("dashboard")
+    }
+    Connections {
+        target: financeService
+        function onStateChanged() {
+            if (!financeService.loggedIn) rootWindow.currentPage = "dashboard"
         }
     }
 
-    // Componente auxiliar de botón en navegación lateral
-    component NavButton : Button {
-        property bool active: false
-        Layout.fillWidth: true
-        height: 38
-        flat: true
-        background: Rectangle {
-            radius: 6
-            color: active ? Qt.rgba(1, 1, 1, 0.15) : "transparent"
+    header: ToolBar {
+        visible: rootWindow.compact && financeService.loggedIn
+        height: visible ? 64 : 0
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            Label { text: "MiBolsillo"; font.bold: true; font.pixelSize: 19; Layout.fillWidth: true }
+            ComboBox {
+                objectName: "contextPicker"
+                implicitHeight: 48
+                implicitWidth: 148
+                model: ["Personal", "Mi Negocio"]
+                currentIndex: financeService.context === "BUSINESS" ? 1 : 0
+                onActivated: rootWindow.selectContext(currentIndex === 0 ? "PERSONAL" : "BUSINESS")
+                Accessible.name: "Contexto financiero"
+            }
         }
-        contentItem: Text {
-            text: parent.text
-            verticalAlignment: Text.AlignVCenter
-            color: active ? "#ffffff" : "#cbd5e1"
-            font.bold: active
-            font.pixelSize: 13
-            leftPadding: 8
+    }
+    footer: TabBar {
+        objectName: "compactNavigation"
+        visible: rootWindow.compact && financeService.loggedIn
+        height: visible ? 60 : 0
+        currentIndex: rootWindow.currentPage === "accounts" ? 1
+                      : rootWindow.currentPage === "movements" ? 2
+                      : rootWindow.currentPage === "profile" ? 3 : 0
+        TabButton { text: "Inicio"; implicitHeight: 60; onClicked: rootWindow.navigate("dashboard") }
+        TabButton { text: "Cuentas"; implicitHeight: 60; onClicked: rootWindow.navigate("accounts") }
+        TabButton { text: "Movimientos"; implicitHeight: 60; onClicked: rootWindow.navigate("movements") }
+        TabButton { text: "Perfil"; implicitHeight: 60; onClicked: rootWindow.navigate("profile") }
+    }
+    RowLayout {
+        anchors.fill: parent
+        spacing: 0
+        Rectangle {
+            visible: !rootWindow.compact && financeService.loggedIn
+            Layout.fillHeight: true
+            Layout.preferredWidth: 224
+            color: "#0b3b3c"
+            ScrollView {
+                id: sidebarScroll
+                anchors.fill: parent
+                anchors.margins: 16
+                contentWidth: availableWidth
+                clip: true
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            ColumnLayout {
+                width: sidebarScroll.availableWidth
+                height: Math.max(implicitHeight, sidebarScroll.availableHeight)
+                spacing: 10
+                Label { text: "MiBolsillo"; color: "white"; font.bold: true; font.pixelSize: 25; topPadding: 12; bottomPadding: 10 }
+                Label { text: financeService.userName; color: "#c9e8e3"; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                ComboBox {
+                    objectName: "desktopContextPicker"
+                    Layout.fillWidth: true
+                    implicitHeight: 48
+                    model: ["Personal", "Mi Negocio"]
+                    currentIndex: financeService.context === "BUSINESS" ? 1 : 0
+                    onActivated: rootWindow.selectContext(currentIndex === 0 ? "PERSONAL" : "BUSINESS")
+                    Accessible.name: "Contexto financiero"
+                }
+                Label { text: "TU ESPACIO"; color: "#94bcb8"; font.pixelSize: 11; topPadding: 18; bottomPadding: 4 }
+                Repeater {
+                    model: [ {label: "Inicio", page: "dashboard"}, {label: "Cuentas", page: "accounts"},
+                        {label: "Movimientos", page: "movements"}, {label: "Reporte de caja", page: "report"},
+                        {label: "Mi perfil", page: "profile"} ]
+                    delegate: Button {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        implicitHeight: 48
+                        text: modelData.label
+                        highlighted: rootWindow.currentPage === modelData.page
+                        onClicked: rootWindow.navigate(modelData.page)
+                    }
+                }
+                Item { Layout.fillHeight: true }
+                Label {
+                    text: "SQLite local · COP\nDatos independientes en este dispositivo"
+                    color: "#c9e8e3"
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                    font.pixelSize: 12
+                }
+            }
+            }
+        }
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 0
+            Rectangle {
+                Layout.fillWidth: true
+                visible: financeService.error.length > 0 || !financeService.ready
+                implicitHeight: errorRow.implicitHeight + 24
+                color: "#fff0ed"
+                RowLayout {
+                    id: errorRow
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    Label {
+                        Layout.fillWidth: true
+                        text: financeService.error.length ? financeService.error : "No se pudo abrir el almacenamiento."
+                        color: "#922d25"
+                        wrapMode: Text.Wrap
+                        Accessible.role: Accessible.AlertMessage
+                    }
+                    Button {
+                        text: "Reintentar"
+                        implicitHeight: 48
+                        onClicked: financeService.ready ? financeService.refresh() : financeService.retryStorage()
+                    }
+                }
+            }
+            Loader {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                sourceComponent: !financeService.loggedIn ? authComponent
+                                 : rootWindow.currentPage === "profile" ? profileComponent : financeComponent
+            }
+        }
+    }
+    Component { id: authComponent; AuthView {} }
+    Component {
+        id: financeComponent
+        FinanceView {
+            compact: rootWindow.compact
+            page: rootWindow.currentPage
+            onNavigateRequested: function(page) { rootWindow.navigate(page) }
+        }
+    }
+    Component {
+        id: profileComponent
+        ProfileView {
+            compact: rootWindow.compact
+            onAbrirModuloEmpresarial: rootWindow.selectContext("BUSINESS")
         }
     }
 }

@@ -10,6 +10,7 @@ const output = path.join(root, 'tmp', 'invoicing');
 fs.mkdirSync(output, { recursive: true });
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
 const server = http.createServer((req, res) => {
+  if (req.url === '/api/auth/session') { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({legacyMode:true})); return; }
   const file = path.resolve(root, '.' + decodeURIComponent(new URL(req.url, 'http://localhost').pathname));
   if (!file.startsWith(root + path.sep)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (err, data) => { if (err) { res.writeHead(404); res.end(); } else { res.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream'); res.end(data); } });

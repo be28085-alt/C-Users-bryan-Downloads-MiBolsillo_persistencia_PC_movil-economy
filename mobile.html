@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <script src="src/ui/shared/authGuard.js?v=20261123-5"></script>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>   Control de Financiera personal y mini empresarial</title>
 
   <!-- Google Fonts: Plus Jakarta Sans & Inter -->
@@ -16,23 +17,15 @@
   <!-- Estilos dedicados para la versión móvil -->
   <link rel="stylesheet" href="styles/mobile.css?v=20261108-menu">
   <link rel="stylesheet" href="styles/invoicing.css?v=20261110-5">
-  <link rel="stylesheet" href="styles/businessReports.css?v=20261110-2">
-  <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261114-1">
+  <link rel="stylesheet" href="styles/businessReports.css?v=20261123-3">
+  <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261123-2">
+  <link rel="stylesheet" href="styles/responsive.css?v=20261123-2">
+  <link rel="stylesheet" href="styles/reference-theme.css?v=20261123-4">
+  <link rel="stylesheet" href="styles/reference-business.css?v=20261123-1">
+  <link rel="stylesheet" href="styles/reference-mobile.css?v=20261123-1">
+  <link rel="stylesheet" href="styles/backup-controls.css?v=20261123-5">
 </head>
 <body>
-
-  <!-- BARRA SUPERIOR INFORMATIVA: CONMUTADOR DE VERSIONES SEPARADAS -->
-  <div class="mobile-top-notice">
-    <div>
-      <span class="badge">MÓVIL / SMARTPHONE</span>
-      <span style="margin-left: 6px; font-weight: 500;">MiBolsillo</span>
-    </div>
-    <div>
-      <a href="desktop.html" class="btn-switch-link" title="Abrir versión completa de escritorio">
-        💻 Abrir Versión PC
-      </a>
-    </div>
-  </div>
 
   <!-- CONTENEDOR VIEWPORT DEL DISPOSITIVO MÓVIL -->
   <div class="mobile-viewport-wrapper">
@@ -67,14 +60,17 @@
              PANTALLA 1: INICIO (DASHBOARD MÓVIL)
              ============================================================ -->
         <section class="screen-view active" id="view-inicio">
+          <div class="mobile-profile-row">
+            <button class="app-profile-shortcut" type="button" onclick="mobileApp.switchTab('perfil')" aria-label="Abrir mi perfil">
+              <span class="app-profile-avatar" data-profile-initials aria-hidden="true"></span>
+              <span class="app-profile-name" data-profile-name>Usuario</span>
+            </button>
+          </div>
           <div class="view-header">
             <div class="header-titles">
-              <span class="sub-label">MIBOLSILLO · TU DINERO, A TU RITMO</span>
               <h1 class="main-user-title">Hola, <span id="lblMobileUserNombre">Lucía</span></h1>
+              <p class="section-location">Personal / Inicio</p>
             </div>
-            <button class="user-avatar-btn" onclick="mobileApp.switchTab('perfil')" title="Tu espacio">
-              <span id="lblMobileAvatarInitials">LM</span>
-            </button>
           </div>
 
           <!-- Selector de Mes -->
@@ -161,8 +157,8 @@
         <section class="screen-view" id="view-movimientos">
           <div class="view-header">
             <div class="header-titles">
-              <span class="sub-label">CADA PASO TIENE SU HISTORIA</span>
               <h1 class="screen-title">Movimientos</h1>
+              <p class="section-location">Personal / Movimientos</p>
             </div>
             <button class="btn-icon-pill" onclick="mobileApp.openModalRegistrar()" title="Nuevo movimiento">+</button>
           </div>
@@ -200,7 +196,6 @@
             </select>
           </div>
           <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-            <button class="segment-tab" onclick="mobileApp.exportarCSV()">📥 Exportar CSV</button>
             <button class="segment-tab" onclick="mobileApp.imprimirPDF()">📄 Imprimir / PDF</button>
           </div>
 
@@ -232,8 +227,8 @@
         <section class="screen-view" id="view-plan">
           <div class="view-header">
             <div class="header-titles">
-              <span class="sub-label" id="lblMobilePlanHeaderSub">QUÉ EN LUGAR DE ESTÁ PASO</span>
               <h1 class="screen-title">Mi plan</h1>
+              <p class="section-location" id="lblMobilePlanHeaderSub">Personal / Mi plan</p>
             </div>
           </div>
 
@@ -280,7 +275,7 @@
             <div class="hero-balance-card" style="background: linear-gradient(145deg, #0d2830, #134e4a);">
               <span class="hero-label">De tu saldo, reservado para metas:</span>
               <div class="hero-amount" id="lblMobileMetasTotal">2.750.000 COP</div>
-              <div class="kpi-sub-badge teal">+600.000 COP este mes</div>
+              <div class="kpi-sub-badge teal">Ahorro acumulado registrado</div>
             </div>
 
             <div class="section-card">
@@ -317,7 +312,7 @@
             <div class="hero-balance-card" style="background: linear-gradient(145deg, #133842, #3b1115);">
               <span class="hero-label">Total pendiente:</span>
               <div class="hero-amount" id="lblMobileDeudasTotal">1.260.000 COP</div>
-              <div class="kpi-sub-badge red">155.000 COP en cuotas mensuales · 2 deudas</div>
+              <div class="kpi-sub-badge red">Saldos de las deudas registradas</div>
             </div>
 
             <div class="section-card">
@@ -357,7 +352,13 @@
              PANTALLA 3B: MÓDULO NEGOCIO (MÓVIL)
              ============================================================ -->
         <section class="screen-view" id="view-negocio">
-          <div class="view-header"><div class="header-titles"><span class="sub-label">GESTIÓN EMPRESARIAL</span><h1 class="screen-title">Mi Negocio</h1></div><div class="bm-mobile-header-actions"><button type="button" class="bm-profile-avatar" data-business-profile onclick="mobileApp.switchBusinessTab('perfil')" aria-label="Abrir mi perfil"></button><button type="button" class="nav-btn business-options-toggle" id="mobileBusinessOptionsToggle" onclick="mobileApp.openQuickActionMenu('EMPRESARIAL')" aria-label="Opciones del negocio" aria-haspopup="dialog" aria-controls="mobileBusinessOptions" aria-expanded="false"><span class="business-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span></button></div></div>
+          <div class="mobile-profile-row">
+            <button class="app-profile-shortcut" type="button" onclick="mobileApp.switchBusinessTab('perfil')" aria-label="Abrir mi perfil">
+              <span class="app-profile-avatar" data-profile-initials data-business-profile aria-hidden="true"></span>
+              <span class="app-profile-name" data-profile-name>Usuario</span>
+            </button>
+            <button type="button" class="nav-btn business-options-toggle" id="mobileBusinessOptionsToggle" onclick="mobileApp.openQuickActionMenu('EMPRESARIAL')" aria-label="Opciones del negocio" aria-haspopup="dialog" aria-controls="mobileBusinessOptions" aria-expanded="false"><span class="business-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span></button>
+          </div>
           <div class="business-panel active" data-business-panel="negocio"><div data-business-section="dashboard"></div></div>
           <div class="business-panel" data-business-panel="inventario"><div data-business-section="inventory"></div></div>
           <div class="business-panel" data-business-panel="movimientos"><div data-business-section="movements"></div></div>
@@ -377,10 +378,10 @@
         <section class="screen-view" id="view-informes">
           <div class="view-header">
             <div class="header-titles">
-              <span class="sub-label">ENTENDER ES EL PRIMER PASO</span>
-              <h1 class="screen-title">Tu dinero, en perspectiva</h1>
+              <h1 class="screen-title">Informes</h1>
+              <p class="section-location">Personal / Informes</p>
             </div>
-            <button class="btn-icon-pill" onclick="mobileApp.exportarCSV()" title="Exportar CSV">📥</button>
+            <button class="btn-icon-pill" onclick="mobileApp.imprimirPDF()" title="Imprimir / PDF" aria-label="Imprimir / PDF">⎙</button>
           </div>
 
           <div class="section-card" style="text-align: center;">
@@ -426,8 +427,8 @@
         <section class="screen-view" id="view-perfil">
           <div class="view-header">
             <div class="header-titles">
-              <span class="sub-label">MIBOLSILLO A TU MANERA</span>
               <h1 class="screen-title">Tu espacio</h1>
+              <p class="section-location" data-profile-location>Personal / Perfil</p>
             </div>
           </div>
 
@@ -435,8 +436,8 @@
             <div style="display: flex; align-items: center; gap: 0.75rem;">
               <div class="user-avatar-btn" style="width: 48px; height: 48px; font-size: 1.1rem;" id="mobileProfileAvatar">LM</div>
               <div>
-                <strong style="display: block; font-size: 1.05rem;" id="mobileProfileName">Lucía Martín</strong>
-                <span style="font-size: 0.78rem; color: var(--text-muted);" id="mobileProfileEmail">lucia.martin@email.com</span>
+                <strong style="display: block; font-size: 1.05rem;" id="mobileProfileName">Usuario</strong>
+                <span style="font-size: 0.78rem; color: var(--text-muted);" id="mobileProfileEmail">—</span>
               </div>
             </div>
 
@@ -448,10 +449,10 @@
             </div>
             <div class="mobile-module-toggle mobile-module-toggle-inline">
               <button class="module-toggle-btn active" type="button" data-module="PERSONAL" onclick="mobileApp.setModulo('PERSONAL', 'inicio')">
-                Mi dinero
+                Personal
               </button>
               <button class="module-toggle-btn" type="button" data-module="EMPRESARIAL" onclick="mobileApp.setModulo('EMPRESARIAL', 'negocio')">
-                Negocio
+                Mi Negocio
               </button>
             </div>
           </div>
@@ -471,8 +472,8 @@
               <input type="checkbox" id="mobChkAlertasPresupuesto" onchange="mobileApp.toggleAlertaPresupuesto(this.checked)" aria-label="Alertas de presupuesto">
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
-              <span>Recordatorios de deudas</span>
-              <input type="checkbox" id="mobChkRecordatoriosDeudas" onchange="mobileApp.toggleRecordatoriosDeudas(this.checked)" aria-label="Recordatorios de deudas">
+              <span>Avisos de deudas en la app<small style="display:block;color:var(--text-muted)">Al abrir: vencidas o próximas en 7 días.</small></span>
+              <input type="checkbox" id="mobChkRecordatoriosDeudas" onchange="mobileApp.toggleRecordatoriosDeudas(this.checked)" aria-label="Avisos de deudas en la app">
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
               <span>Saldo inicial</span>
@@ -480,17 +481,6 @@
             </div>
           </div>
 
-          <div class="section-card">
-            <h3 style="margin-bottom: 0.75rem; font-size: 0.95rem;">Gestión de datos</h3>
-
-            <button class="btn-action-primary" style="margin-bottom: 0.5rem;" onclick="mobileApp.exportarCSV()">
-              📥 Descargar movimientos CSV
-            </button>
-            <button class="btn-action-primary" style="margin-bottom: 0.5rem;" onclick="mobileApp.imprimirPDF()">
-              📄 Imprimir / guardar informe PDF
-            </button>
-
-          </div>
         </section>
 
       </main>
@@ -572,7 +562,7 @@
         <div class="form-inputs-group">
           <div class="form-row-custom">
             <label for="mobInputMonto">Valor en Pesos Colombianos (COP)</label>
-            <input type="number" id="mobInputMonto" placeholder="Ej. 42800.00" min="100" step="0.01" required>
+            <input type="number" id="mobInputMonto" placeholder="Ej. 42800.00" min="0.01" step="0.01" required>
           </div>
           <div class="form-row-custom">
             <label for="mobInputConcepto">Concepto</label>
@@ -634,7 +624,7 @@
           </div>
           <div class="form-row-custom">
             <label for="mobMetaObjetivo">Monto objetivo (COP)</label>
-            <input type="number" id="mobMetaObjetivo" placeholder="Ej. 2500000.00" min="10000" step="0.01" required>
+            <input type="number" id="mobMetaObjetivo" placeholder="Ej. 2500000.00" min="0.01" step="0.01" required>
           </div>
           <div class="form-row-custom">
             <label for="mobMetaAhorrado">Ahorro inicial (COP)</label>
@@ -663,7 +653,7 @@
         <div class="form-inputs-group">
           <div class="form-row-custom">
             <label for="mobAporteMetaValor">Valor del aporte (COP)</label>
-            <input type="number" id="mobAporteMetaValor" placeholder="Ej. 50000.00" min="1000" step="0.01" required>
+            <input type="number" id="mobAporteMetaValor" placeholder="Ej. 50000.00" min="0.01" step="0.01" required>
           </div>
         </div>
         <button type="submit" class="btn-action-primary">✔ Confirmar aporte</button>
@@ -687,7 +677,7 @@
           </div>
           <div class="form-row-custom">
             <label for="mobDeudaValorInicial">Monto total inicial (COP)</label>
-            <input type="number" id="mobDeudaValorInicial" placeholder="Ej. 1440000.00" min="10000" step="0.01" required>
+            <input type="number" id="mobDeudaValorInicial" placeholder="Ej. 1440000.00" min="0.01" step="0.01" required>
           </div>
           <div class="form-row-custom">
             <label for="mobDeudaSaldoPendiente">Saldo pendiente (COP)</label>
@@ -695,12 +685,13 @@
           </div>
           <div class="form-row-custom">
             <label for="mobDeudaCuota">Cuota mensual (COP)</label>
-            <input type="number" id="mobDeudaCuota" placeholder="Ej. 80000.00" min="1000" step="0.01" required>
+            <input type="number" id="mobDeudaCuota" placeholder="Ej. 80000.00" min="0.01" step="0.01" required>
           </div>
           <div class="form-row-custom">
             <label for="mobDeudaCondiciones">Condiciones / tasa</label>
             <input type="text" id="mobDeudaCondiciones" placeholder="Ej. 0% TIN en 12 cuotas">
           </div>
+          <div class="form-row-custom"><label for="mobDeudaProximoPago">Próximo vencimiento (opcional)</label><input type="date" id="mobDeudaProximoPago"></div>
         </div>
         <button type="submit" class="btn-action-primary">✔ Guardar deuda</button>
       </form>
@@ -720,8 +711,11 @@
         <div class="form-inputs-group">
           <div class="form-row-custom">
             <label for="mobAbonoDeudaValor">Valor del abono (COP)</label>
-            <input type="number" id="mobAbonoDeudaValor" placeholder="Ej. 80000.00" min="1000" step="0.01" required>
+            <input type="number" id="mobAbonoDeudaValor" placeholder="Ej. 80000.00" min="0.01" step="0.01" required>
           </div>
+          <div class="form-row-custom"><label for="mobAbonoDeudaCuenta">Cuenta de salida</label><select id="mobAbonoDeudaCuenta" required></select></div>
+          <div class="form-row-custom"><label for="mobAbonoDeudaFecha">Fecha del pago</label><input type="date" id="mobAbonoDeudaFecha" required></div>
+          <p style="font-size:.875rem;color:var(--text-muted)">El abono descontará el mismo importe de tu saldo disponible.</p>
         </div>
         <button type="submit" class="btn-action-primary">✔ Confirmar abono</button>
       </form>
@@ -740,7 +734,7 @@
         <div class="form-inputs-group">
           <div class="form-row-custom">
             <label for="mobInputPresupuestoMonto">Límite mensual (COP)</label>
-            <input type="number" id="mobInputPresupuestoMonto" min="100000" step="0.01" required>
+            <input type="number" id="mobInputPresupuestoMonto" min="0" step="0.01" required>
           </div>
         </div>
         <button type="submit" class="btn-action-primary">✔ Guardar límite</button>
@@ -782,7 +776,7 @@
   <div class="toast-container" id="mobileToastContainer"></div>
 
   <!-- SCRIPTS: ARQUITECTURA MODULAR + NÚCLEO COMPARTIDO + CONTROLADOR MÓVIL -->
-  <script src="src/utils/formatters.js?v=20261103-6"></script>
+  <script src="src/utils/formatters.js?v=20261123-5"></script>
   <script src="src/utils/dates.js?v=20261103-6"></script>
   <script src="src/utils/security.js?v=20261103-6"></script>
   <script src="src/utils/validators.js?v=20261103-6"></script>
@@ -791,27 +785,28 @@
   <script src="src/domains/business/reportPreferences.js?v=20261110-2"></script>
   <script src="src/domains/business/businessSchema.js?v=20261110-2"></script>
   <script src="src/storage/migrations.js?v=20261109-3"></script>
-  <script src="src/storage/localStorage.js?v=20261109-3"></script>
-  <script src="src/domains/personal/movementsDomain.js?v=20261103-6"></script>
-  <script src="src/domains/personal/budgetDomain.js?v=20261103-6"></script>
+  <script src="src/storage/sqliteBackend.js?v=20261123-5"></script>
+  <script src="src/storage/localStorage.js?v=20261123-5"></script>
+  <script src="src/domains/personal/movementsDomain.js?v=20261123-5"></script>
+  <script src="src/domains/personal/budgetDomain.js?v=20261123-5"></script>
   <script src="src/domains/personal/goalsDomain.js?v=20261103-6"></script>
-  <script src="src/domains/personal/debtsDomain.js?v=20261103-6"></script>
+  <script src="src/domains/personal/debtsDomain.js?v=20261123-5"></script>
   <script src="src/domains/business/businessDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/productsDomain.js?v=20261109-3"></script>
   <script src="src/domains/business/inventoryDomain.js?v=20261103-6"></script>
   <script src="src/domains/business/metricsDomain.js?v=20261110-1"></script>
   <script src="src/domains/business/cashFlowDomain.js?v=20261109-3"></script>
   <script src="src/domains/user/userService.js?v=20261103-6"></script>
-  <script src="src/services/finanzasCore.js?v=20261109-3"></script>
+  <script src="src/services/finanzasCore.js?v=20261123-5"></script>
   <script src="src/utils/shared.js?v=20261103-6"></script>
-  <script src="src/utils/mobile.js?v=20261114-1"></script>
-  <script src="src/services/exportService.js?v=20261109-3"></script>
-  <script src="src/ui/shared/persistenceStatus.js?v=20261108-1"></script>
+  <script src="src/utils/mobile.js?v=20261123-5"></script>
+  <script src="src/services/exportService.js?v=20261123-5"></script>
+  <script src="src/ui/shared/persistenceStatus.js?v=20261123-5"></script>
   <script src="src/vendor/qrcode.js?v=20261109-1"></script>
   <script src="src/invoicing/money.js?v=20261109-1"></script>
   <script src="src/invoicing/schema.js?v=20261109-1"></script>
   <script src="src/invoicing/providers.js?v=20261109-1"></script>
-  <script src="src/storage/businessRepository.js?v=20261109-3"></script>
+  <script src="src/storage/businessRepository.js?v=20261123-5"></script>
   <script src="src/invoicing/repository.js?v=20261109-3"></script>
   <script src="src/invoicing/service.js?v=20261109-3"></script>
   <script src="src/invoicing/exports.js?v=20261110-4"></script>
@@ -821,10 +816,17 @@
   <script src="src/domains/business/reportOperationsDomain.js?v=20261110-2"></script>
   <script src="src/domains/business/reportsDomain.js?v=20261110-2"></script>
   <script src="src/ui/views/business/businessReportOperationsView.js?v=20261110-2"></script>
-  <script src="src/ui/views/business/businessReportsView.js?v=20261110-2"></script>
+  <script src="src/ui/views/business/businessReportsView.js?v=20261123-3"></script>
   <script src="src/domains/business/readModel.js?v=20261109-3"></script>
   <script src="src/domains/business/workspaceMetrics.js?v=20261110-3"></script>
-  <script src="src/ui/views/business/businessWorkspaceScreens.js?v=20261110-3"></script>
-  <script src="src/ui/views/business/businessWorkspace.js?v=20261110-5"></script>
+  <script src="src/ui/views/business/businessWorkspaceScreens.js?v=20261123-4"></script>
+  <script src="src/ui/views/business/businessWorkspace.js?v=20261123-4"></script>
+  <script src="src/ui/shared/personalMovementEditor.js?v=20261123-5"></script>
+  <script src="src/ui/shared/accountSession.js"></script>
+  <script src="src/ui/shared/adaptiveEntry.js?v=20261123-4"></script>
+  <script src="src/ui/shared/referenceCharts.js?v=20261123-1"></script>
+  <script src="src/ui/shared/referenceIcons.js?v=20261123-1"></script>
+  <script src="src/ui/shared/debtReminders.js?v=20261123-5"></script>
+  <script src="src/ui/shared/backupControls.js?v=20261123-5"></script>
 </body>
 </html>

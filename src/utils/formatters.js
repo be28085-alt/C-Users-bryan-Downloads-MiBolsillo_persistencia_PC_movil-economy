@@ -19,7 +19,7 @@
       const num = Number.isFinite(parsed) ? parsed : 0;
       const formatted = num.toLocaleString('es-CO', {
         minimumFractionDigits: 0,
-        maximumFractionDigits: 0
+        maximumFractionDigits: 2
       });
       if (incluirSigno && num > 0) return `+${formatted} COP`;
       if (incluirSigno && num < 0) return `${formatted} COP`;
