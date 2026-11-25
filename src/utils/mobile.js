@@ -238,6 +238,10 @@ class MobileApp {
   }
 
   async switchBusinessTab(tabId) {
+    if (tabId === 'movimientos') tabId = 'gastos';
+    const supplierDirectory = tabId === 'proveedores';
+    if (supplierDirectory) tabId = 'informes';
+    if (tabId === 'compras') tabId = 'inventario';
     const result = await Finanzas.setModuloActivo('EMPRESARIAL');
     if (result?.error) { this.mostrarToast(result.error); return result; }
     if (tabId === 'perfil') {
@@ -277,6 +281,11 @@ class MobileApp {
       targetView.classList.add('active');
     }
     this.renderNegocio();
+    if (supplierDirectory) {
+      const root = document.querySelector('[data-business-report]');
+      if (root) root.dataset.reportSection = 'purchases';
+      window.BusinessReportsView?.render(Finanzas, Finanzas.getNegocioActivo());
+    }
   }
 
   switchPlanSubtab(subtabId) {
@@ -872,14 +881,13 @@ class MobileApp {
     const actions = mode === 'EMPRESARIAL'
       ? [
           { label: 'Registrar venta', action: 'business-sale' },
-          { label: 'Registrar compra', action: 'business-purchase' },
-          { label: 'Agregar producto', action: 'business-product' },
+          { label: 'Agregar productos al inventario', action: 'business-product' },
           { label: 'Registrar gasto', action: 'business-expense' },
           { label: 'Registrar ingreso', action: 'business-income' },
           { label: 'Movimiento de inventario', action: 'business-inventory' },
-          { label: 'Clientes y proveedores', action: 'business-contacts' },
-          { label: 'Compras, cuentas y empleados', action: 'business-management' },
-          { label: 'Cobros y pagos', action: 'business-movements' },
+          { label: 'Proveedores en Informes', action: 'business-contacts' },
+          { label: 'Cuentas y empleados', action: 'business-management' },
+          { label: 'Gastos e ingresos', action: 'business-movements' },
           { label: 'Facturación simulada', action: 'business-invoicing' },
           { label: 'Informes', action: 'business-reports' },
           { label: 'Alertas y vencimientos', action: 'business-alerts' }
@@ -931,12 +939,17 @@ class MobileApp {
     }
   }
 
-  handleQuickAction(action) {
+  async handleQuickAction(action) {
     this.closeQuickActionMenu();
     const module = this.currentModule || 'PERSONAL';
 
     if (module === 'EMPRESARIAL') {
-      const forms = { 'business-sale': 'sale', 'business-purchase': 'purchase', 'business-product': 'product', 'business-expense': 'expense', 'business-income': 'income', 'business-inventory': 'stock' };
+      if (['business-product', 'business-purchase'].includes(action)) {
+        const result = await this.switchBusinessTab('inventario');
+        if (!result?.error) window.BusinessUI.form('purchase');
+        return;
+      }
+      const forms = { 'business-sale': 'sale', 'business-expense': 'expense', 'business-income': 'income', 'business-inventory': 'stock' };
       if (forms[action]) { window.BusinessUI.form(forms[action]); return; }
       if (action === 'business-reports') this.switchBusinessTab('informes');
       else if (action === 'business-contacts') this.switchBusinessTab('proveedores');

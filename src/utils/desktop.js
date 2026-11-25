@@ -192,6 +192,13 @@ class DesktopApp {
   }
 
   switchView(viewId) {
+    if (viewId === 'negocio-movimientos') viewId = 'negocio-gastos';
+    // Old links keep working after purchases and suppliers move into the
+    // inventory workflow and the reports directory.
+    if (viewId === 'negocio-proveedores' && window.BusinessReportsView) {
+      return window.BusinessReportsView.openSection('purchases');
+    }
+    if (viewId === 'negocio-compras') viewId = 'negocio-inventario';
     this.currentView = viewId;
 
     const esEmpresarial = viewId.startsWith('negocio-') ||
@@ -230,8 +237,6 @@ class DesktopApp {
       'negocio-dashboard': 'Inicio',
       'negocio-inventario': 'Inventario del negocio',
       'negocio-movimientos': 'Movimientos del negocio',
-      'negocio-compras': 'Compras',
-      'negocio-proveedores': 'Directorio de Proveedores',
       'negocio-ventas': 'Ventas & Facturación',
       'negocio-informes': 'Informes del negocio',
       'negocio-productos': 'Productos y utilidad',

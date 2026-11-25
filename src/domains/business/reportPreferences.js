@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const sections = { overview: 'Resumen', sales: 'Ventas', expenses: 'Gastos e ingresos', purchases: 'Compras', balances: 'Cuentas pendientes', operations: 'Personal y operación', cash: 'Cobros y pagos' };
+  const sections = { overview: 'Resumen', sales: 'Ventas y clientes', expenses: 'Gastos e ingresos', purchases: 'Compras y proveedores', balances: 'Cuentas pendientes', operations: 'Personal y operación', cash: 'Cobros y pagos' };
   const periods = ['MES_ACTUAL', 'MES_ANTERIOR', 'ANIO_ACTUAL', 'TODOS', 'PERSONALIZADO'];
   function validate(value) {
     if (!value || value.version !== 1 || !periods.includes(value.period) || !Object.hasOwn(sections, value.section)) throw new Error('Vista del informe inválida.');

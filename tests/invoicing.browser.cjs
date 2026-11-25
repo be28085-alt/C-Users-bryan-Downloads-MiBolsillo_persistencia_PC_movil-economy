@@ -27,7 +27,7 @@ const server = http.createServer((req, res) => {
       await page.goto(`${origin}/${pageName}?modulo=EMPRESARIAL`);
       await page.evaluate(() => {
         Finanzas.state.moduloActivo = 'EMPRESARIAL';
-        Finanzas.state.productos = [{ id: 'qa-p', negocioId: Finanzas.state.negocioActivoId, nombre: 'Café colombiano especial', stock: 30, costoUnitario: 4500, precioVenta: 10000, unidadMedida: 'UND' }];
+        Finanzas.state.productos = [{ id: 'qa-p', negocioId: Finanzas.state.negocioActivoId, nombre: 'Café colombiano especial', stock: 30, costoUnitario: 4500, precioVenta: 10000, unidadMedida: 'KG' }];
         Finanzas.guardarEstado();
         BusinessUI.navigate('sales');
       });
@@ -35,7 +35,8 @@ const server = http.createServer((req, res) => {
       await page.locator('[data-business-section="sales"] .bm-header .bm-primary').click();
       assert.equal(await page.locator('[name="name"]').inputValue(), 'Cliente automático');
       assert.equal(await page.locator('[name="email"]').inputValue(), 'auto@example.co');
-      assert.equal(await page.locator('[name="unitPrice"]').inputValue(), '10000');
+      assert.equal(await page.locator('[name="unitPrice"]').inputValue(), '10.000.00');
+      assert.match(await page.locator('[name="quantity"]').locator('..').innerText(), /Cantidad \(kg\)/);
       await page.locator('[name="name"]').fill('María Gómez'); await page.locator('[name="document"]').fill('123456789');
       await page.locator('[name="email"]').fill('maria@example.co'); await page.locator('[name="address"]').fill('Calle 10 # 5-20, Bogotá');
       await page.locator('[name="paymentTerms"]').selectOption('CREDITO'); await page.locator('[name="quantity"]').fill('2'); await page.locator('[name="discountPercent"]').fill('5');
@@ -53,11 +54,13 @@ const server = http.createServer((req, res) => {
       await page.screenshot({ path: path.join(output, `detail-${width}.png`) });
       const downloadPromise = page.waitForEvent('download'); await page.locator('[data-inv="pdf"]').click(); const download = await downloadPromise;
       await download.saveAs(path.join(output, 'invoice-simulation.pdf'));
+      const pdfText = fs.readFileSync(path.join(output, 'invoice-simulation.pdf')).toString('latin1');
+      assert.match(pdfText, /22\.610\.00/); assert.match(pdfText, /10\.000\.00/); assert.match(pdfText, /2 kg/);
       if (width === 1440) {
         const longPdf = await page.evaluate(() => { const d = structuredClone(Finanzas.state.facturacion.documents[0]); d.totals.lines = Array.from({ length: 30 }, (_, i) => ({ ...d.totals.lines[0], description: `Artículo ${i + 1}: ` + 'producto con descripción extendida '.repeat(4) })); return Array.from(InvoiceExports.pdf(d)); });
         fs.writeFileSync(path.join(output, 'invoice-pagination-qa.pdf'), Buffer.from(longPdf));
       }
-      await page.locator('#inv-payment [name="amount"]').fill('10000'); await page.locator('#inv-payment button').click();
+      await page.locator('#inv-payment [name="amount"]').fill('10.000'); await page.locator('#inv-payment button').click();
       await page.waitForFunction(() => Finanzas.state.ventas.find(v => v.invoiceDocumentId)?.saldoPendiente === 12610);
       await page.locator('[data-inv="cancel-invoice"]').click(); await page.locator('[name="reason"]').fill('Anulación de prueba con devolución de inventario y pago.');
       await page.locator('#inv-editor [value="submit"]').click(); await page.getByRole('heading', { name: 'SIM-NC-000001', exact: true }).waitFor();

@@ -62,21 +62,27 @@ async function addPersonalMovement(page, mobile, marker, value) {
 
 async function businessForms(page, mobile, label) {
   await page.evaluate(m => m ? mobileApp.setModulo('EMPRESARIAL', 'negocio') : pcApp.setModulo('EMPRESARIAL', 'negocio-dashboard'), mobile);
-  if (mobile) await page.locator('#mobileBusinessNav [data-business-tab="proveedores"]').click();
-  else await page.locator('#navEmpresarial [data-view="negocio-proveedores"]').click();
-  const contacts = page.locator('[data-business-section="contacts"]');
-  await contacts.locator('[data-tab="suppliers"]').click();
-  await contacts.getByRole('button', { name: '+ Proveedor', exact: true }).click();
-  await fill(page.locator('.bm-dialog[open]'), { nombre: `Proveedor SQLite ${label}`, cedula: mobile ? '222002' : '111001' });
-  await saveDialog(page);
   if (mobile) await page.locator('#mobileBusinessNav [data-business-tab="inventario"]').click();
   else await page.locator('#navEmpresarial [data-view="negocio-inventario"]').click();
   await page.locator('[data-business-section="inventory"]').getByRole('button', { name: '+ Producto', exact: true }).click();
-  await fill(page.locator('.bm-dialog[open]'), { nombre: `Producto SQLite ${label}`, sku: `SQL-${label}`, stock: '7', costoUnitario: '1500', precioVenta: '2300' });
+  await page.locator('.bm-dialog[open]').getByRole('button', { name: '+ Registrar proveedor', exact: true }).click();
+  await fill(page.locator('.bm-dialog[open]'), { nombre: `Proveedor SQLite ${label}`, cedula: mobile ? '222002' : '111001' });
+  await page.locator('.bm-dialog[open] button[type="submit"]').click();
+  await page.locator('.bm-dialog[open] [name="productoId"]').waitFor();
+  await page.locator('.bm-dialog[open]').getByRole('button', { name: '+ Registrar producto', exact: true }).click();
+  await fill(page.locator('.bm-dialog[open]'), { nombre: `Producto SQLite ${label}`, sku: `SQL-${label}`, costoUnitario: '1500', precioVenta: '2300' });
+  await page.locator('.bm-dialog[open] button[type="submit"]').click();
+  await page.locator('.bm-dialog[open] [name="productoId"]').waitFor();
+  await fill(page.locator('.bm-dialog[open]'), { cantidad: '7' });
   await saveDialog(page);
   const state = diskState();
   assert.ok(state.proveedores.some(p => p.nombre === `Proveedor SQLite ${label}`));
   assert.equal(state.productos.find(p => p.sku === `SQL-${label}`).stock, 7);
+  assert.equal(state.compras.find(p => p.proveedorNombre === `Proveedor SQLite ${label}`).total, 10500);
+  if (mobile) await page.locator('#mobileBusinessNav [data-business-tab="informes"]').click();
+  else await page.locator('#navEmpresarial [data-view="negocio-informes"]').click();
+  await page.locator('[data-report-tab="purchases"]').click();
+  assert.equal(await page.locator('[data-report-detail="suppliers"]').getByText(`Proveedor SQLite ${label}`, { exact: true }).count(), 1);
 }
 
 (async () => {
@@ -114,8 +120,9 @@ async function businessForms(page, mobile, label) {
   await failContext.route('https://**/*', route => route.abort());
   const failurePage = await failContext.newPage();
   await failurePage.goto(`${origin}/desktop.html?modulo=EMPRESARIAL`);
+  await failurePage.waitForFunction(() => typeof Finanzas !== 'undefined' && Finanzas.state.moduloActivo === 'EMPRESARIAL');
   const before = diskState();
-  await failurePage.route('**/api/storage', route => route.request().method() === 'POST'
+  await failurePage.route('**/api/storage', route => ['POST', 'PATCH'].includes(route.request().method())
     ? route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"unavailable"}' }) : route.continue());
   const failed = await failurePage.evaluate(async () => {
     let error;
@@ -145,7 +152,8 @@ async function businessForms(page, mobile, label) {
   await fresh.close();
 
   // Independent contexts do not share BroadcastChannel/localStorage. A stale personal
-  // writer must fail its compare-and-set instead of replacing another context's data.
+  // state commit must fail its compare-and-set instead of replacing another
+  // context's data. Normal personal commands refresh their state before writing.
   const staleContext = await browser.newContext();
   const writerContext = await browser.newContext();
   for (const c of [staleContext, writerContext]) await c.route('https://**/*', route => route.abort());
@@ -155,11 +163,16 @@ async function businessForms(page, mobile, label) {
   await writer.goto(`${origin}/mobile.html`);
   await writer.evaluate(() => Finanzas.agregarMovimiento({ tipo: 'GASTO', concepto: 'Escritor vigente', categoria: 'Otros', valor: 999, fecha: '2026-11-16' }));
   const concurrent = diskState();
-  const staleResult = await stale.evaluate(() => {
-    Finanzas.agregarMovimiento({ tipo: 'GASTO', concepto: 'Escritura antigua rechazada', categoria: 'Otros', valor: 1000, fecha: '2026-11-16' });
-    return { status: FinanzasStorage.getPersistenceStatus(), pending: FinanzasStorage.hasPendingChanges() };
+  const staleResult = await stale.evaluate(async () => {
+    const next = structuredClone(Finanzas.state);
+    next.movimientos.push({ id: crypto.randomUUID(), tipo: 'GASTO', concepto: 'Escritura antigua rechazada', categoria: 'Otros', valor: 1000, fecha: '2026-11-16' });
+    const saved = await Finanzas.persistirEstado(next);
+    return { saved, status: FinanzasStorage.getPersistenceStatus(), pending: FinanzasStorage.hasPendingChanges() };
   });
-  assert.deepEqual(staleResult, { status: { ok: false, status: 'conflict' }, pending: false });
+  assert.equal(staleResult.saved, false);
+  assert.equal(staleResult.status.ok, false);
+  assert.equal(staleResult.status.status, 'conflict');
+  assert.equal(staleResult.pending, false);
   assert.deepEqual(diskState(), concurrent);
   await staleContext.close();
   await writerContext.close();
@@ -201,9 +214,9 @@ async function businessForms(page, mobile, label) {
   await corruptContext.addInitScript(() => localStorage.setItem('FINANZAS_ETAPA_DATA_V2', '{datos corruptos'));
   const corruptPage = await corruptContext.newPage();
   await corruptPage.goto(`${origin}/desktop.html`);
-  const corrupt = await corruptPage.evaluate(() => ({
+  const corrupt = await corruptPage.evaluate(async () => ({
     status: FinanzasStorage.getPersistenceStatus(),
-    saved: FinanzasStorage.saveState(Finanzas.state),
+    saved: await FinanzasStorage.saveState(Finanzas.state),
     local: localStorage.getItem('FINANZAS_ETAPA_DATA_V2')
   }));
   assert.equal(corrupt.status.status, 'read-error');

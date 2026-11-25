@@ -148,6 +148,20 @@
 .business-manager .bm-table-wrap td { padding: 15px 12px; border-color: #ecf2f5; }
 .business-manager .bm-row-actions { min-width: 130px; gap: 6px; }
 .business-manager .bm-row-actions button { min-height: 36px; padding: 7px 9px; font-size: .75rem; }
+.business-manager .bm-product-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 274px;
+  min-width: 274px;
+  max-width: none;
+  gap: 8px;
+}
+.business-manager .bm-product-actions button {
+  width: 100%;
+  min-height: 38px;
+  white-space: nowrap;
+}
+.business-manager .bm-product-actions [data-bm="archive"] { color: #9b453b; }
 .business-manager .bm-badge { font-size: .75rem; padding: 4px 8px; border-radius: 5px; }
 .business-manager .bm-pagination { font-size: .8125rem; line-height: 1.5; flex-wrap: wrap; }
 .business-manager .bm-pagination button { min-height: 40px; }
@@ -295,6 +309,8 @@
   .business-manager .bm-table-wrap .bm-empty-cell::before { display: none; }
   .business-manager .bm-table-wrap .bm-empty-cell { display: block; }
   .business-manager .bm-row-actions { min-width: 0; max-width: none; gap: 8px; }
+  .business-manager .bm-product-actions { width: 100%; min-width: 0; }
+  .business-manager .bm-product-actions button { white-space: normal; }
   .business-manager .bm-row-actions button,
   #view-negocio .bm-row-actions button { min-height: 44px; font-size: .8125rem; padding: 8px 10px; }
   .business-manager .bm-pagination { align-items: center; flex-direction: row; gap: 12px; }

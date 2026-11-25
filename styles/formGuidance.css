@@ -1,0 +1,10 @@
+input:focus::placeholder, textarea:focus::placeholder { color: transparent !important; opacity: 0 !important; }
+button.app-add-action {
+  background: #24576b !important;
+  color: #fff !important;
+  border-color: #24576b !important;
+  box-shadow: 0 2px 4px #24576b20;
+}
+button.app-add-action:hover { background: #1b4556 !important; border-color: #1b4556 !important; }
+button.app-add-action:focus-visible { outline: 3px solid #84a9b9; outline-offset: 3px; }
+.bm-dialog input[readonly], .invoice-dialog input[readonly] { background: #e9f0f3; color: #456473; cursor: default; }

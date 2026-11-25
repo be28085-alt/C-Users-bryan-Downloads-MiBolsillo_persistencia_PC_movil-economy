@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 function context() {
   const c = vm.createContext({ document: { readyState: 'loading', addEventListener() {} }, URL, location: { href: 'http://localhost:5500/desktop.html' } }); c.window = c;
-  for (const f of ['src/utils/dates.js', 'src/domains/business/reportPreferences.js', 'src/domains/business/reportOperationsDomain.js', 'src/domains/business/reportsDomain.js', 'src/domains/business/cashFlowDomain.js', 'src/ui/views/business/businessReportOperationsView.js', 'src/ui/views/business/businessReportsView.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), c);
+  for (const f of ['src/utils/dates.js', 'src/utils/businessNumbers.js', 'src/domains/business/productUnits.js', 'src/domains/business/reportPreferences.js', 'src/domains/business/reportOperationsDomain.js', 'src/domains/business/reportsDomain.js', 'src/domains/business/cashFlowDomain.js', 'src/ui/views/business/businessReportOperationsView.js', 'src/ui/views/business/businessReportsView.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), c);
   return c;
 }
 function fixture() {
@@ -58,7 +58,7 @@ test('sin ingresos, pérdidas y datos inválidos producen estados claros sin NaN
 test('sumas decimales, costo histórico y redondeo de costos conservan centavos', () => {
   const c = context(), s = { negocios: [{ id: 'n', nombre: 'Decimal' }], ventas: [{ negocioId: 'n', fecha: options.today, total: '0.10', detalles: [{ cantidad: '0.3333', costoUnitario: '0.05' }] }, { negocioId: 'n', fecha: options.today, total: '0.20', costoTotalVenta: '0.01' }] };
   const m = c.BusinessReportsDomain.build(s, 'n', options); assert.equal(m.totals.income, '0.30'); assert.equal(m.totals.cogs, '0.03'); assert.equal(m.totals.netProfit, '0.27'); assert.equal(m.totals.ticket, '0.15');
-  assert.equal(c.BusinessReportsView.money('1234567.89'), '1.234.567,89 COP'); assert.equal(c.BusinessReportsView.money('-0.10'), '-0,10 COP');
+  assert.equal(c.BusinessReportsView.money('1234567.89'), '1.234.567.89 COP'); assert.equal(c.BusinessReportsView.money('-0.10'), '-0.10 COP');
 });
 test('CSV y vista imprimible corresponden al filtro, escapan texto y protegen fórmulas', () => {
   const c = context(), s = fixture(); s.negocios[0].nombre = '=HYPERLINK("https://example.com")'; s.gastosNegocio[0].categoria = '<img src=x onerror=alert(1)>';
@@ -133,4 +133,37 @@ test('compras, cartera, personal y producción usan el negocio y los períodos c
   const csv = c.BusinessReportsView.csv(m), print = c.BusinessReportsView.printDocument(m);
   assert.match(csv, /"100.25";"20.10";"80.15"/); assert.match(csv, /Personal actual/); assert.match(csv, /Producción del período/);
   assert.match(print, /Compras y proveedores/); assert.match(print, /Cuentas por pagar/); assert.doesNotMatch(print, /data-report-record|data-report-tab|save-view/);
+});
+
+test('directorios de informes conservan contactos sin compras y concilian saldos actuales por negocio', () => {
+  const c = context(), s = { negocios: [{ id: 'n', nombre: 'Directorio' }],
+    proveedores: [
+      { id: 's', negocioId: 'n', nombre: '<Proveedor & asociado>', cedula: '9001', telefono: '300123', email: 'p@example.co', direccion: 'Bogotá' },
+      { id: 'archived', negocioId: 'n', nombre: 'Proveedor archivado', estado: 'ARCHIVADO' },
+      { id: 'foreign', negocioId: 'other', nombre: 'Proveedor ajeno' }
+    ],
+    clientes: [{ id: 'c', negocioId: 'n', nombre: 'Cliente vigente', saldoPendiente: '12.25' }, { id: 'other-c', negocioId: 'other', nombre: 'Cliente ajeno', saldoPendiente: '999' }],
+    compras: [
+      { id: 'p', negocioId: 'n', proveedorId: 's', fecha: options.today, total: '100', montoPagado: '60', saldoPendiente: '40' },
+      { id: 'old', negocioId: 'n', proveedorId: 's', fecha: '2026-10-01', total: '50', montoPagado: '30', saldoPendiente: '20' },
+      { id: 'cancelled', negocioId: 'n', proveedorId: 's', fecha: options.today, total: '999', saldoPendiente: '999', estado: 'ANULADA' }
+    ],
+    gastosNegocio: [{ id: 'g', negocioId: 'n', proveedorId: 's', fecha: '2026-10-01', monto: '30', montoPagado: '20', saldoPendiente: '10' }]
+  };
+  const before = JSON.stringify(s), m = c.BusinessReportsDomain.build(s, 'n', options), supplier = m.operations.suppliers.find(r => r.id === 's');
+  assert.equal(m.operations.suppliers.length, 2); assert.equal(supplier.purchaseTotal, '100.00'); assert.equal(supplier.balance, '70.00'); assert.equal(supplier.lastPurchase, options.today);
+  assert.equal(supplier.identification, '9001'); assert.match(supplier.contact, /300123.*p@example.co.*Bogotá/);
+  assert.equal(m.operations.suppliers.find(r => r.id === 'archived').balance, '0.00'); assert.equal(m.operations.customers.length, 1); assert.equal(m.operations.customers[0].balance, '12.25');
+  const previous = c.BusinessReportsDomain.build(s, 'n', { ...options, period: 'MES_ANTERIOR' });
+  assert.equal(previous.operations.suppliers[0].purchaseTotal, '50.00'); assert.equal(previous.operations.suppliers[0].balance, '70.00'); assert.equal(JSON.stringify(s), before);
+  const html = c.BusinessReportsView.markup(m);
+  assert.match(html, /Compras y proveedores/); assert.match(html, /Ventas y clientes/); assert.match(html, /Directorio de proveedores/); assert.match(html, /Directorio de clientes/);
+  assert.match(html, /&lt;Proveedor &amp; asociado&gt;/); assert.doesNotMatch(html, /Proveedor ajeno|Cliente ajeno/);
+  assert.match(html, /data-bm="form" data-collection="proveedores" data-id="s" data-kind="supplier"/);
+  m.contactFilters = { suppliers: { query: 'archivado', status: 'ARCHIVED' } };
+  const filtered = c.BusinessReportOperationsView.markup(m).purchases;
+  assert.match(filtered, /data-report-contact-id="archived"/); assert.doesNotMatch(filtered, /data-report-contact-id="s"/);
+  const printed = c.BusinessReportsView.printDocument(m);
+  assert.match(printed, /&lt;Proveedor &amp; asociado&gt;/); assert.doesNotMatch(printed, /data-bm=|data-report-contact-search/);
+  assert.match(c.BusinessReportsView.csv(m), /Directorio de proveedores y saldos actuales/);
 });

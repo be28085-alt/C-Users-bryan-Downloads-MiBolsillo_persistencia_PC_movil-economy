@@ -1,12 +1,17 @@
 (function () {
   'use strict';
   const E = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const money = v => window.BusinessReportsView.money(Number(v || 0).toFixed(2));
+  const money = v => window.BusinessNumbers.formatMoney(v ?? 0);
   const button = (label, action, attrs = '', primary = false) => `<button type="button" data-bm="${action}" ${attrs} class="${primary ? 'bm-primary' : ''}">${label}</button>`;
   const action = (label, name, collection, id, kind = '') => button(label, name, `data-collection="${E(collection)}" data-id="${E(id)}" data-kind="${E(kind)}"`);
   const field = (label, name, value = '', attrs = '') => `<label>${label}<input name="${name}" value="${E(value)}" ${attrs}></label>`;
   const select = (label, name, entries, value, attrs = '') => `<label>${label}<select name="${name}" ${attrs}>${entries.map(([v, text]) => `<option value="${E(v)}" ${String(v) === String(value) ? 'selected' : ''}>${E(text)}</option>`).join('')}</select></label>`;
-  const amountField = (label, name, value = '', required = true) => field(label, name, value, `inputmode="decimal" ${required ? 'required' : ''}`);
+  const moneyFields = new Set(['costoUnitario', 'precioVenta', 'precioUnitario', 'montoPagado', 'monto', 'salario']);
+  const quantityFields = new Set(['stock', 'stockMinimo', 'cantidad', 'cantidadRequerida', 'cantidadBase', 'nuevoStock']);
+  const amountField = (label, name, value = '', required = true) => {
+    const defaultZero = value !== '' && Number(value) === 0 && !formContext?.r?.id && name !== 'precioUnitario';
+    return field(label, name, defaultZero ? '' : moneyFields.has(name) && value !== '' ? window.BusinessNumbers.moneyInput(value) : value, `inputmode="decimal" data-bm-number="${moneyFields.has(name) ? 'money' : 'quantity'}" ${defaultZero ? 'data-default-number="0"' : ''} ${moneyFields.has(name) ? 'placeholder="0.000.00"' : ''} ${name === 'precioUnitario' ? 'readonly aria-label="Precio del producto"' : ''} ${required && !defaultZero ? 'required' : ''}`);
+  };
   const isActive = r => !['ARCHIVADO', 'ANULADA', 'INACTIVO'].includes(r.estado);
   let dialog, dialogBody, feedback, formContext, busy = false, focusReturn, latestModel;
   const titles = window.BusinessWorkspaceScreens.titles;
@@ -30,19 +35,12 @@
     root._exportRows = filtered; root._exportColumns = columns.filter(c => !c.html);
     return `<div class="bm-toolbar"><div class="bm-actions">${createButtons}</div><div class="bm-search"><label>Buscar en esta sección<input type="search" data-bm-search value="${E(root.dataset.query || '')}" placeholder="Nombre, identificación, número…"></label><label>Mostrar<select data-bm-filter><option value="ALL" ${filter === 'ALL' ? 'selected' : ''}>Todos</option><option value="ACTIVE" ${filter === 'ACTIVE' ? 'selected' : ''}>Activos</option><option value="ARCHIVED" ${filter === 'ARCHIVED' ? 'selected' : ''}>Archivados / anulados</option></select></label></div></div>${tableHtml(filtered.slice((page - 1) * 10, page * 10), columns)}<footer class="bm-pagination"><span>${filtered.length} registros · página ${page} de ${pages}</span><div>${button('Anterior', 'page', `data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}`)}${button('Siguiente', 'page', `data-page="${page + 1}" ${page === pages ? 'disabled' : ''}`)}</div></footer>`;
   }
-  function catalogActions(r, collection, kind) { return `<div class="bm-row-actions">${action('Consultar', 'detail', collection, r.id)}${action('Editar', 'form', collection, r.id, kind)}${r.estado !== 'ARCHIVADO' ? action('Eliminar / archivar', 'archive', collection, r.id) : ''}</div>`; }
+  function catalogActions(r, collection, kind, movement = false) { return `<div class="bm-row-actions ${movement ? 'bm-product-actions' : ''}" role="group" aria-label="Acciones de ${E(r.nombre)}">${action('Consultar', 'detail', collection, r.id)}${action('Editar', 'form', collection, r.id, kind)}${movement && r.estado !== 'ARCHIVADO' ? action('Movimiento', 'form', collection, r.id, 'stock') : ''}${r.estado !== 'ARCHIVADO' ? action('Eliminar / archivar', 'archive', collection, r.id) : ''}</div>`; }
   function commercialActions(r, collection) { return `<div class="bm-row-actions">${action('Consultar', 'detail', collection, r.id)}${Number(r.saldoPendiente) > 0 && r.estado !== 'ANULADA' ? action('Registrar pago', 'form', collection, r.id, 'payment') : ''}${r.estado !== 'ANULADA' ? action(r.invoiceDocumentId ? 'Notas de ajuste' : 'Anular', r.invoiceDocumentId ? 'invoice' : 'cancel', collection, r.invoiceDocumentId || r.id) : ''}${action('Comprobante', 'print', collection, r.id)}</div>`; }
-  function movements(root, m) {
-    const nav = tabs(root, [['cash', 'Cobros y pagos'], ['expenses', 'Gastos'], ['incomes', 'Otros ingresos']], 'cash');
-    const actions = button('+ Gasto', 'form', 'data-kind="expense"', true) + button('+ Ingreso', 'form', 'data-kind="income"');
-    if (root.dataset.tab === 'cash') return nav + `<div class="bm-summary">Entradas: <strong>${E(money(m.cash.totalEntradas))}</strong> · Salidas: <strong>${E(money(m.cash.totalSalidas))}</strong> · Flujo neto: <strong>${E(money(m.cash.flujoNeto))}</strong></div>` + list(root, m.cash.movimientosCaja, [col('Fecha', r => r.fecha), col('Movimiento', r => r.tipo), col('Concepto', r => r.concepto), col('Medio', r => r.cuenta), col('Monto', r => money(r.monto))], actions);
-    const expense = root.dataset.tab === 'expenses', collection = expense ? 'gastosNegocio' : 'ingresosNegocio', kind = expense ? 'expense' : 'income';
-    return nav + list(root, expense ? m.expenses : m.incomes, [col('Fecha', r => r.fecha), col('Categoría', r => r.categoria), col('Descripción', r => r.descripcion), col('Monto', r => money(r.monto)), col('Estado', status, true), col('Acciones', r => `${action('Consultar', 'detail', collection, r.id)}${r.estado !== 'ANULADA' ? action('Editar', 'form', collection, r.id, kind) + action('Anular', 'cancel', collection, r.id) : ''}`, true)], actions);
-  }
   function management(root, m) {
-    const nav = tabs(root, [['purchases', 'Compras'], ['receivables', 'Por cobrar'], ['payables', 'Por pagar'], ['employees', 'Empleados'], ['production', 'Producción'], ['business', 'Mi negocio']], 'purchases') + `<div class="bm-report-shortcut">${button('Ver informe de esta sección', 'report')}</div>`;
+    if (root.dataset.tab === 'purchases') root.dataset.tab = 'payables';
+    const nav = tabs(root, [['receivables', 'Por cobrar'], ['payables', 'Por pagar'], ['employees', 'Empleados'], ['production', 'Producción'], ['business', 'Mi negocio']], 'payables') + `<div class="bm-report-shortcut">${button('Ver informe de esta sección', 'report')}</div>`;
     const tab = root.dataset.tab;
-    if (tab === 'purchases') return nav + list(root, m.purchases, [col('Referencia', r => r.id), col('Proveedor', r => r.proveedorNombre), col('Fecha', r => r.fecha), col('Total', r => money(r.total)), col('Pagado', r => money(r.montoPagado)), col('Pendiente', r => money(r.saldoPendiente)), col('Estado', status, true), col('Acciones', r => commercialActions(r, 'compras'), true)], button('+ Compra', 'form', 'data-kind="purchase"', true));
     if (tab === 'receivables' || tab === 'payables') {
       const receivable = tab === 'receivables', rows = receivable ? m.receivables : m.payables;
       const dueDate = r => r.fechaVencimiento || window.Finanzas.state.facturacion?.documents.find(d => d.id === r.invoiceDocumentId)?.dueDate || '';
@@ -64,7 +62,7 @@
     document.querySelectorAll('[data-business-profile]').forEach(b => { b.textContent = window.Finanzas.state.usuario?.iniciales || 'Yo'; });
     root.classList.add('business-manager');
     const section = root.dataset.businessSection;
-    root.innerHTML = screens.header(root) + ({ ...screens, movements, management }[section])(root, m);
+    root.innerHTML = screens.header(root) + ({ ...screens, management }[section])(root, m);
     const nav = root.querySelector('.bm-mobile-sections'), selected = nav?.querySelector('[aria-current="page"]');
     if (selected) nav.scrollLeft = Math.max(0, selected.offsetLeft - nav.offsetLeft - (nav.clientWidth - selected.offsetWidth) / 2);
   }
@@ -76,6 +74,9 @@
     });
   }
   function navigate(section, tab = '') {
+    if (section === 'movements') { section = tab === 'cash' ? 'cash' : 'expenses'; if (tab === 'cash') tab = ''; }
+    if (section === 'contacts' || section === 'reports') return window.BusinessReportsView.openSection(section === 'contacts' ? (tab === 'customers' ? 'sales' : 'purchases') : (tab || 'overview'));
+    if (section === 'purchases') section = 'inventory';
     if (!Object.hasOwn(pcViews, section)) return;
     if (typeof pcApp !== 'undefined') pcApp.switchView(pcViews[section]);
     else if (window.mobileApp) window.mobileApp.switchBusinessTab(mobileViews[section]);
@@ -89,27 +90,44 @@
     document.body.appendChild(dialog); dialogBody = dialog.querySelector('.bm-dialog-body'); feedback = dialog.querySelector('.bm-form-feedback');
     dialog.addEventListener('submit', submit);
     dialog.addEventListener('input', event => { if (event.target.closest('.bm-lines')) preview(); });
-    dialog.addEventListener('change', event => { if (event.target.name === 'clienteId') { const c = window.Finanzas.state.clientes.find(c => c.id === event.target.value); const target = dialogBody.querySelector('[data-sale-customer]'); if (target) target.textContent = c ? [c.tipoDocumento || 'CC', c.cedula, c.email, c.telefono, c.direccion].filter(Boolean).join(' · ') : 'Selecciona un cliente.'; } if (event.target.matches('[data-bm-product]')) { const p = window.Finanzas.getProductoById(event.target.value); const row = event.target.closest('.bm-line'); row.querySelector('[name="precioUnitario"]').value = p?.[formContext.kind === 'purchase' ? 'costoUnitario' : 'precioVenta'] || '0'; } preview(); });
-    dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
+    dialog.addEventListener('focusout', event => { if (event.target.matches('[data-bm-number="money"]') && event.target.value.trim()) { try { event.target.value = window.BusinessNumbers.moneyInput(window.BusinessNumbers.parseMoneyInput(event.target.value)); } catch (e) { /* Keep the original input so it can be corrected. */ } } });
+    dialog.addEventListener('change', event => { if (event.target.name === 'clienteId') { const c = window.Finanzas.state.clientes.find(c => c.id === event.target.value); const target = dialogBody.querySelector('[data-sale-customer]'); if (target) target.textContent = c ? [c.tipoDocumento || 'CC', c.cedula, c.email, c.telefono, c.direccion].filter(Boolean).join(' · ') : 'Selecciona un cliente.'; } if (event.target.matches('[data-bm-product]')) { const p = window.Finanzas.getProductoById(event.target.value); const row = event.target.closest('.bm-line'); row.querySelector('[name="precioUnitario"]').value = window.BusinessNumbers.moneyInput(p?.[formContext.kind === 'purchase' ? 'costoUnitario' : 'precioVenta'] || 0); updateLineUnit(row); } if (event.target.name === 'unidadMedida') updateCustomUnit(); preview(); });
+    dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); else if (formContext?.returnTo) { event.preventDefault(); closeForm(); } });
     dialog.addEventListener('close', () => focusReturn?.focus());
   }
   const entities = collection => (window.Finanzas.state[collection] || []).filter(r => r.negocioId === window.Finanzas.state.negocioActivoId && isActive(r));
   const entityOptions = (collection, empty = 'Selecciona…') => [['', empty], ...entities(collection).map(r => [r.id, `${r.nombre}${r.cedula ? ' · ' + r.cedula : ''}`])];
+  function productUnitFields(r) {
+    const units = window.BusinessProductUnits, current = units.normalize(r.unidadMedida), known = units.catalog.some(unit => unit.code === current);
+    return select('Unidad de medida', 'unidadMedida', [...units.options(), ['__CUSTOM__', 'Otra unidad…']], known ? current : '__CUSTOM__', 'required') + `<div data-bm-custom-unit ${known ? 'hidden' : ''}>${field('Nombre de la unidad', 'unidadPersonalizada', known ? '' : current, `maxlength="200" ${known ? 'disabled' : 'required'}`)}</div>`;
+  }
+  function updateCustomUnit() {
+    const custom = dialogBody.querySelector('[data-bm-custom-unit]'); if (!custom) return;
+    const enabled = dialogBody.querySelector('[name="unidadMedida"]').value === '__CUSTOM__', input = custom.querySelector('input');
+    custom.hidden = !enabled; input.disabled = !enabled; input.required = enabled;
+  }
+  function updateLineUnit(row) {
+    const product = window.Finanzas.getProductoById(row.querySelector('[data-bm-product]')?.value);
+    const symbol = product ? window.BusinessProductUnits.get(product.unidadMedida).symbol : '';
+    const quantity = row.querySelector('[data-bm-quantity-label]'), price = row.querySelector('[data-bm-price-label]');
+    if (quantity) quantity.textContent = symbol ? `Cantidad (${symbol})` : 'Cantidad';
+    if (price) price.textContent = symbol ? `Precio por ${symbol} sin impuestos COP` : 'Precio sin impuestos COP';
+  }
   function lineHtml(line = {}, ingredient = false) {
     const products = entities('productos');
-    return `<div class="bm-line">${select(ingredient ? 'Insumo' : 'Producto', ingredient ? 'materiaPrimaId' : 'productoId', [['', 'Selecciona un producto'], ...products.map(p => [p.id, `${p.nombre} · stock ${p.stock}`])], line.productoId || line.materiaPrimaId, ingredient ? 'required' : 'required data-bm-product')}${amountField('Cantidad', ingredient ? 'cantidadRequerida' : 'cantidad', line.cantidad || line.cantidadRequerida || '1')}${ingredient ? '' : amountField('Precio sin impuestos COP', 'precioUnitario', line.precioUnitario || '') + amountField('Descuento %', 'descuentoPorcentaje', line.descuentoPorcentaje || '0') + select('Impuesto', 'impuesto', [['IVA:0', 'Sin impuesto (0%)'], ['IVA:19', 'IVA 19%'], ['IVA:5', 'IVA 5%'], ['INC:8', 'INC 8%'], ['EXENTO:0', 'Exento'], ['EXCLUIDO:0', 'Excluido']], 'IVA:0')}${button('Eliminar artículo', 'remove-line')}</div>`;
+    return `<div class="bm-line">${select(ingredient ? 'Insumo' : 'Producto', ingredient ? 'materiaPrimaId' : 'productoId', [['', 'Selecciona un producto'], ...products.map(p => [p.id, `${p.nombre} · stock ${p.stock}`])], line.productoId || line.materiaPrimaId, ingredient ? 'required' : 'required data-bm-product')}${amountField('<span data-bm-quantity-label>Cantidad</span>', ingredient ? 'cantidadRequerida' : 'cantidad', line.cantidad || line.cantidadRequerida || '1')}${ingredient ? '' : amountField('<span data-bm-price-label>Precio sin impuestos COP</span>', 'precioUnitario', line.precioUnitario || '') + amountField('Descuento %', 'descuentoPorcentaje', line.descuentoPorcentaje || '0') + select('Impuesto', 'impuesto', [['IVA:0', 'Sin impuesto (0%)'], ['IVA:19', 'IVA 19%'], ['IVA:5', 'IVA 5%'], ['INC:8', 'INC 8%'], ['EXENTO:0', 'Exento'], ['EXCLUIDO:0', 'Excluido']], 'IVA:0')}${button('Eliminar artículo', 'remove-line')}</div>`;
   }
   function commercialForm(kind, r) {
     const purchase = kind === 'purchase';
     if (!purchase) return saleForm();
-    return `<div class="bm-form-grid">${select(purchase ? 'Proveedor' : 'Cliente', purchase ? 'proveedorId' : 'clienteId', entityOptions(purchase ? 'proveedores' : 'clientes'), '', 'required')}${field('Fecha', 'fecha', window.BusinessUtils.today(), 'type="date" required')}${select('Condición de pago', 'tipoPago', [['CONTADO', 'Contado'], ['CREDITO', 'Crédito']], 'CONTADO')}${field('Vencimiento', 'fechaVencimiento', window.BusinessUtils.today(), 'type="date" required')}${amountField('Pago inicial COP (vacío: según condición)', 'montoPagado', '', false)}${select('Medio de pago', 'metodoPago', ['Efectivo', 'Transferencia', 'Tarjeta', 'Otro'].map(v => [v, v]), 'Efectivo')}</div><div class="bm-actions">${button('+ Registrar contacto', 'form', `data-kind="${purchase ? 'supplier' : 'customer'}"`)}${button('+ Registrar producto', 'form', 'data-kind="product"')}</div><fieldset><legend>Artículos · use punto decimal sin separadores de miles</legend><div class="bm-lines">${lineHtml()}</div>${button('+ Agregar artículo', 'add-line')}</fieldset><output class="bm-preview" aria-live="polite"></output>${field('Observaciones', purchase ? 'observaciones' : 'notas', '', 'maxlength="200"')}<p class="bm-note">${purchase ? 'Al confirmar se incrementa el inventario y se registra el pago o la obligación del proveedor.' : 'Comprobante interno sin validez fiscal. La venta confirmada se corrige mediante anulación. Use Facturación simulada para documentos con borradores y notas.'}</p>`;
+    return `<p class="bm-note">Registra productos o proveedores sin salir de este formulario y confirma la compra para ingresar las existencias.</p><div class="bm-form-grid">${select('Proveedor', 'proveedorId', entityOptions('proveedores'), '', 'required')}${field('Fecha', 'fecha', window.BusinessUtils.today(), 'type="date" required')}${select('Condición de pago', 'tipoPago', [['CONTADO', 'Contado'], ['CREDITO', 'Crédito']], 'CONTADO')}${field('Vencimiento', 'fechaVencimiento', window.BusinessUtils.today(), 'type="date" required')}${amountField('Pago inicial COP (vacío: según condición)', 'montoPagado', '', false)}${select('Medio de pago', 'metodoPago', ['Efectivo', 'Transferencia', 'Tarjeta', 'Otro'].map(v => [v, v]), 'Efectivo')}</div><div class="bm-actions">${button('+ Registrar proveedor', 'form', 'data-kind="supplier"')}${button('+ Registrar producto', 'form', 'data-kind="product"')}</div><fieldset><legend>Artículos</legend><div class="bm-lines">${lineHtml()}</div>${button('+ Agregar artículo', 'add-line')}</fieldset><output class="bm-preview" aria-live="polite"></output>${field('Observaciones', 'observaciones', '', 'maxlength="200"')}<p class="bm-note">Al confirmar se incrementa el inventario y se registra el pago o la obligación del proveedor. Consulta el historial en Informes → Compras y proveedores.</p>`;
   }
   function saleForm() {
     const b = window.Finanzas.getNegocioActivo();
     return `<div class="bm-invoice-brand"><div><small>COMPROBANTE DE VENTA</small><h3>${E(b.nombre)}</h3><p>${E(b.nit || '')} · ${E(b.direccion || '')}</p></div><span>Venta nueva<br><small>Consecutivo al confirmar</small></span></div>
       <fieldset><legend>1. Cliente</legend>${select('Seleccionar cliente', 'clienteId', entityOptions('clientes'), '', 'required')}<div class="bm-sale-customer" data-sale-customer>Selecciona un cliente para consultar su identificación y contacto.</div><div class="bm-actions">${button('+ Registrar contacto', 'form', 'data-kind="customer"')}</div></fieldset>
       <fieldset><legend>2. Datos del documento</legend><div class="bm-form-grid">${field('Fecha de emisión', 'fecha', window.BusinessUtils.today(), 'type="date" required')}${field('Fecha de vencimiento', 'fechaVencimiento', window.BusinessUtils.today(), 'type="date" required')}</div></fieldset>
-      <fieldset><legend>3. Artículos de la venta · COP</legend><p class="bm-note">Selecciona los productos e indica cantidades, descuentos e impuestos. Usa punto para los decimales.</p><div class="bm-lines">${lineHtml()}</div><div class="bm-actions">${button('+ Agregar artículo', 'add-line')}${button('+ Registrar producto', 'form', 'data-kind="product"')}</div></fieldset>
+      <fieldset><legend>3. Artículos de la venta · COP</legend><p class="bm-note">Selecciona los productos e indica cantidades, descuentos e impuestos. El precio se toma del producto seleccionado.</p><div class="bm-lines">${lineHtml()}</div><div class="bm-actions">${button('+ Agregar artículo', 'add-line')}${button('+ Registrar producto', 'form', 'data-kind="product"')}</div></fieldset>
       <fieldset><legend>4. Condiciones de pago</legend><div class="bm-form-grid">${select('Condición de pago', 'tipoPago', [['CONTADO', 'Contado'], ['CREDITO', 'Crédito']], 'CONTADO')}${select('Medio de pago', 'metodoPago', ['Efectivo', 'Transferencia', 'Tarjeta', 'Otro'].map(v => [v, v]), 'Efectivo')}${amountField('Pago inicial COP (vacío: según condición)', 'montoPagado', '', false)}</div></fieldset>
       <div class="bm-sale-bottom"><label>Observaciones<textarea name="notas" maxlength="200" rows="3" placeholder="Información adicional para el cliente"></textarea></label><output class="bm-preview bm-invoice-totals" aria-live="polite"></output></div><p class="bm-note">Comprobante interno sin validez fiscal. Al confirmar podrás imprimirlo o descargarlo en PDF.</p>`;
   }
@@ -124,7 +142,7 @@
     if (!r) throw new Error('Venta no encontrada.');
     if (r.invoiceDocumentId) return window.InvoiceExports.download(new window.InvoiceService().get(r.invoiceDocumentId), 'pdf');
     const b = window.Finanzas.getNegocioActivo(), c = r.clienteSnapshot || {};
-    const doc = { kind: 'INVOICE', number: r.numeroFactura, date: r.fecha, dueDate: r.fechaVencimiento, status: r.estado, supplier: { name: b.nombre, document: b.nit || '', address: b.direccion || '' }, customer: { name: r.clienteNombre, documentType: c.tipoDocumento || 'CC', document: c.cedula || r.clienteCedula || '', email: c.email || '', address: c.direccion || '', phone: c.telefono || '' }, totals: r.calculo, paymentTerms: r.tipoPago, paymentMethod: r.metodoPago, notes: r.notas, paid: money(r.montoPagado), balance: money(r.saldoPendiente) };
+    const doc = { kind: 'INVOICE', number: r.numeroFactura, date: r.fecha, dueDate: r.fechaVencimiento, status: r.estado, supplier: { name: b.nombre, document: b.nit || '', address: b.direccion || '' }, customer: { name: r.clienteNombre, documentType: c.tipoDocumento || 'CC', document: c.cedula || r.clienteCedula || '', email: c.email || '', address: c.direccion || '', phone: c.telefono || '' }, totals: r.calculo, paymentTerms: r.tipoPago, paymentMethod: r.metodoPago, notes: r.notas, paid: r.montoPagado, balance: r.saldoPendiente };
     if (!doc.totals) throw new Error('Esta venta histórica se puede guardar como PDF desde Imprimir comprobante.');
     const url = URL.createObjectURL(new Blob([window.InvoiceExports.pdf(doc, { receipt: true })], { type: 'application/pdf' }));
     const a = document.createElement('a'); a.href = url; a.download = `${r.numeroFactura}-comprobante.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -133,7 +151,7 @@
     const required = 'required maxlength="200"';
     if (['sale', 'purchase'].includes(kind)) return commercialForm(kind, r);
     if (['customer', 'supplier'].includes(kind)) return `<div class="bm-form-grid">${field('Nombre / razón social', 'nombre', r.nombre, required)}${field(kind === 'customer' ? 'Identificación' : 'Identificación (opcional)', 'cedula', r.cedula || r.documento, kind === 'customer' ? 'required maxlength="20"' : 'maxlength="20"')}${select('Tipo de documento', 'tipoDocumento', ['CC', 'NIT', 'CE', 'PASAPORTE'].map(t => [t, t]), r.tipoDocumento || 'CC')}${field('Correo', 'email', r.email, 'type="email" maxlength="200"')}${field('Teléfono', 'telefono', r.telefono, 'type="tel"')}${field('Dirección', 'direccion', r.direccion)}${select('Estado', 'estado', [['ACTIVO', 'Activo'], ['ARCHIVADO', 'Archivado']], r.estado || 'ACTIVO')}</div>`;
-    if (kind === 'product') return `<div class="bm-form-grid">${field('Nombre', 'nombre', r.nombre, required)}${field('SKU / código', 'sku', r.sku)}${select('Tipo', 'tipo', [['PRODUCTO', 'Producto'], ['MATERIA_PRIMA', 'Materia prima']], r.tipo || 'PRODUCTO')}${field('Unidad de medida', 'unidadMedida', r.unidadMedida || 'UND', required)}${amountField('Costo unitario COP', 'costoUnitario', r.costoUnitario || '0')}${amountField('Precio de venta COP', 'precioVenta', r.precioVenta || '0')}${!r.id ? amountField('Existencia inicial', 'stock', '0') : ''}${amountField('Existencia mínima', 'stockMinimo', r.stockMinimo || '0')}${select('Proveedor asociado', 'proveedorId', entityOptions('proveedores', 'Sin proveedor'), r.proveedorId)}${field('Descripción', 'descripcion', r.descripcion)}${select('Estado', 'estado', [['DISPONIBLE', 'Disponible'], ['ARCHIVADO', 'Archivado']], r.estado || 'DISPONIBLE')}</div>`;
+    if (kind === 'product') return `<div class="bm-form-grid">${field('Nombre', 'nombre', r.nombre, required)}${field('SKU / código', 'sku', r.sku)}${select('Tipo', 'tipo', [['PRODUCTO', 'Producto'], ['MATERIA_PRIMA', 'Materia prima']], r.tipo || 'PRODUCTO')}${productUnitFields(r)}${amountField('Costo unitario COP', 'costoUnitario', r.costoUnitario || '0')}${amountField('Precio de venta COP', 'precioVenta', r.precioVenta || '0')}${!r.id ? amountField('Existencia inicial', 'stock', '0') : ''}${amountField('Existencia mínima', 'stockMinimo', r.stockMinimo || '0')}${select('Proveedor asociado', 'proveedorId', entityOptions('proveedores', 'Sin proveedor'), r.proveedorId)}${field('Descripción', 'descripcion', r.descripcion)}${select('Estado', 'estado', [['DISPONIBLE', 'Disponible'], ['ARCHIVADO', 'Archivado']], r.estado || 'DISPONIBLE')}</div><p class="bm-note">Define aquí el costo y el precio de venta del producto. Las cantidades se registran en la unidad elegida.</p>`;
     if (kind === 'stock') return `<div class="bm-form-grid">${select('Producto', 'productoId', entityOptions('productos'), r.id, 'required')}${select('Movimiento', 'tipo', [['ENTRADA', 'Entrada'], ['SALIDA', 'Salida'], ['AJUSTE', 'Ajustar existencia final']], 'ENTRADA')}${amountField('Cantidad (en ajuste: existencia final)', 'cantidad', '')}${field('Fecha', 'fecha', window.BusinessUtils.today(), 'type="date" required')}${field('Motivo', 'motivo', '', required)}</div>`;
     if (['expense', 'income'].includes(kind)) return `<div class="bm-form-grid">${field('Descripción', 'descripcion', r.descripcion, required)}${field('Categoría', 'categoria', r.categoria || (kind === 'expense' ? 'Otros gastos operativos' : 'Otros ingresos'), required)}${amountField('Monto COP', 'monto', r.monto || '')}${field('Fecha', 'fecha', r.fecha || window.BusinessUtils.today(), 'type="date" required')}${select('Medio de pago', 'metodoPago', ['Efectivo', 'Transferencia', 'Tarjeta', 'Otro'].map(v => [v, v]), r.metodoPago || 'Efectivo')}${kind === 'expense' ? select('Proveedor (obligatorio a crédito)', 'proveedorId', entityOptions('proveedores', 'Sin proveedor'), r.proveedorId) + (!r.id ? select('Condición de pago', 'tipoPago', [['CONTADO', 'Contado'], ['CREDITO', 'Crédito']], 'CONTADO') + amountField('Pago inicial COP (vacío: según condición)', 'montoPagado', '', false) : '') + field('Vencimiento', 'fechaVencimiento', r.fechaVencimiento || window.BusinessUtils.today(), 'type="date" required') : ''}</div>`;
     if (kind === 'employee') return `<div class="bm-form-grid">${field('Nombre', 'nombre', r.nombre, required)}${field('Identificación', 'cedula', r.cedula)}${field('Cargo', 'cargo', r.cargo || 'Colaborador', required)}${field('Teléfono', 'telefono', r.telefono)}${amountField('Referencia de salario COP', 'salario', r.salario || '0')}${field('Fecha de ingreso', 'fechaIngreso', r.fechaIngreso || window.BusinessUtils.today(), 'type="date" required')}${select('Estado de vinculación', 'estado', ['ACTIVO', 'INACTIVO', 'ARCHIVADO'].map(s => [s, s]), r.estado || 'ACTIVO')}</div>`;
@@ -153,23 +171,68 @@
     const r = id ? (window.Finanzas.state[source] || []).find(r => r.id === id && (source === 'negocios' || r.negocioId === window.Finanzas.state.negocioActivoId)) : initial;
     if (!r) return notice('Registro no encontrado.');
     if (kind === 'payment' && r.invoiceDocumentId) { window.InvoiceUI.open(r.invoiceDocumentId); return; }
+    const returnTo = dialog.open && formContext?.kind === 'purchase' && !id && ['product', 'supplier'].includes(kind)
+      ? { context: formContext, form: dialogBody.querySelector('.bm-form'), title: dialog.querySelector('h2').textContent, focus: document.activeElement, focusReturn, scrollTop: dialog.scrollTop }
+      : null;
+    if (returnTo && kind === 'product' && !r.proveedorId) r.proveedorId = returnTo.form.querySelector('[name="proveedorId"]').value;
     focusReturn = document.activeElement;
-    formContext = { kind, r: cloneRecord(r), collection: source, key: window.BusinessUtils.uuid(), businessId: window.Finanzas.state.negocioActivoId };
+    formContext = { kind, r: cloneRecord(r), collection: source, key: window.BusinessUtils.uuid(), businessId: window.Finanzas.state.negocioActivoId, returnTo };
     dialog.classList.toggle('bm-sale-dialog', kind === 'sale');
-    feedback.textContent = ''; dialog.querySelector('h2').textContent = ({ product: 'Producto', customer: 'Cliente', supplier: 'Proveedor', employee: 'Empleado', sale: 'Registrar venta', purchase: 'Registrar compra', stock: 'Movimiento de inventario', expense: 'Gasto empresarial', income: 'Ingreso adicional', payment: 'Registrar pago', payroll: 'Pago a empleado', formula: 'Receta de producción', production: 'Fabricar lote', business: 'Datos del negocio', cancel: 'Anular operación', archive: 'Eliminar o archivar', deleteBusiness: 'Eliminar negocio' })[kind];
+    feedback.textContent = ''; dialog.querySelector('h2').textContent = ({ product: 'Producto', customer: 'Cliente', supplier: 'Proveedor', employee: 'Empleado', sale: 'Registrar venta', purchase: 'Registrar productos', stock: 'Movimiento de inventario', expense: 'Gasto empresarial', income: 'Ingreso adicional', payment: 'Registrar pago', payroll: 'Pago a empleado', formula: 'Receta de producción', production: 'Fabricar lote', business: 'Datos del negocio', cancel: 'Anular operación', archive: 'Eliminar o archivar', deleteBusiness: 'Eliminar negocio' })[kind];
     dialogBody.innerHTML = `<form class="bm-form">${fields(kind, r, source)}<footer class="bm-form-actions">${button('Cancelar', 'close')}<button class="bm-primary" type="submit">${['cancel', 'archive', 'deleteBusiness'].includes(kind) ? 'Confirmar' : 'Guardar y confirmar'}</button></footer></form>`;
     if (!dialog.open) dialog.showModal(); dialog.scrollTop = 0; preview();
   }
   const cloneRecord = r => JSON.parse(JSON.stringify(r || {}));
+  function restorePurchase(ctx, record) {
+    const saved = ctx.returnTo;
+    formContext = saved.context;
+    focusReturn = saved.focusReturn;
+    dialogBody.replaceChildren(saved.form);
+    dialog.querySelector('h2').textContent = saved.title;
+    feedback.textContent = '';
+    // Refresh catalogs without replacing the in-progress purchase or its operation key.
+    const supplier = dialogBody.querySelector('[name="proveedorId"]'), previousSupplier = supplier.value;
+    supplier.replaceChildren(...entityOptions('proveedores').map(([value, label]) => new Option(label, value)));
+    supplier.value = ctx.kind === 'supplier' && record ? record.id : previousSupplier;
+    const products = entities('productos');
+    dialogBody.querySelectorAll('[data-bm-product]').forEach(input => {
+      const previous = input.value;
+      input.replaceChildren(new Option('Selecciona un producto', ''), ...products.map(p => new Option(`${p.nombre} · stock ${p.stock}`, p.id)));
+      input.value = previous;
+    });
+    if (ctx.kind === 'product' && record) {
+      let input = [...dialogBody.querySelectorAll('[data-bm-product]')].find(input => !input.value);
+      if (!input) { dialogBody.querySelector('.bm-lines').insertAdjacentHTML('beforeend', lineHtml()); input = dialogBody.querySelector('.bm-line:last-child [data-bm-product]'); }
+      input.value = record.id;
+      const price = input.closest('.bm-line').querySelector('[name="precioUnitario"]');
+      if (!price.value) price.value = window.BusinessNumbers.moneyInput(record.costoUnitario || 0);
+    }
+    dialogBody.querySelectorAll('.bm-line').forEach(updateLineUnit);
+    preview();
+    dialog.scrollTop = saved.scrollTop;
+    saved.focus?.focus({ preventScroll: true });
+  }
+  function closeForm() {
+    if (formContext?.returnTo) restorePurchase(formContext);
+    else dialog?.close();
+  }
   function lines(ingredient = false) {
     return [...dialogBody.querySelectorAll('.bm-line')].map(row => {
       const values = Object.fromEntries([...row.querySelectorAll('input,select')].map(e => [e.name, e.value]));
+      const quantity = ingredient ? 'cantidadRequerida' : 'cantidad';
+      values[quantity] = window.BusinessNumbers.parseQuantityInput(values[quantity]);
+      if (!ingredient) {
+        const product = window.Finanzas.getProductoById(values.productoId);
+        values.precioUnitario = String(product?.[formContext.kind === 'purchase' ? 'costoUnitario' : 'precioVenta'] ?? 0);
+        values.descuentoPorcentaje = window.BusinessNumbers.parseQuantityInput(values.descuentoPorcentaje || '0', { scale: 2 });
+      }
       if (!ingredient) { [values.tipoImpuesto, values.tarifaImpuesto] = values.impuesto.split(':'); delete values.impuesto; }
       return values;
     });
   }
   function preview() {
     const out = dialogBody?.querySelector('.bm-preview'); if (!out) return;
+    if ([...dialogBody.querySelectorAll('[data-bm-product]')].every(input => !input.value)) { out.textContent = 'Selecciona un producto e ingresa su cantidad y precio para ver el total.'; return; }
     try { const t = window.InvoiceMoney.calculate(lines().map(l => ({ quantity: l.cantidad, unitPrice: l.precioUnitario, discountPercent: l.descuentoPorcentaje, taxKind: l.tipoImpuesto, taxRate: l.tarifaImpuesto }))); if (formContext.kind === 'sale') out.innerHTML = [['Subtotal', t.gross], ['Descuentos', t.discount], ['Base gravable', t.base], ['Impuestos', t.tax], ['Total de la venta', t.total]].map(([label, value]) => `<span><span>${label}</span><strong>${E(money(value))}</strong></span>`).join(''); else out.textContent = `Base: ${money(t.base)} · Impuestos: ${money(t.tax)} · Total: ${money(t.total)}`; }
     catch (e) { out.textContent = e.message; }
   }
@@ -177,9 +240,23 @@
     event.preventDefault(); event.stopPropagation(); if (busy) return;
     const ctx = formContext, data = Object.fromEntries(new FormData(event.target));
     if (ctx.businessId !== window.Finanzas.state.negocioActivoId) { feedback.textContent = 'Cambió el negocio activo. Abra el formulario nuevamente.'; return; }
-    if (['sale', 'purchase'].includes(ctx.kind)) { data.detalles = lines(); if (!data.montoPagado) data.montoPagado = data.tipoPago === 'CREDITO' ? '0' : undefined; }
+    try {
+      for (const input of event.target.querySelectorAll('[data-bm-number]')) {
+        if (input.closest('.bm-line')) continue;
+        const value = input.value || input.dataset.defaultNumber || '';
+        if (moneyFields.has(input.name)) data[input.name] = window.BusinessNumbers.parseMoneyInput(value, { scale: ['costoUnitario', 'precioVenta'].includes(input.name) ? 4 : 2, allowEmpty: !input.required });
+        else if (quantityFields.has(input.name)) data[input.name] = window.BusinessNumbers.parseQuantityInput(value);
+      }
+      if (ctx.kind === 'product' && data.unidadMedida === '__CUSTOM__') {
+        if (!data.unidadPersonalizada?.trim()) throw new Error('Escribe el nombre de la unidad de medida.');
+        data.unidadMedida = window.BusinessProductUnits.normalize(data.unidadPersonalizada);
+      }
+      delete data.unidadPersonalizada;
+      if (['sale', 'purchase'].includes(ctx.kind)) data.detalles = lines();
+      if (ctx.kind === 'formula') data.ingredientes = lines(true);
+    } catch (e) { feedback.textContent = e.message; feedback.focus(); return; }
+    if (['sale', 'purchase'].includes(ctx.kind)) { if (!data.montoPagado) data.montoPagado = data.tipoPago === 'CREDITO' ? '0' : undefined; }
     if (ctx.kind === 'expense' && !ctx.r.id && !data.montoPagado) data.montoPagado = data.tipoPago === 'CREDITO' ? '0' : undefined;
-    if (ctx.kind === 'formula') data.ingredientes = lines(true);
     if (ctx.r.id && kindCollection[ctx.kind]) { data.id = ctx.r.id; data.revision = ctx.r.revision || 0; }
     if (ctx.kind === 'production') { delete data.id; delete data.revision; }
     if (['cancel', 'archive', 'deleteBusiness'].includes(ctx.kind)) Object.assign(data, { id: ctx.r.id, collection: ctx.collection, revision: ctx.r.revision || 0 });
@@ -188,9 +265,15 @@
     busy = true; dialog.setAttribute('aria-busy', 'true'); feedback.textContent = 'Guardando…'; const buttons = [...dialog.querySelectorAll('button')]; buttons.forEach(b => { b.disabled = true; });
     try {
       const out = await window.Finanzas.getBusinessService().execute(command, data, ctx.key);
+      if (ctx.returnTo) {
+        restorePurchase(ctx, out.record);
+        notice(out.message || 'Guardado y verificado en el almacenamiento local.');
+        return;
+      }
       dialog.close();
-      const destinations = { product: ['inventory'], stock: ['inventory'], customer: ['contacts', 'customers'], supplier: ['contacts', 'suppliers'], employee: ['management', 'employees'], payroll: ['management', 'employees'], sale: ['sales'], purchase: ['management', 'purchases'], expense: ['movements', 'expenses'], income: ['movements', 'incomes'], formula: ['management', 'production'], production: ['management', 'production'], business: ['dashboard'], deleteBusiness: ['dashboard'] };
+      const destinations = { product: ['inventory'], stock: ['inventory'], customer: ['contacts', 'customers'], supplier: ['contacts', 'suppliers'], employee: ['management', 'employees'], payroll: ['management', 'employees'], sale: ['sales'], purchase: ['inventory'], expense: ['expenses', 'expenses'], income: ['expenses', 'incomes'], formula: ['management', 'production'], production: ['management', 'production'], business: ['dashboard'], deleteBusiness: ['dashboard'] };
       if (destinations[ctx.kind]) navigate(...destinations[ctx.kind]); else renderAll();
+      window.BusinessReportsView.render(window.Finanzas, window.Finanzas.getNegocioActivo());
       notice(out.message || 'Guardado y verificado en el almacenamiento local.');
       if (ctx.kind === 'sale') saleComplete(out.record);
     } catch (e) { feedback.textContent = e.message; feedback.focus(); }
@@ -200,10 +283,11 @@
   function detail(collection, id) {
     ensureDialog(); const r = window.Finanzas.state[collection]?.find(x => x.id === id && (collection === 'negocios' || x.negocioId === window.Finanzas.state.negocioActivoId)); if (!r) return notice('Registro no encontrado.');
     formContext = { kind: 'detail', r, collection }; focusReturn = document.activeElement; feedback.textContent = ''; dialog.querySelector('h2').textContent = r.nombre || r.numeroFactura || r.descripcion || 'Consultar registro';
-    const labels = { nombre: 'Nombre', cedula: 'Identificación', direccion: 'Dirección', email: 'Correo', telefono: 'Teléfono', fecha: 'Fecha', fechaVencimiento: 'Vencimiento', tipoPago: 'Condición de pago', metodoPago: 'Medio de pago', stock: 'Existencias', stockMinimo: 'Mínimo', precioVenta: 'Precio COP', costoUnitario: 'Costo unitario COP', total: 'Total histórico COP', monto: 'Monto COP', saldoPendiente: 'Saldo pendiente COP', montoPagado: 'Pagado COP', estado: 'Estado', categoria: 'Categoría', descripcion: 'Descripción', proveedorNombre: 'Proveedor histórico', clienteNombre: 'Cliente histórico', empleadoNombre: 'Empleado histórico', cargo: 'Cargo', periodo: 'Período', productoNombre: 'Producto', cantidadProducida: 'Cantidad fabricada', costoTotal: 'Costo del lote' };
+    const labels = { nombre: 'Nombre', cedula: 'Identificación', direccion: 'Dirección', email: 'Correo', telefono: 'Teléfono', fecha: 'Fecha', fechaVencimiento: 'Vencimiento', tipoPago: 'Condición de pago', metodoPago: 'Medio de pago', unidadMedida: 'Unidad de medida', stock: 'Existencias', stockMinimo: 'Mínimo', precioVenta: 'Precio COP', costoUnitario: 'Costo unitario COP', total: 'Total histórico COP', monto: 'Monto COP', saldoPendiente: 'Saldo pendiente COP', montoPagado: 'Pagado COP', estado: 'Estado', categoria: 'Categoría', descripcion: 'Descripción', proveedorNombre: 'Proveedor histórico', clienteNombre: 'Cliente histórico', empleadoNombre: 'Empleado histórico', cargo: 'Cargo', periodo: 'Período', productoNombre: 'Producto', cantidadProducida: 'Cantidad fabricada', costoTotal: 'Costo del lote' };
+    const detailValue = key => ['precioVenta', 'costoUnitario', 'total', 'monto', 'saldoPendiente', 'montoPagado', 'costoTotal'].includes(key) ? money(r[key]) : key === 'unidadMedida' ? window.BusinessProductUnits.get(r[key]).label : ['stock', 'stockMinimo'].includes(key) ? window.BusinessProductUnits.formatQuantity(r[key], r.unidadMedida) : r[key];
     const paymentRows = [...(window.Finanzas.state.pagosVenta || []), ...(window.Finanzas.state.pagosCompra || []), ...(window.Finanzas.state.pagosGasto || []), ...(window.Finanzas.state.pagosEmpleado || [])].filter(p => p.negocioId === window.Finanzas.state.negocioActivoId && (p.ventaId === id || p.compraId === id || p.gastoId === id || p.empleadoId === id));
     const linked = collection === 'clientes' ? window.Finanzas.state.ventas.filter(v => v.clienteId === id) : collection === 'proveedores' ? window.Finanzas.state.compras.filter(c => c.proveedorId === id) : [];
-    dialogBody.innerHTML = `<dl class="bm-detail">${Object.entries(labels).filter(([k]) => r[k] !== undefined).map(([k, label]) => `<div><dt>${label}</dt><dd>${E(r[k])}</dd></div>`).join('')}</dl>${r.detalles?.length ? `<h3>Detalle histórico</h3>${tableHtml(r.detalles, [col('Producto', l => l.productoNombre), col('Cantidad', l => l.cantidad), col('Precio', l => money(l.precioUnitario)), col('Subtotal', l => money(l.subtotal))])}` : ''}${r.ingredientes?.length ? `<h3>Ingredientes</h3>${tableHtml(r.ingredientes, [col('Insumo', i => i.materiaPrimaNombre), col('Cantidad', i => i.cantidadRequerida)])}` : ''}${linked.length ? `<h3>Operaciones asociadas</h3>${tableHtml(linked, [col('Fecha', v => v.fecha), col('Referencia', v => v.numeroFactura || v.id), col('Total', v => money(v.total)), col('Saldo', v => money(v.saldoPendiente))])}` : ''}${paymentRows.length ? `<h3>Historial de pagos</h3>${tableHtml(paymentRows, [col('Fecha', p => p.fecha), col('Monto', p => money(p.monto)), col('Medio', p => p.metodoPago)])}` : ''}${r.anulacion ? `<p class="bm-note">Anulación: ${E(r.anulacion.fecha)} · ${E(r.anulacion.motivo)}</p>` : ''}<details><summary>Auditoría de este registro</summary><ul>${(window.Finanzas.state.businessLedger?.audit || []).filter(a => a.recordId === id).map(a => `<li>${E(a.at)} · ${E(a.action)} · ${E(a.actor)}</li>`).join('') || '<li>Registro histórico anterior a la bitácora actual.</li>'}</ul></details><div class="bm-actions">${button('Cerrar', 'close')}${['ventas', 'compras', 'gastosNegocio', 'ingresosNegocio', 'pagosEmpleado'].includes(collection) ? action('Imprimir comprobante', 'print', collection, id) : ''}</div>`;
+    dialogBody.innerHTML = `<dl class="bm-detail">${Object.entries(labels).filter(([k]) => r[k] !== undefined).map(([k, label]) => `<div><dt>${label}</dt><dd>${E(detailValue(k))}</dd></div>`).join('')}</dl>${r.detalles?.length ? `<h3>Detalle histórico</h3>${tableHtml(r.detalles, [col('Producto', l => l.productoNombre), col('Cantidad', l => l.cantidad), col('Precio', l => money(l.precioUnitario)), col('Subtotal', l => money(l.subtotal))])}` : ''}${r.ingredientes?.length ? `<h3>Ingredientes</h3>${tableHtml(r.ingredientes, [col('Insumo', i => i.materiaPrimaNombre), col('Cantidad', i => i.cantidadRequerida)])}` : ''}${linked.length ? `<h3>Operaciones asociadas</h3>${tableHtml(linked, [col('Fecha', v => v.fecha), col('Referencia', v => v.numeroFactura || v.id), col('Total', v => money(v.total)), col('Saldo', v => money(v.saldoPendiente))])}` : ''}${paymentRows.length ? `<h3>Historial de pagos</h3>${tableHtml(paymentRows, [col('Fecha', p => p.fecha), col('Monto', p => money(p.monto)), col('Medio', p => p.metodoPago)])}` : ''}${r.anulacion ? `<p class="bm-note">Anulación: ${E(r.anulacion.fecha)} · ${E(r.anulacion.motivo)}</p>` : ''}<details><summary>Auditoría de este registro</summary><ul>${(window.Finanzas.state.businessLedger?.audit || []).filter(a => a.recordId === id).map(a => `<li>${E(a.at)} · ${E(a.action)} · ${E(a.actor)}</li>`).join('') || '<li>Registro histórico anterior a la bitácora actual.</li>'}</ul></details><div class="bm-actions">${button('Cerrar', 'close')}${['ventas', 'compras', 'gastosNegocio', 'ingresosNegocio', 'pagosEmpleado'].includes(collection) ? action('Imprimir comprobante', 'print', collection, id) : ''}</div>`;
     if (!dialog.open) dialog.showModal(); dialog.scrollTop = 0;
   }
   function printRecord(collection, id) {
@@ -222,13 +306,13 @@
   }
   function init() {
     document.querySelectorAll('#navEmpresarial [data-view]').forEach(b => { const icon = b.querySelector('.nav-icon'); if (icon && b.dataset.businessIcon) icon.innerHTML = window.BusinessWorkspaceScreens.icon(b.dataset.businessIcon); const label = b.textContent.trim().replace(/\s+/g, ' '); b.setAttribute('aria-label', label); b.title = label; });
-    const mobileIcons = { negocio: 'dashboard', inventario: 'inventory', ventas: 'sales', proveedores: 'contacts', gestion: 'products' };
+    const mobileIcons = { negocio: 'dashboard', inventario: 'inventory', ventas: 'sales', informes: 'reports', gestion: 'products' };
     document.querySelectorAll('#mobileBusinessNav [data-business-tab]').forEach(b => { const icon = b.querySelector('span'); if (icon) icon.innerHTML = window.BusinessWorkspaceScreens.icon(mobileIcons[b.dataset.businessTab]); });
     document.addEventListener('click', event => {
       const b = event.target.closest('[data-bm]'); if (!b || busy) return;
       const root = b.closest('[data-business-section]'), { bm: command, kind, collection, id } = b.dataset;
       try {
-        if (command === 'close') dialog?.close();
+        if (command === 'close') closeForm();
         else if (command === 'navigate') navigate(b.dataset.section, b.dataset.tab);
         else if (command === 'form') form(kind, id, collection);
         else if (command === 'detail') detail(collection, id);
@@ -265,10 +349,10 @@
   async function selectBusiness(id) { await window.Finanzas.getBusinessService().execute('selectBusiness', { id }); document.querySelectorAll('[data-business-section]').forEach(root => { root.dataset.query = ''; root.dataset.page = 1; root.dataset.filter = 'ALL'; }); renderAll(); window.BusinessReportsView.render(window.Finanzas, window.Finanzas.getNegocioActivo()); }
   function actions() {
     ensureDialog(); if (busy) return; focusReturn = document.activeElement; feedback.textContent = ''; dialog.querySelector('h2').textContent = 'Acciones de Mi Negocio';
-    dialogBody.innerHTML = `<div class="bm-form-grid">${[['sale', 'Registrar venta'], ['purchase', 'Registrar compra'], ['product', 'Agregar producto'], ['expense', 'Registrar gasto'], ['income', 'Registrar ingreso'], ['stock', 'Movimiento de inventario'], ['customer', 'Registrar cliente'], ['supplier', 'Registrar proveedor'], ['employee', 'Registrar empleado']].map(([kind, label]) => button(label, 'form', `data-kind="${kind}"`)).join('')}${button('Alertas y vencimientos', 'alerts')}</div>`;
+    dialogBody.innerHTML = `<div class="bm-form-grid">${[['sale', 'Registrar venta'], ['purchase', 'Agregar productos al inventario'], ['expense', 'Registrar gasto'], ['income', 'Registrar ingreso'], ['stock', 'Movimiento de inventario'], ['customer', 'Registrar cliente'], ['employee', 'Registrar empleado']].map(([kind, label]) => button(label, 'form', `data-kind="${kind}"`)).join('')}${button('Alertas y vencimientos', 'alerts')}</div>`;
     if (!dialog.open) dialog.showModal();
   }
-  function search(section, query) { navigate(section); const root = document.querySelector(`[data-business-section="${section}"]`); if (root) { root.dataset.query = query; renderRoot(root); } }
+  function search(section, query) { if (section === 'movements') section = 'expenses'; navigate(section); const root = document.querySelector(`[data-business-section="${section}"]`); if (root) { root.dataset.query = query; renderRoot(root); } }
   function alerts() {
     ensureDialog(); if (busy) return;
     const model = window.BusinessReadModel.build(window.Finanzas), today = window.BusinessUtils.today();

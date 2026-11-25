@@ -5,9 +5,7 @@
   const periods = { MES_ACTUAL: 'Mes actual', MES_ANTERIOR: 'Mes anterior', ANIO_ACTUAL: 'Año actual', TODOS: 'Histórico', PERSONALIZADO: 'Elegir fechas' };
   const cents = value => BigInt(String(value).replace('.', ''));
   function money(value, signed = false) {
-    const [whole, fraction = '00'] = String(value).split('.');
-    const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    return `${signed && cents(value) > 0n ? '+' : ''}${grouped}${fraction !== '00' ? ',' + fraction : ''} COP`;
+    return window.BusinessNumbers.formatMoney(value, signed);
   }
   function trend(model, field) {
     if (!model.comparison) return model.period === 'TODOS' ? 'Todos los registros del negocio' : 'Resultado del rango de fechas aplicado';
@@ -82,7 +80,7 @@
       <div class="br-detail-grid"><section class="br-card"><div class="br-card-heading"><div><h2>Desglose por categoría</h2><p>El impacto de cada rubro sobre tus costos y gastos</p></div></div><div class="br-table-wrap"><table class="br-categories"><thead><tr><th scope="col">Rubro</th><th scope="col">Total</th><th scope="col">Participación</th></tr></thead><tbody>${model.categories.map(c => `<tr><th scope="row">${E(c.name)}</th><td>${E(money(c.amount))}</td><td><div class="br-share"><span class="br-track"><span style="width:${Math.min(c.percentage, 100)}%"></span></span><strong>${c.percentage.toFixed(1).replace('.', ',')}%</strong></div></td></tr>`).join('') || '<tr><td colspan="3">Sin costos ni gastos en el período seleccionado.</td></tr>'}</tbody>${model.categories.length ? `<tfoot><tr><th scope="row">Total</th><td>${E(money(t.expenses))}</td><td>100%</td></tr></tfoot>` : ''}</table></div></section>
       <section class="br-card"><div class="br-card-heading"><div><h2>Estado de resultados</h2><p>De los ingresos a la utilidad neta</p></div></div><table class="br-results"><tbody>${line('Ventas netas', t.sales)}${line('Costo de productos vendidos', t.cogs, false, true)}${line('Ganancia bruta de ventas', t.grossProfit, true)}${line('Otros ingresos', t.otherIncome)}${line('Gastos del negocio', t.businessExpenses, false, true)}${line('Pagos administrativos al personal', t.employeePayments, false, true)}${line('Ganancia neta', t.netProfit, true)}</tbody></table><p class="br-results-note">Margen neto: <strong>${t.margin.toFixed(1).replace('.', ',')}%</strong></p></section></div>
       ${currentSituation(model)}
-      <aside class="br-reading"><strong>Cómo leer tu informe</strong><p>Ganancia bruta = ventas netas − costo de los productos vendidos. Ganancia neta = ganancia bruta + otros ingresos − gastos del negocio − pagos administrativos al personal. Estos pagos no constituyen una liquidación legal de nómina.</p><p>Las compras de inventario no se descuentan nuevamente como gasto. Los cobros de cartera no se suman otra vez como ingresos. Las ventas actuales se muestran sin impuestos; los datos históricos conservan los importes disponibles. Las notas simuladas ajustan la venta en su fecha original.</p></aside></section>${panel('sales', details.sales)}${panel('expenses', details.expenses)}${panel('purchases', operations.purchases)}${panel('balances', operations.balances)}${panel('operations', operations.operations)}${panel('cash', (printing ? '' : currentSituation(model)) + operations.cash)}`;
+      <aside class="br-reading"><strong>Cómo leer tu informe</strong><p>Ganancia bruta = ventas netas − costo de los productos vendidos. Ganancia neta = ganancia bruta + otros ingresos − gastos del negocio − pagos administrativos al personal. Estos pagos no constituyen una liquidación legal de nómina.</p><p>Las compras de inventario no se descuentan nuevamente como gasto. Los cobros de cartera no se suman otra vez como ingresos. Las ventas actuales se muestran sin impuestos; los datos históricos conservan los importes disponibles. Las notas simuladas ajustan la venta en su fecha original.</p></aside></section>${panel('sales', operations.customers + details.sales)}${panel('expenses', details.expenses)}${panel('purchases', operations.purchases)}${panel('balances', operations.balances)}${panel('operations', operations.operations)}${panel('cash', (printing ? '' : currentSituation(model)) + operations.cash)}`;
   }
   function render(finanzas, business, period = 'MES_ACTUAL') {
     const root = document.querySelector?.('[data-business-report]');
@@ -94,6 +92,7 @@
       root.dataset.reportPeriod = saved?.period || period;
       root.dataset.reportSection = saved?.section || 'overview';
       root.dataset.reportFrom = saved?.from || ''; root.dataset.reportTo = saved?.to || '';
+      for (const type of ['suppliers', 'customers']) { delete root.dataset[`${type}Query`]; delete root.dataset[`${type}Status`]; }
     }
     const selected = root.dataset.reportPeriod || period;
     const options = { period: selected, from: root.dataset.reportFrom, to: root.dataset.reportTo };
@@ -104,6 +103,7 @@
     }
     const model = window.BusinessReportsDomain.build(finanzas.state, business.id, options);
     model.section = root.dataset.reportSection || 'overview';
+    model.contactFilters = Object.fromEntries(['suppliers', 'customers'].map(type => [type, { query: root.dataset[`${type}Query`] || '', status: root.dataset[`${type}Status`] || 'ALL' }]));
     root.dataset.reportPeriod = selected; root.dataset.businessId = business.id; root.innerHTML = markup(model);
   }
   function csv(model) {
@@ -114,7 +114,7 @@
     return rows.map(row => row.map(escape).join(';')).join('\r\n');
   }
   function printDocument(model, cssText = '') {
-    const stylesheet = cssText ? `<style>${cssText}</style>` : `<link rel="stylesheet" href="${E(new URL('styles/businessReports.css?v=20261110-2', window.location.href).href)}">`;
+    const stylesheet = cssText ? `<style>${cssText}</style>` : `<link rel="stylesheet" href="${E(new URL('styles/businessReports.css?v=20261125-1', window.location.href).href)}">`;
     return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Informe de ${E(model.business.name)} - ${E(model.range.label)}</title>${stylesheet}</head><body class="br-print-page"><main class="business-reports">${markup(model, true)}</main></body></html>`;
   }
   function init() {
@@ -132,6 +132,12 @@
       selectSection(root, keys[next], true);
     });
     document.addEventListener('change', event => {
+      if (event.target.matches('[data-report-contact-filter]')) {
+        const root = event.target.closest('[data-business-report]'), type = event.target.dataset.reportContactFilter;
+        root.dataset[`${type}Status`] = event.target.value;
+        render(window.Finanzas, window.Finanzas.getNegocioActivo()); root.querySelector(`[data-report-contact-filter="${type}"]`).focus();
+        return;
+      }
       if (event.target.matches('[data-report-from], [data-report-to]')) {
         event.target.closest('[data-business-report]').querySelector('.br-feedback').textContent = 'Pulsa Aplicar fechas para actualizar el informe y sus exportaciones.';
         return;
@@ -139,6 +145,13 @@
       if (!event.target.matches('[data-report-period]')) return;
       const root = event.target.closest('[data-business-report]'); root.dataset.reportPeriod = event.target.value;
       render(window.Finanzas, window.Finanzas.getNegocioActivo(), event.target.value); root.querySelector('[data-report-period]').focus();
+    });
+    document.addEventListener('input', event => {
+      if (!event.target.matches('[data-report-contact-search]')) return;
+      const root = event.target.closest('[data-business-report]'), type = event.target.dataset.reportContactSearch, caret = event.target.selectionStart;
+      root.dataset[`${type}Query`] = event.target.value;
+      render(window.Finanzas, window.Finanzas.getNegocioActivo());
+      const search = root.querySelector(`[data-report-contact-search="${type}"]`); search.focus(); search.setSelectionRange(caret, caret);
     });
     document.addEventListener('click', async event => {
       const tab = event.target.closest('[data-report-tab]'); if (tab) { selectSection(tab.closest('[data-business-report]'), tab.dataset.reportTab); return; }

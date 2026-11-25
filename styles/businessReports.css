@@ -126,6 +126,18 @@ body:has(#view-negocio-informes.active) .pc-main-wrapper { min-width: 0; }
 .business-reports .br-status-warning { color: #99601a; background: #fff1d9; }
 .business-reports .br-record-actions { display: flex; flex-wrap: wrap; gap: 6px; min-width: 110px; }
 .business-reports .br-record-actions button { font-size: 11px; min-height: 38px; padding: 8px 10px; }
+.business-reports .br-contact-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.business-reports .br-contact-controls label:first-child { flex: 1 1 230px; }
+.business-reports .br-contact-controls label:nth-child(2) { flex: 0 1 160px; }
+.business-reports .br-contact-controls input { width: 100%; min-width: 0; min-height: 43px; border: 1px solid #d6e1e6; border-radius: 10px; padding: 11px 14px; background: #fff; color: var(--br-ink); font: inherit; font-size: 12px; }
+.business-reports .br-contact-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 160px; max-width: 230px; }
+.business-reports .br-contact-actions button:last-child:nth-child(3) { grid-column: 1 / -1; }
+@media (max-width: 600px) {
+  .business-reports .br-contact-controls { align-items: stretch; }
+  .business-reports .br-contact-controls label, .business-reports .br-contact-controls > button { flex: 1 1 100%; }
+  .business-reports .br-contact-actions { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+  .business-reports .br-contact-actions button:last-child:nth-child(3) { grid-column: auto; }
+}
 .business-reports [data-report-record="cancel"] { color: #a33e46; border-color: #eed6d8; }
 .business-reports .br-print-section { font-size: 18px; margin: 22px 0 12px; }
 .business-reports .br-activity-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }

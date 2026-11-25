@@ -61,7 +61,7 @@
     if (proveedorId) find(state, 'proveedores', proveedorId);
     if (sku && state.productos.some(p => p.negocioId === state.negocioActivoId && p.id !== old?.id && p.sku?.toLowerCase() === sku.toLowerCase())) throw new Error('El código SKU ya existe.');
     if (old && data.stock !== undefined && quantity(data.stock) !== quantity(old.stock)) throw new Error('Use Movimiento de inventario para cambiar existencias.');
-    const values = { nombre, sku, proveedorId, descripcion: text(data.descripcion), tipo: data.tipo === 'MATERIA_PRIMA' ? 'MATERIA_PRIMA' : 'PRODUCTO', unidadMedida: text(data.unidadMedida || 'UND', true), precioVenta: number(units(data.precioVenta, 4), 4), costoUnitario: number(units(data.costoUnitario ?? data.precioCompra, 4), 4), stockMinimo: number(quantity(data.stockMinimo), 4), estado: data.estado === 'ARCHIVADO' ? 'ARCHIVADO' : 'DISPONIBLE' };
+    const values = { nombre, sku, proveedorId, descripcion: text(data.descripcion), tipo: data.tipo === 'MATERIA_PRIMA' ? 'MATERIA_PRIMA' : 'PRODUCTO', unidadMedida: window.BusinessProductUnits.normalize(data.unidadMedida ?? old?.unidadMedida), precioVenta: number(units(data.precioVenta, 4), 4), costoUnitario: number(units(data.costoUnitario ?? data.precioCompra, 4), 4), stockMinimo: number(quantity(data.stockMinimo), 4), estado: data.estado === 'ARCHIVADO' ? 'ARCHIVADO' : 'DISPONIBLE' };
     if (old) { Object.assign(old, values, { revision: (old.revision || 0) + 1 }); return result('productos', old); }
     const p = record(state, { ...values, precioCompra: values.costoUnitario, stock: 0 }); state.productos.push(p);
     if (quantity(data.stock)) stock(state, p, quantity(data.stock), 'ENTRADA', 'Existencia inicial', p.id);

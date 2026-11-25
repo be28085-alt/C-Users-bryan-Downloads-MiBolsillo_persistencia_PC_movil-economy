@@ -2,6 +2,9 @@
   'use strict';
   const escape = value => String(value ?? '').replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
   const kindLabel = { INVOICE: 'Factura de venta simulada', CREDIT_NOTE: 'Nota crédito simulada', DEBIT_NOTE: 'Nota débito simulada' };
+  const displayMoney = value => window.BusinessNumbers.formatMoney(value ?? '0');
+  const displayAmount = value => displayMoney(value).replace(/ COP$/, '');
+  const displayQuantity = line => `${window.BusinessNumbers.formatQuantity(line.quantity)} ${window.BusinessProductUnits.get(line.unit || 'UND').symbol}`;
   function consultationUrl(doc) {
     const url = new URL(window.location.pathname, window.location.origin);
     url.searchParams.set('modulo', 'EMPRESARIAL'); url.searchParams.set('facturaSimulada', doc.id);
@@ -67,17 +70,18 @@
       const description = wrap(l.description, 32), height = Math.max(description.length * 13 + 20, 38);
       if (y - height < 55) { page(); tableHeader(); }
       description.forEach((s, i) => drawText(43, y - i * 13, s, Math.min(9, 185 / (s.length * 0.8))));
-      [l.quantity.replace(/0+$/, '').replace(/\.$/, ''), l.unitPrice.replace(/00$/, ''), l.discount, l.tax, l.total].forEach((t, i) => drawText([238, 300, 366, 426, 490][i], y, t, Math.min(8, 54 / (t.length * 0.58))));
+      [displayQuantity(l), displayAmount(l.unitPrice), displayAmount(l.discount), displayAmount(l.tax), displayAmount(l.total)].forEach((t, i) => drawText([238, 300, 366, 426, 490][i], y, t, Math.min(8, 54 / (t.length * 0.58))));
       y -= height; commands.push(`0.83 0.87 0.89 RG 38 ${y + 12} m 557 ${y + 12} l S`);
     }
     need(130); y -= 8;
     for (const [label, value] of [['Bruto', doc.totals.gross], ['Descuentos', doc.totals.discount], ['Base', doc.totals.base], ['Impuestos', doc.totals.tax], ['TOTAL COP', doc.totals.total]]) {
-      drawText(345, y, label, 11, true); drawText(465, y, value, Math.min(11, 90 / (value.length * 0.6)), true); y -= 20;
+      const amount = displayAmount(value);
+      drawText(345, y, label, 11, true); drawText(465, y, amount, Math.min(11, 90 / (amount.length * 0.6)), true); y -= 20;
     }
     paragraph(`Pago: ${doc.paymentTerms} | Medio: ${doc.paymentMethod}`);
     if (doc.notes) paragraph(`Observaciones: ${doc.notes}`);
     paragraph('Redondeo HALF_UP por línea a 2 decimales. Cantidades y precios hasta 4 decimales.');
-    if (receipt) { paragraph(`Pagado COP: ${doc.paid} | Saldo pendiente COP: ${doc.balance}`, true); }
+    if (receipt) { const amount = value => / COP$/.test(String(value)) ? value : displayMoney(value); paragraph(`Pagado: ${amount(doc.paid)} | Saldo pendiente: ${amount(doc.balance)}`, true); }
     else {
     need(165);
     const code = qr(doc), count = code.getModuleCount(), cell = 112 / (count + 8), left = 38, bottom = y - 125;

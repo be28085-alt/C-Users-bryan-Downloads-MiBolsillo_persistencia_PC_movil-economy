@@ -17,13 +17,14 @@
   <!-- Estilos dedicados para la versión móvil -->
   <link rel="stylesheet" href="styles/mobile.css?v=20261108-menu">
   <link rel="stylesheet" href="styles/invoicing.css?v=20261110-5">
-  <link rel="stylesheet" href="styles/businessReports.css?v=20261123-3">
+  <link rel="stylesheet" href="styles/businessReports.css?v=20261125-1">
   <link rel="stylesheet" href="styles/businessWorkspace.css?v=20261123-2">
   <link rel="stylesheet" href="styles/responsive.css?v=20261123-2">
   <link rel="stylesheet" href="styles/reference-theme.css?v=20261123-4">
-  <link rel="stylesheet" href="styles/reference-business.css?v=20261123-1">
+  <link rel="stylesheet" href="styles/reference-business.css?v=20261125-1">
   <link rel="stylesheet" href="styles/reference-mobile.css?v=20261123-1">
   <link rel="stylesheet" href="styles/backup-controls.css?v=20261123-5">
+<link rel="stylesheet" href="styles/formGuidance.css?v=20261125-5">
 </head>
 <body>
 
@@ -361,10 +362,7 @@
           </div>
           <div class="business-panel active" data-business-panel="negocio"><div data-business-section="dashboard"></div></div>
           <div class="business-panel" data-business-panel="inventario"><div data-business-section="inventory"></div></div>
-          <div class="business-panel" data-business-panel="movimientos"><div data-business-section="movements"></div></div>
           <div class="business-panel" data-business-panel="ventas"><div data-business-section="sales"></div></div>
-          <div class="business-panel" data-business-panel="proveedores"><div data-business-section="contacts"></div></div>
-          <div class="business-panel" data-business-panel="compras"><div data-business-section="purchases"></div></div>
           <div class="business-panel" data-business-panel="productos"><div data-business-section="products"></div></div>
           <div class="business-panel" data-business-panel="caja"><div data-business-section="cash"></div></div>
           <div class="business-panel" data-business-panel="gastos"><div data-business-section="expenses"></div></div>
@@ -512,7 +510,7 @@
         <button class="nav-btn" data-business-tab="negocio" onclick="mobileApp.switchBusinessTab('negocio')"><span style="font-size:1.25rem">🏢</span><span>Inicio</span></button>
         <button class="nav-btn" data-business-tab="inventario" onclick="mobileApp.switchBusinessTab('inventario')"><span style="font-size:1.25rem">📦</span><span>Inventario</span></button>
         <button class="nav-btn" data-business-tab="ventas" onclick="mobileApp.switchBusinessTab('ventas')"><span style="font-size:1.25rem">🧾</span><span>Ventas</span></button>
-        <button class="nav-btn" data-business-tab="proveedores" onclick="mobileApp.switchBusinessTab('proveedores')"><span style="font-size:1.25rem">👥</span><span>Proveedores</span></button>
+        <button class="nav-btn" data-business-tab="informes" data-business-icon="products" onclick="mobileApp.switchBusinessTab('informes')"><span style="font-size:1.25rem" aria-hidden="true">📊</span><span>Informes</span></button>
         <button class="nav-btn" data-business-tab="gestion" onclick="mobileApp.switchBusinessTab('gestion')"><span style="font-size:1.25rem">🗂️</span><span>Gestión</span></button>
       </nav>
 
@@ -628,7 +626,7 @@
           </div>
           <div class="form-row-custom">
             <label for="mobMetaAhorrado">Ahorro inicial (COP)</label>
-            <input type="number" id="mobMetaAhorrado" placeholder="0.00" min="0" step="0.01" value="0">
+            <input type="number" id="mobMetaAhorrado" placeholder="0.00" min="0" step="0.01" value="">
           </div>
           <div class="form-row-custom">
             <label for="mobMetaPlazo">Plazo estimado</label>
@@ -782,7 +780,7 @@
   <script src="src/utils/validators.js?v=20261103-6"></script>
   <script src="src/storage/seedData.js?v=20261103-6"></script>
   <script src="src/storage/demoData.js?v=20261109-3"></script>
-  <script src="src/domains/business/reportPreferences.js?v=20261110-2"></script>
+  <script src="src/domains/business/reportPreferences.js?v=20261125-1"></script>
   <script src="src/domains/business/businessSchema.js?v=20261110-2"></script>
   <script src="src/storage/migrations.js?v=20261109-3"></script>
   <script src="src/storage/sqliteBackend.js?v=20261123-5"></script>
@@ -799,28 +797,30 @@
   <script src="src/domains/user/userService.js?v=20261103-6"></script>
   <script src="src/services/finanzasCore.js?v=20261123-5"></script>
   <script src="src/utils/shared.js?v=20261103-6"></script>
-  <script src="src/utils/mobile.js?v=20261123-5"></script>
+  <script src="src/utils/mobile.js?v=20261125-8"></script>
   <script src="src/services/exportService.js?v=20261123-5"></script>
   <script src="src/ui/shared/persistenceStatus.js?v=20261123-5"></script>
   <script src="src/vendor/qrcode.js?v=20261109-1"></script>
+  <script src="src/utils/businessNumbers.js?v=20261125-2"></script>
+  <script src="src/domains/business/productUnits.js?v=20261125-2"></script>
   <script src="src/invoicing/money.js?v=20261109-1"></script>
   <script src="src/invoicing/schema.js?v=20261109-1"></script>
   <script src="src/invoicing/providers.js?v=20261109-1"></script>
   <script src="src/storage/businessRepository.js?v=20261123-5"></script>
   <script src="src/invoicing/repository.js?v=20261109-3"></script>
   <script src="src/invoicing/service.js?v=20261109-3"></script>
-  <script src="src/invoicing/exports.js?v=20261110-4"></script>
-  <script src="src/invoicing/ui.js?v=20261110-5"></script>
-  <script src="src/domains/business/businessCommands.js?v=20261110-2"></script>
+  <script src="src/invoicing/exports.js?v=20261125-2"></script>
+  <script src="src/invoicing/ui.js?v=20261125-7"></script>
+  <script src="src/domains/business/businessCommands.js?v=20261125-2"></script>
   <script src="src/services/businessService.js?v=20261110-2"></script>
-  <script src="src/domains/business/reportOperationsDomain.js?v=20261110-2"></script>
+  <script src="src/domains/business/reportOperationsDomain.js?v=20261125-2"></script>
   <script src="src/domains/business/reportsDomain.js?v=20261110-2"></script>
-  <script src="src/ui/views/business/businessReportOperationsView.js?v=20261110-2"></script>
-  <script src="src/ui/views/business/businessReportsView.js?v=20261123-3"></script>
+  <script src="src/ui/views/business/businessReportOperationsView.js?v=20261125-1"></script>
+  <script src="src/ui/views/business/businessReportsView.js?v=20261125-2"></script>
   <script src="src/domains/business/readModel.js?v=20261109-3"></script>
   <script src="src/domains/business/workspaceMetrics.js?v=20261110-3"></script>
-  <script src="src/ui/views/business/businessWorkspaceScreens.js?v=20261123-4"></script>
-  <script src="src/ui/views/business/businessWorkspace.js?v=20261123-4"></script>
+  <script src="src/ui/views/business/businessWorkspaceScreens.js?v=20261125-8"></script>
+  <script src="src/ui/views/business/businessWorkspace.js?v=20261125-8"></script>
   <script src="src/ui/shared/personalMovementEditor.js?v=20261123-5"></script>
   <script src="src/ui/shared/accountSession.js"></script>
   <script src="src/ui/shared/adaptiveEntry.js?v=20261123-4"></script>
@@ -828,5 +828,6 @@
   <script src="src/ui/shared/referenceIcons.js?v=20261123-1"></script>
   <script src="src/ui/shared/debtReminders.js?v=20261123-5"></script>
   <script src="src/ui/shared/backupControls.js?v=20261123-5"></script>
+<script src="src/ui/shared/formGuidance.js?v=20261125-6"></script>
 </body>
 </html>

@@ -66,6 +66,10 @@ La regresión personal comprueba los formularios de movimientos, metas, aportes,
 
 Mi Negocio incluye inventario, ventas, compras, contactos, cartera, gastos, empleados, producción, informes y facturación simulada. Los PDF y XML de facturación son de simulación; la integración DIAN, autenticación remota, sincronización entre equipos y nómina legal requieren trabajo adicional.
 
+Desde Inventario, «+ Producto» permite registrar una compra y crear sus productos y proveedores sin perder los datos del formulario. Informes reúne el historial de compras y el directorio de proveedores en «Compras y proveedores», y el directorio de clientes en «Ventas y clientes».
+
+Los importes de Mi Negocio se muestran como `10.490.00 COP`, siempre con dos decimales para los centavos. Al escribir un precio, `10.490` equivale a 10490 pesos; también se aceptan `10.490.00` y `10.490,00`. Las cantidades admiten punto o coma decimal y hasta cuatro decimales. Cada producto tiene una unidad seleccionable (unidades, kg, g, l, ml, m, m², m³, piezas, paquetes, cajas o pares) y admite unidades personalizadas. Las existencias se resumen por unidad; cambiar la etiqueta no convierte cantidades ni modifica los documentos históricos.
+
 - [Estructura y responsabilidades del código](docs/ESTRUCTURA.md)
 - [Guía de uso de Mi Negocio](docs/GUIA_MI_NEGOCIO.md)
 - [Proyecto Android y preparación para Google Play](docs/ANDROID.md)
