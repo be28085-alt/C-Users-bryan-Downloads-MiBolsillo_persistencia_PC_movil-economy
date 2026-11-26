@@ -4,6 +4,9 @@
   if (!window.MiBolsilloSQLiteConfig && !window.MiBolsilloSQLiteRequired) return;
 
   const config = window.MiBolsilloSQLiteConfig || {};
+  const failure = window.MiBolsilloErrors.create;
+  let uncertain = null;
+  let confirmedOperation = null;
   let raw = config.initialRaw ?? null;
   let revision = config.initialRevision ?? (raw ? JSON.parse(raw).revision : null);
   let initialized = Object.prototype.hasOwnProperty.call(config, 'initialRaw');
@@ -31,21 +34,40 @@
     if (body) headers['Content-Type'] = 'application/json';
     let response;
     try { response = await fetch('/api/storage' + query, { method, headers, credentials: 'same-origin', cache: 'no-store', ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(30000) }); }
-    catch (_) { throw new Error('No se confirmó el guardado. Comprueba el servidor y reintenta con el formulario abierto.'); }
-    let result; try { result = await response.json(); } catch (_) { result = {}; }
+    catch (error) { throw failure(error.name === 'TimeoutError' || error.name === 'AbortError' ? 'timeout' : 'connection', { ambiguous: method === 'PATCH' }); }
     if (response.status === 401) {
       window.dispatchEvent(new CustomEvent('mibolsillo:session-expired'));
-      throw Object.assign(new Error('La sesión cambió o caducó. Conserva el formulario antes de iniciar sesión.'), { code: 'session' });
+      throw failure('session', { status: 401 });
     }
-    if (!response.ok) throw Object.assign(new Error(result.error || (response.status === 413 ? 'La operación supera el tamaño permitido. Conserva una copia antes de reintentar.' : 'No se pudo guardar en SQLite.')), { code: response.status === 409 ? 'conflict' : 'write', status: response.status });
+    let result;
+    try { result = await response.json(); }
+    catch (error) {
+      if (response.ok) throw failure('persistence', { ambiguous: method === 'PATCH' });
+      result = {};
+    }
+    if (!response.ok) throw failure(response.status === 403 ? 'authorization' : response.status === 409 ? 'conflict'
+      : [400,413,422].includes(response.status) ? 'validation' : 'persistence', { status: response.status,
+      message: response.status < 500 && response.status !== 401 && response.status !== 403 ? result?.error : undefined });
     return result;
+  }
+  async function confirm(write) {
+    const result = await request('PATCH', write.body);
+    if (!result || result.revision !== write.body.operationId) throw failure('persistence', { ambiguous: true });
+    raw = write.nextRaw; revision = result.revision; initialized = true;
+    confirmedOperation = write.body.operationId; uncertain = null;
   }
   window.MiBolsilloSQLiteBackend = {
     getItem() {
       if (!initialized) throw new Error('Falta la lectura inicial de SQLite. Recarga desde el servidor actualizado.');
       return raw;
     },
-    async refresh() {
+    async refresh({ recover = false } = {}) {
+      if (uncertain) {
+        if (!recover) throw failure('pending', { ambiguous: true });
+        // Solo un reintento explícito puede reenviar una escritura incierta.
+        await confirm(uncertain);
+        return raw;
+      }
       const result = await request('GET', null, revision ? '?revision=' + encodeURIComponent(revision) : '');
       if (!result.unchanged) { raw = result.raw; revision = result.revision; initialized = true; }
       return raw;
@@ -54,11 +76,20 @@
       if (!initialized || raw !== expectedRaw) throw Object.assign(new Error('La copia local cambió antes del guardado.'), { code: 'conflict' });
       const envelope = JSON.parse(nextRaw);
       const body = { expectedRevision: revision, operationId: envelope.revision, operations: changes(raw ? JSON.parse(raw) : null, envelope) };
-      let result;
-      try { result = await request('PATCH', body); }
-      catch (error) { if (error.code || error.status) throw error; result = await request('PATCH', body); }
-      raw = nextRaw; revision = result.revision; initialized = true;
+      if (uncertain) throw failure('pending', { ambiguous: true });
+      const write = { body, nextRaw };
+      try { await confirm(write); }
+      catch (error) {
+        if (!error.ambiguous) throw error;
+        uncertain = write;
+        try { await confirm(write); }
+        catch (retryError) {
+          // Incluso un 401/409 posterior no prueba que el primer COMMIT fallara.
+          throw Object.assign(retryError, { ambiguous: true });
+        }
+      }
     },
+    getWriteStatus() { return { uncertainOperation: uncertain?.body.operationId || null, confirmedOperation }; },
     getInfo() { return { mode: 'sqlite', database: config.database || 'mibolsillo.sqlite', crossDevice: false }; }
   };
 })();

@@ -187,7 +187,21 @@
     }
 
     async reiniciarDatos(defaultState = window.INITIAL_STATE || window.FinanzasDemoData || {}) {
-      await this.persistirEstado(defaultState);
+      const signature = JSON.stringify(defaultState);
+      if (this._resetAttempt?.signature !== signature) this._resetAttempt = { signature, key: window.crypto.randomUUID() };
+      const previousKey = this._personalOperationKey;
+      this._personalOperationKey = this._resetAttempt.key;
+      let task;
+      try {
+        task = this.escribirPersonal(next => {
+          Object.keys(next).forEach(key => { delete next[key]; });
+          Object.assign(next, this.normalizeState(defaultState));
+          return { ok: true };
+        });
+      } finally { this._personalOperationKey = previousKey; }
+      const result = await task;
+      if (result.error) throw new Error('No se confirmó el restablecimiento. Los datos anteriores se conservaron en memoria. ' + result.error);
+      this._resetAttempt = null;
       return this.state;
     }
 
@@ -395,20 +409,38 @@
       if (!storage || storage.hasPendingChanges?.()) return false;
       next = this.normalizeState(next);
       if (!await storage.saveState(next, { keepPending: false })) return false;
-      this.state = next;
-      if (window.MiBolsilloStore) window.MiBolsilloStore.state = next;
+      const confirmed = storage.getRawState?.();
+      this.state = confirmed ? this.normalizeState(JSON.parse(confirmed).data) : next;
+      if (window.MiBolsilloStore) window.MiBolsilloStore.state = this.state;
       this.lastPersistence = storage.getPersistenceStatus();
       this.notify();
       return true;
     }
 
     async escribirPersonal(mutate) {
+      const operationKey = this._personalOperationKey;
       const write = async () => {
         try {
-          await window.FinanzasStorage?.refreshFromBackend?.();
+          const storage = window.FinanzasStorage;
+          if (this._unconfirmedBusiness || this._unconfirmedPersonal && (!operationKey || operationKey !== this._unconfirmedPersonal.key)) {
+            return { error: 'Hay una operación anterior sin confirmar. Reintenta su formulario original o recarga para revisar lo guardado.' };
+          }
+          if (!await storage.refreshFromBackend({ recover: true })) return { error: storage.getPersistenceStatus().message || 'No se pudo comprobar el estado guardado.' };
+          if (this._unconfirmedPersonal) {
+            const previous = this._unconfirmedPersonal;
+            if (window.MiBolsilloSQLiteBackend?.getWriteStatus().confirmedOperation === previous.operationId) {
+              this._unconfirmedPersonal = null;
+              if (operationKey && operationKey === previous.key) return previous.result;
+              return { error: 'La operación anterior se confirmó. Revisa el estado guardado antes de registrar otra.' };
+            }
+          }
           const next = this.normalizeState(this.state);
           const result = mutate(next);
-          if (!await this.persistirEstado(next, { locked: true })) return { error: window.FinanzasStorage?.getPersistenceStatus().message || 'No se confirmó el guardado. Conserva el formulario y revisa el aviso de persistencia.' };
+          if (!await this.persistirEstado(next, { locked: true })) {
+            const status = storage.getPersistenceStatus();
+            if (status.ambiguous) this._unconfirmedPersonal = { key: operationKey, result, operationId: status.operationId };
+            return { error: status.message || 'No se confirmó el guardado. Conserva el formulario y revisa el aviso de persistencia.' };
+          }
           return result;
         } catch (error) { return { error: error.message || 'No se pudo completar la operación.' }; }
       };
@@ -558,7 +590,7 @@
 
     // Deudas
     getDeudas() {
-      const debts = Array.isArray(this.state.deudas) ? this.state.deudas.filter(deuda => !deuda.archivada).map(deuda => this.normalizeDeuda(deuda)) : [];
+      const debts = Array.isArray(this.state.deudas) ? this.state.deudas.map(deuda => this.normalizeDeuda(deuda)) : [];
       const domain = window.PersonalDebtsDomain;
       return domain ? domain.calcularResumenDeudas(debts) : {
         totalDeuda: debts.reduce((sum, deuda) => sum + (Number(deuda.saldoPendiente ?? deuda.saldo ?? 0) || 0), 0),
@@ -608,7 +640,7 @@
           if (previous.deudaId !== deudaId || Number(previous.valor) !== valor || previous.cuentaId !== cuenta.id) throw new Error('La clave del pago ya se utilizó con otros datos.');
           return { ...previous, duplicate: true, mensaje: 'El pago ya estaba guardado; no se duplicó.' };
         }
-        const deuda = next.deudas.find(d => d.id === deudaId);
+        const deuda = window.PersonalDebtsDomain.clasificar(next.deudas).visibles.find(d => d.id === deudaId);
         if (!deuda) throw new Error('La deuda no pertenece a tus datos actuales.');
         if (valor > deuda.saldoPendiente) throw new Error('El abono no puede superar el saldo pendiente.');
         const fecha = options.fecha || window.obtenerFechaHoyISO();
@@ -630,7 +662,7 @@
     getRecordatoriosDeudas(hoy = window.obtenerFechaHoyISO()) {
       if (this.state.usuario.recordatoriosDeudas === false) return [];
       const today = window.parseFechaLocal(hoy);
-      return this.state.deudas.filter(d => !d.archivada && d.saldoPendiente > 0 && window.esFechaISOValida(d.proximoPago)).map(d => {
+      return this.getDeudas().activas.filter(d => window.esFechaISOValida(d.proximoPago)).map(d => {
         const fecha = window.parseFechaLocal(d.proximoPago);
         return { id: d.id + ':' + d.proximoPago, deudaId: d.id, nombre: d.nombre, fecha: d.proximoPago, monto: Math.min(d.cuotaMensual || d.saldoPendiente, d.saldoPendiente), dias: Math.round((fecha - today) / 86400000) };
       }).filter(r => r.dias <= 7 && !this.state.recordatoriosDeudasVistos[r.id]);

@@ -2,11 +2,12 @@
   'use strict';
   const host = document.getElementById('account-access');
   if (!host) return;
+  const reauthentication = new URLSearchParams(location.search).get('reauth') === '1' && window.parent !== window;
   let mode = 'login';
   let busy = false;
   let activeUser = null;
   let channel;
-  try { channel = new BroadcastChannel('mibolsillo-account-session-v1'); } catch (_) {}
+  try { channel = new BroadcastChannel('mibolsillo-account-session-v1'); } catch (error) { channel = null; }
   host.innerHTML = `<section class="account-card" aria-labelledby="account-title">
     <div class="account-brand"><span aria-hidden="true">❖</span> MiBolsillo</div>
     <p class="account-tagline">Tus finanzas personales y tu negocio, en su lugar.</p>
@@ -58,6 +59,12 @@
     message(text);
   }
   function openAccount(session) {
+    if (reauthentication) {
+      field('password').value = field('confirm').value = '';
+      // El padre verifica la cuenta directamente con el servidor; no se envían tokens.
+      window.parent.postMessage({ type: 'mibolsillo:reauthenticated' }, location.origin);
+      return;
+    }
     activeUser = session.user || null;
     field('password').value = field('confirm').value = '';
     host.hidden = true;
@@ -116,7 +123,10 @@
         method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values)
       }));
       if (!session.user?.id) throw new Error('No se pudo confirmar la sesión.');
-      try { channel?.postMessage({ type: 'signed-in', userId: session.user.id }); } catch (_) {}
+      if (!reauthentication) {
+        try { channel?.postMessage({ type: 'signed-in', userId: session.user.id }); }
+        catch (error) { message('La sesión se confirmó. Las otras pestañas se verificarán al volver a ellas.'); }
+      }
       openAccount(session);
     } catch (error) { message(error.message || 'No se pudo acceder a la cuenta.'); }
     finally { pending(false); }

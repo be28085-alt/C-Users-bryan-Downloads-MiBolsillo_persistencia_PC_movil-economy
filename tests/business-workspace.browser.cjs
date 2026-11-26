@@ -161,10 +161,14 @@ async function seed(page) {
         if ((!mobile && width === 1366) || (mobile && width === 390)) await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-${section}.png`), animations: 'disabled' });
         if ((width === 1366 && !mobile) || (width === 390 && mobile)) {
           if (['purchases', 'products', 'cash', 'expenses'].includes(section)) {
-            await view.locator('.bm-header .bm-primary').click();
-            const dialog = page.locator('.bm-dialog[open]'); await dialog.waitFor();
-            assert.ok(await dialog.locator('form').count());
-            await dialog.locator('[data-bm="close"]').first().click();
+            // Gastos contiene dos acciones legítimas: comprobar ambas sin selector ambiguo.
+            const actions = section === 'expenses' ? ['expense', 'income'] : [null];
+            for (const kind of actions) {
+              await view.locator('.bm-header .bm-primary' + (kind ? `[data-kind="${kind}"]` : '')).click();
+              const dialog = page.locator('.bm-dialog[open]'); await dialog.waitFor();
+              assert.ok(await dialog.locator('form').count());
+              await dialog.locator('[data-bm="close"]').first().click();
+            }
           }
           if (['dashboard', 'cash'].includes(section)) {
             await view.locator('.bm-chart-data summary').click();

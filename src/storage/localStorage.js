@@ -30,8 +30,8 @@
 
   function readRaw() { return backend.getItem(STORAGE_KEY); }
 
-  function report(ok, status, message) {
-    lastResult = { ok, status, ...(message ? { message } : {}) };
+  function report(ok, status, message, details = {}) {
+    lastResult = { ok, status, ...(message ? { message } : {}), ...details };
     if (window.Finanzas) window.Finanzas.lastPersistence = { ...lastResult };
     if (typeof window.CustomEvent === 'function') {
       window.dispatchEvent(new window.CustomEvent('mibolsillo:persistence', { detail: lastResult }));
@@ -155,17 +155,17 @@
 
     ready() { return writeQueue; },
     isSaving() { return writes > 0; },
-    async refreshFromBackend() {
+    async refreshFromBackend({ recover = false } = {}) {
       await writeQueue;
       if (readBlocked || pendingState) return false;
       try {
-        const raw = sqlite ? await backend.refresh() : readRaw();
+        const raw = sqlite ? await backend.refresh({ recover }) : readRaw();
         if (raw !== expectedRaw) {
           if (!raw) return report(false, 'conflict');
           applyIncomingState(JSON.parse(raw), true);
         }
         return true;
-      } catch (error) { return report(false, error.code === 'conflict' ? 'conflict' : 'error', error.message); }
+      } catch (error) { return report(false, error.code === 'conflict' ? 'conflict' : 'error', error.message, { code: error.code, ambiguous: error.ambiguous }); }
     },
 
     saveState(state, { keepPending = true } = {}) {
@@ -200,7 +200,7 @@
         return report(true, 'saved');
       } catch (err) {
         console.error('Error al guardar en el almacenamiento:', err);
-        return report(false, err.code === 'conflict' ? 'conflict' : 'error', err.message);
+        return report(false, err.code === 'conflict' ? 'conflict' : 'error', 'La operación no se guardó. Revisa el almacenamiento del navegador y reintenta.');
       }
     },
 
@@ -220,7 +220,8 @@
         pendingState = null;
         if (syncChannel) { try { syncChannel.postMessage({ type: 'STATE_UPDATED', revision: envelope.revision }); } catch (_) {} }
         return report(true, 'saved');
-      } catch (error) { return report(false, error.code === 'conflict' ? 'conflict' : 'error', error.message); }
+      } catch (error) { return report(false, error.code === 'conflict' ? 'conflict' : 'error', error.message, { code: error.code, ambiguous: error.ambiguous,
+        operationId: backend.getWriteStatus?.().uncertainOperation }); }
       finally { writes--; }
     },
 
@@ -291,6 +292,9 @@
 
   window.FinanzasStorage = storageService;
   window.MiBolsilloStorage = storageService;
+  window.addEventListener('mibolsillo:session-restored', () => {
+    report(false, 'error', 'Sesión recuperada. Revisa el formulario y vuelve a pulsar Guardar.', { code: 'session-restored' });
+  });
 
   // Actualizar cambios de otra ventana o de DB Browser al volver a la app.
   // No usar temporizadores que bloqueen la interfaz con lecturas síncronas.

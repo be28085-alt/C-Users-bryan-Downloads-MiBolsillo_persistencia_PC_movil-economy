@@ -5,8 +5,16 @@
   let leaving = false;
   let sessionCheck = null;
   let protectedSnapshot = false;
+  let recoveryFrame = null;
+  let recoveryTimer = null;
+  let recoveryExpiresAt = 0;
+  const RECOVERY_TTL = 15 * 60 * 1000;
   let channel;
-  try { channel = new BroadcastChannel('mibolsillo-account-session-v1'); } catch (_) {}
+  try { channel = new BroadcastChannel('mibolsillo-account-session-v1'); } catch (error) { channel = null; }
+  function broadcastSession(event) {
+    try { channel?.postMessage(event); }
+    catch (error) { console.warn('No se pudo avisar a otras pestañas; se verificará la sesión al recuperar el foco.'); }
+  }
   const target = document.getElementById('view-perfil');
   if (!target) return;
   const controls = document.createElement('section');
@@ -35,13 +43,63 @@
   function returnToAccess() {
     if (leaving) return;
     leaving = true;
-    // Remove the private document and in-memory financial state in every tab.
+    clearTimeout(recoveryTimer);
+    // La navegación descarta el documento privado y su borrador en memoria.
     window.top.location.replace('/');
   }
-  window.addEventListener('mibolsillo:session-expired', returnToAccess);
+  /** El documento conserva el borrador en RAM; nunca se serializa a Web Storage. */
+  function recoverSession() {
+    if (leaving || recoveryFrame) return;
+    if (protectedSnapshot) return returnToAccess();
+    recoveryExpiresAt = Date.now() + RECOVERY_TTL;
+    document.documentElement.classList.add('account-loading');
+    document.body.inert = true;
+    document.querySelectorAll('input[type="password"]').forEach(input => { input.value = ''; });
+    recoveryFrame = document.createElement('iframe');
+    recoveryFrame.id = 'account-reauthentication';
+    recoveryFrame.title = 'Recuperar sesión';
+    recoveryFrame.src = '/?reauth=1';
+    recoveryFrame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2147483647;background:white;';
+    // Fuera del body protegido: se reutiliza íntegra la pantalla de acceso existente.
+    document.documentElement.append(recoveryFrame);
+    recoveryTimer = setTimeout(returnToAccess, RECOVERY_TTL);
+  }
+  async function resumeSession() {
+    if (!recoveryFrame || leaving) return;
+    if (Date.now() >= recoveryExpiresAt) return returnToAccess();
+    try {
+      const response = await fetch('/api/auth/session', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(8000) });
+      if (!response.ok) return;
+      const session = await response.json();
+      if (session.user?.id !== config.user.id) {
+        broadcastSession({ type: 'signed-in', userId: session.user?.id });
+        return returnToAccess();
+      }
+      if (!session.csrfToken) return;
+      config.token = session.csrfToken;
+      config.user = session.user;
+      clearTimeout(recoveryTimer);
+      recoveryFrame.remove(); recoveryFrame = null; recoveryExpiresAt = 0;
+      document.body.inert = false;
+      revealReadyDocument();
+      window.dispatchEvent(new CustomEvent('mibolsillo:session-restored'));
+    } catch (error) {
+      notice.textContent = 'No se pudo verificar la sesión. Conserva esta pestaña y reintenta el acceso.';
+      notice.hidden = false;
+    }
+  }
+  window.addEventListener('message', event => {
+    if (event.origin !== location.origin || event.source !== recoveryFrame?.contentWindow || event.data?.type !== 'mibolsillo:reauthenticated') return;
+    resumeSession();
+  });
+  window.addEventListener('mibolsillo:session-expired', recoverSession);
+  window.MiBolsilloSessionRecovery = Object.freeze({
+    discard: returnToAccess,
+    inspect: () => ({ active: Boolean(recoveryFrame), expiresAt: recoveryExpiresAt })
+  });
   function revealReadyDocument() {
     requestAnimationFrame(() => {
-      if (!protectedSnapshot && !leaving) document.documentElement.classList.remove('account-loading');
+      if (!protectedSnapshot && !leaving && !recoveryFrame) document.documentElement.classList.remove('account-loading');
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', revealReadyDocument, { once: true });
@@ -52,10 +110,9 @@
     try {
       const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin', headers: { 'X-MiBolsillo-Token': config.token } });
       if (!response.ok && response.status !== 401) {
-        let body; try { body = await response.json(); } catch (_) {}
-        throw new Error(body?.error || 'No se pudo confirmar el cierre de sesión. Reintenta.');
+        throw window.MiBolsilloErrors.create('persistence', { message: 'No se pudo confirmar el cierre de sesión. Reintenta.' });
       }
-      try { channel?.postMessage({ type: 'signed-out' }); } catch (_) {}
+      broadcastSession({ type: 'signed-out' });
       returnToAccess();
     } catch (error) {
       notice.textContent = error.message || 'No se pudo conectar. Tu sesión sigue abierta; reintenta.';
@@ -71,6 +128,7 @@
       document.documentElement.classList.add('account-loading');
     }
     if (leaving) return;
+    if (recoveryFrame) return resumeSession();
     if (!sessionCheck) sessionCheck = (async () => {
       try {
         const response = await fetch('/api/auth/session', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(8000) });
@@ -80,7 +138,8 @@
       } catch (_) { return 'unavailable'; }
     })().finally(() => { sessionCheck = null; });
     const result = await sessionCheck;
-    if (result === 'expired' || (result === 'unavailable' && protectedSnapshot)) returnToAccess();
+    if (result === 'expired') recoverSession();
+    else if (result === 'unavailable' && protectedSnapshot) returnToAccess();
     else if (result === 'valid') {
       protectedSnapshot = false;
       revealReadyDocument();

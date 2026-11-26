@@ -32,7 +32,7 @@
         state.businessLedger.operations.push({ key, businessId: businessId || out.record.id, fingerprint, result: { collection: out.collection, record: { id: out.record.id, deleted: out.record.deleted }, message: out.message }, at: new Date().toISOString() });
         state.businessLedger.audit.push({ id: uuid(), businessId: businessId || out.record.id, action, recordId: out.record.id, collection: out.collection, at: new Date().toISOString(), actor: state.usuario?.email || state.usuario?.nombre || 'Propietario local', previous: before ? clone(before) : null, operationKey: key });
         return { ...out, persistence: { ok: true, status: 'saved' } };
-      });
+      }, { operationKey: JSON.stringify(['business', businessId, key, fingerprint]) });
     }
   }
   window.BusinessService = BusinessService;

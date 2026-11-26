@@ -9,6 +9,19 @@
 
   const debtsDomain = {
     /**
+     * Clasifica sin alterar el historial ni los registros originales.
+     * @param {Array<object>} deudas Registros personales confirmados.
+     * @returns {{archivadas: Array, visibles: Array, activas: Array, pagadas: Array}}
+     */
+    clasificar(deudas = []) {
+      const todas = Array.isArray(deudas) ? deudas : [];
+      const esArchivada = deuda => deuda.archivada || deuda.estado === 'ARCHIVADA';
+      const archivadas = todas.filter(esArchivada);
+      const visibles = todas.filter(deuda => !esArchivada(deuda));
+      return { archivadas, visibles, activas: visibles.filter(d => Number(d.saldoPendiente) > 0),
+        pagadas: visibles.filter(d => Number(d.saldoPendiente) <= 0) };
+    },
+    /**
      * Calcula los saldos consolidados de deudas personales.
      * @param {Array} deudas - Lista de deudas.
      * @returns {{totalDeuda: number, cuotaMensualTotal: number, deudasEnriquecidas: Array}}
@@ -19,7 +32,8 @@
       let totalDeuda = 0;
       let cuotaMensualTotal = 0;
 
-      const deudasEnriquecidas = deudas.map(d => {
+      const grupos = this.clasificar(deudas);
+      const deudasEnriquecidas = grupos.visibles.map(d => {
         const saldo = Number(d.saldoPendiente) || 0;
         const inicial = Number(d.montoInicial) || saldo;
         const cuota = Number(d.cuotaMensual) || 0;
@@ -39,6 +53,7 @@
       });
 
       return {
+        ...grupos,
         totalDeuda,
         cuotaMensualTotal,
         deudasEnriquecidas

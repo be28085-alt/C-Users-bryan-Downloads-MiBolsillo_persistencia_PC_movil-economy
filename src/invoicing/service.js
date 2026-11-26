@@ -58,7 +58,7 @@
         if (result?.then) throw new Error('La mutación transaccional debe ser síncrona.');
         state.facturacion.operations.push({ key, businessId, fingerprint, resultType: result.simulationId ? 'document' : 'payment', resultId: result.id, at: new Date().toISOString() });
         return result;
-      });
+      }, { operationKey: JSON.stringify(['invoice', businessId, key, fingerprint]) });
     }
     list(filters = {}) {
       const business = access(this.core.state);

@@ -69,7 +69,13 @@ for (const page of ['desktop.html', 'mobile.html']) {
     assert.equal((await c.eliminarDeuda(deuda.id)), true);
     reopened = app(page, { disk: a.disk }).core;
     assert.equal(reopened.state.aportesMetas.some(a => a.metaId === meta.id), false);
-    assert.equal(reopened.state.abonosDeudas.some(a => a.deudaId === deuda.id), false);
+    // Archivar conserva abonos y egresos vinculados; no equivale a borrarlos.
+    assert.equal(reopened.state.deudas.find(d => d.id === deuda.id).archivada, true);
+    assert.equal(reopened.state.abonosDeudas.filter(a => a.deudaId === deuda.id).length, 2);
+    for (const abono of reopened.state.abonosDeudas.filter(a => a.deudaId === deuda.id)) {
+      assert.equal(reopened.state.movimientos.find(m => m.id === abono.movimientoId).abonoDeudaId, abono.id);
+    }
+    assert.equal(reopened.getDeudas().deudasEnriquecidas.some(d => d.id === deuda.id), false);
   });
 
   test(page + ': todos los escritores personales conservan estado y disco al fallar, y permiten reintentar', async () => {

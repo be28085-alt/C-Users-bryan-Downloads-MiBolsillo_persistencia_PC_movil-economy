@@ -28,7 +28,7 @@
       const status = storage.getPersistenceStatus();
       panel.hidden = status.ok || status.status === 'saving';
       if (!status.ok && status.status !== 'saving') {
-        const form = document.activeElement?.closest?.('form');
+        const form = window.FinanzasForms?.getActiveForm() || document.activeElement?.closest?.('form');
         if (form && !storage.hasPendingChanges()) {
           // A fixed banner must never cover the modal's Save/Retry controls.
           form.insertBefore(panel, form.lastElementChild);
@@ -39,7 +39,7 @@
         }
       }
       retry.hidden = !storage.hasPendingChanges() || status.status === 'conflict' || status.status === 'read-error';
-      message.textContent = status.status === 'conflict'
+      message.textContent = status.message || (status.status === 'conflict'
         ? 'Hay cambios de otra pestaña. Los cambios de esta ventana no se han guardado. Descarga una copia antes de recargar y revisar ambas versiones.'
         : status.status === 'read-error'
           ? 'No se pudieron leer los datos guardados. Se bloqueó la escritura para protegerlos. Descarga lo visible antes de revisar el almacenamiento o recargar.'
@@ -49,7 +49,7 @@
               : 'La operación no se guardó y no se aplicaron sus cambios. Libera espacio o habilita el almacenamiento y reintenta desde el formulario que quedó abierto.'
             : backend.mode === 'sqlite'
               ? 'No se confirmó el guardado en SQLite. Conserva una copia de lo visible y comprueba el servidor local. Los cambios pendientes pueden perderse al cerrar. No vuelvas a registrar la operación.'
-              : 'Los cambios están solo en memoria y se perderán al cerrar. Libera espacio o habilita el almacenamiento y pulsa Reintentar guardado. No vuelvas a registrar la operación.';
+              : 'Los cambios están solo en memoria y se perderán al cerrar. Libera espacio o habilita el almacenamiento y pulsa Reintentar guardado. No vuelvas a registrar la operación.');
     }
     window.addEventListener('mibolsillo:persistence', render);
     render();

@@ -7,6 +7,7 @@ const path = require('node:path');
 const http = require('node:http');
 const { spawn } = require('node:child_process');
 const { once } = require('node:events');
+const { randomUUID } = require('node:crypto');
 const { startDesktop } = require('../scripts/desktop-runtime.cjs');
 
 function database(t) {
@@ -40,12 +41,20 @@ test('Qt reutiliza toda la app HTML y la misma base SQLite sin abrir otro almac�
     const html = await response.text();
     assert.match(html, /MiBolsilloSQLiteRequired=true/);
   }
-  const raw = JSON.stringify({ version: 'FINANZAS_V2', data: {
-    movimientos: [{ id: 'original', valor: 125.35 }],
-    productos: [{ id: 'stock-original', stock: 7 }], metas: [{ id: 'meta-original' }]
-  } });
   const config = await (await fetch(owner.url + 'api/config', { headers: sessionHeaders })).json();
   const before = await (await fetch(owner.url + 'api/storage', { headers: sessionHeaders })).json();
+  const invalid = JSON.stringify({ version: 'FINANZAS_V2', data: { movimientos: [{ id: 'incomplete', valor: 125.35 }] } });
+  assert.equal((await fetch(owner.url + 'api/storage', { method: 'POST',
+    headers: { ...sessionHeaders, 'Content-Type': 'application/json', 'X-MiBolsillo-Token': config.token },
+    body: JSON.stringify({ expectedRaw: before.raw, raw: invalid }) })).status, 400);
+  assert.equal((await (await fetch(owner.url + 'api/storage', { headers: sessionHeaders })).json()).raw, before.raw);
+  // Partir de la cuenta válida conserva identidad y colecciones obligatorias.
+  const candidate = JSON.parse(before.raw);
+  candidate.revision = randomUUID();
+  candidate.data.movimientos.push({ id: 'original', tipo: 'INGRESO', concepto: 'Ingreso sintético', valor: 125.35, fecha: '2026-11-26' });
+  candidate.data.productos.push({ id: 'stock-original', negocioId: candidate.data.negocioActivoId, nombre: 'Producto sintético', stock: 7 });
+  candidate.data.metas.push({ id: 'meta-original', nombre: 'Meta sintética', objetivo: 200, ahorrado: 0 });
+  const raw = JSON.stringify(candidate);
   assert.equal((await fetch(owner.url + 'api/storage', { method: 'POST',
     headers: { ...sessionHeaders, 'Content-Type': 'application/json', 'X-MiBolsillo-Token': config.token },
     body: JSON.stringify({ expectedRaw: before.raw, raw }) })).status, 200);

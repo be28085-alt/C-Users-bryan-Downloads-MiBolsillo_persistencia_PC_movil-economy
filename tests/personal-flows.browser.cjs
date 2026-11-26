@@ -44,9 +44,14 @@ async function data(context, origin) {
     const app = mode === 'compact' ? await (await page.locator('#mibolsillo-app').elementHandle()).contentFrame() : page;
     await app.waitForFunction(m => window.Finanzas && (m ? typeof mobileApp !== 'undefined' : typeof pcApp !== 'undefined'), mobile);
     await app.addStyleTag({ content: '*{animation:none!important;transition:none!important;scroll-behavior:auto!important}' });
-    let fail = false;
-    await page.route('**/api/storage', route => fail && route.request().method() === 'POST'
-      ? route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"Fallo temporal de prueba"}' }) : route.continue());
+    let fail = false, intercepted = 0;
+    await page.route('**/api/storage', route => {
+      if (fail && ['PATCH','POST'].includes(route.request().method())) {
+        intercepted++;
+        return route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"Fallo temporal de prueba"}' });
+      }
+      return route.continue();
+    });
     async function open(fn, args = []) {
       await app.evaluate(({ mobile, fn, args }) => (mobile ? mobileApp : pcApp)[fn](...args), { mobile, fn, args });
     }
@@ -54,14 +59,20 @@ async function data(context, origin) {
       await opener();
       for (const [id, value] of Object.entries(fields)) await app.locator('#' + id).fill(String(value));
       const before = await data(context, origin);
+      const memoryBefore = await app.evaluate(() => Finanzas.state);
       fail = true;
       const alertCount = notices.length;
+      const beforeIntercept = intercepted;
+      const rejected = page.waitForResponse(response => response.url().endsWith('/api/storage')
+        && ['PATCH','POST'].includes(response.request().method()) && response.status() === 503);
       await app.locator(modal + ' button[type="submit"]').click();
-      await app.waitForTimeout(40);
+      await rejected;
+      await app.waitForFunction(m => (m ? mobileApp : pcApp)._pendingForms.size === 0, mobile);
+      assert.ok(intercepted > beforeIntercept, 'la prueba interceptó una escritura real');
       assert.equal(await app.locator(modal).evaluate(el => el.classList.contains('hidden')), false, modal + ' stays open on failed save');
       for (const [id, value] of Object.entries(fields)) assert.equal(await app.locator('#' + id).inputValue(), String(value));
       assert.deepEqual(await data(context, origin), before, modal + ' did not alter disk');
-      assert.deepEqual(await app.evaluate(() => Finanzas.state), before, modal + ' did not publish uncommitted state');
+      assert.deepEqual(await app.evaluate(() => Finanzas.state), memoryBefore, modal + ' did not publish uncommitted state');
       assert.equal(await app.evaluate(() => FinanzasStorage.hasPendingChanges()), false);
       const toast = await app.locator('.toast-notice,.toast-container').allTextContents();
       assert.equal(toast.some(t => t.includes('✔')), false, 'no success message for an uncommitted write');
@@ -88,6 +99,7 @@ async function data(context, origin) {
     assert.equal(await app.locator(mobile ? '#lblMobileHeroGastos' : '#kpiGastos').textContent(), '-1.000 COP');
     assert.equal(await app.evaluate(() => Finanzas.calcSaldoTotal()), -3000);
     await app.locator(mobile ? '#view-inicio button[onclick="mobileApp.cambiarMes(-1)"]' : '#view-inicio button[onclick="pcApp.cambiarMes(-1)"]').click();
+    await app.waitForFunction(() => Finanzas.state.periodoMes === 9);
     assert.equal(await app.evaluate(() => Finanzas.calcTotalGastos()), 2000);
     await open('cambiarMes', [1]);
     await submit({

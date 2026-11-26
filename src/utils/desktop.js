@@ -13,17 +13,7 @@ class DesktopApp {
     for (const name of ["handleGuardarMovimientoForm","handleQuickMovementSubmit","handleNuevaMetaSubmit","handleAporteMetaSubmit","handleNuevaDeudaSubmit","handleAbonoDeudaSubmit","handlePresupuestoSubmit","handlePerfilSubmit"]) {
       const handler = this[name];
       if (typeof handler !== 'function') continue;
-      this[name] = async (...args) => {
-        args[0]?.preventDefault?.();
-        if (this._pendingForms.has(name)) return;
-        this._pendingForms.add(name);
-        const form = args[0]?.currentTarget?.tagName === 'FORM' ? args[0].currentTarget : null;
-        const buttons = form ? [...form.querySelectorAll('button[type="submit"]')] : [];
-        buttons.forEach(button => { button.disabled = true; });
-        try { return await handler.apply(this, args); }
-        catch (error) { this.showToast(error.message || 'No se confirmó el guardado. Conserva los datos y reintenta.'); }
-        finally { this._pendingForms.delete(name); buttons.forEach(button => { button.disabled = false; }); }
-      };
+      this[name] = window.FinanzasForms.wrap(this, name, handler);
     }
     this.currentView = 'inicio';
     this.currentMovFilter = 'TODOS';
@@ -898,7 +888,7 @@ class DesktopApp {
     if (kpiPend) kpiPend.textContent = formatCOP(totPendiente);
     const kpiPag = document.getElementById('deudasKpiPagado');
     if (kpiPag) kpiPag.textContent = formatCOP(totPagado);
-    const activas = Finanzas.state.deudas.filter(deuda => deuda.saldoPendiente > 0).length;
+    const activas = Finanzas.getDeudas().activas.length;
     const count = document.getElementById('deudasKpiActivas');
     if (count) count.textContent = `${activas} ${activas === 1 ? 'obligación activa' : 'obligaciones activas'}`;
     const monthly = document.getElementById('deudasKpiCuotas');
@@ -908,7 +898,7 @@ class DesktopApp {
     if (!grid) return;
 
     let html = '';
-    Finanzas.state.deudas.forEach(d => {
+    Finanzas.getDeudas().deudasEnriquecidas.forEach(d => {
       const pagado = Math.max(0, d.valorInicial - d.saldoPendiente);
       const pct = d.valorInicial > 0 ? Math.min(100, Math.round((pagado / d.valorInicial) * 100)) : 0;
 
@@ -1597,8 +1587,8 @@ class DesktopApp {
 
   async restablecerDatos() {
     if (confirm('¿Restablecer todos los datos a la configuración inicial del proyecto?')) {
-      await Finanzas.resetState();
-      this.showToast('🔄 Datos iniciales restablecidos.');
+      try { await Finanzas.resetState(); this.showToast('🔄 Datos iniciales restablecidos.'); }
+      catch (error) { this.showToast(error.message); }
     }
   }
 

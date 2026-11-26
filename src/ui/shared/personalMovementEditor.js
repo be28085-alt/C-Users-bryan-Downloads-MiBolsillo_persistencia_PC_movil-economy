@@ -32,7 +32,7 @@
     dialog.querySelector('[role=alert]').hidden = true;
     dialog.showModal();
   });
-  dialog.querySelector('[data-cancel]').onclick = () => dialog.close();
+  dialog.querySelector('[data-cancel]').onclick = () => { form.reset(); dialog.close(); };
   form.addEventListener('submit', async event => {
     event.preventDefault();
     const submit = form.querySelector('button[type="submit"]');
@@ -44,7 +44,7 @@
     finally { submit.disabled = false; }
     const error = dialog.querySelector('[role=alert]');
     error.textContent = result.error || ''; error.hidden = !result.error;
-    if (!result.error) dialog.close();
+    if (!result.error) { form.reset(); dialog.close(); }
   });
   new MutationObserver(decorate).observe(document.body, { childList: true, subtree: true });
   decorate();

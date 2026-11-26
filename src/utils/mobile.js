@@ -13,17 +13,7 @@ class MobileApp {
     for (const name of ["handleGuardarMovimiento","handleNuevaMeta","handleAporteMeta","handleNuevaDeuda","handleAbonoDeuda","handlePresupuesto","handlePerfil"]) {
       const handler = this[name];
       if (typeof handler !== 'function') continue;
-      this[name] = async (...args) => {
-        args[0]?.preventDefault?.();
-        if (this._pendingForms.has(name)) return;
-        this._pendingForms.add(name);
-        const form = args[0]?.currentTarget?.tagName === 'FORM' ? args[0].currentTarget : null;
-        const buttons = form ? [...form.querySelectorAll('button[type="submit"]')] : [];
-        buttons.forEach(button => { button.disabled = true; });
-        try { return await handler.apply(this, args); }
-        catch (error) { this.mostrarToast(error.message || 'No se confirmó el guardado. Conserva los datos y reintenta.'); }
-        finally { this._pendingForms.delete(name); buttons.forEach(button => { button.disabled = false; }); }
-      };
+      this[name] = window.FinanzasForms.wrap(this, name, handler);
     }
     this.currentTab = 'inicio';
     this.currentBusinessTab = 'negocio';
@@ -668,7 +658,7 @@ class MobileApp {
     const listDeudas = document.getElementById('mobileListDeudasCards');
     if (listDeudas) {
       let dHtml = '';
-      Finanzas.state.deudas.filter(d => !d.archivada).forEach(d => {
+      Finanzas.getDeudas().deudasEnriquecidas.forEach(d => {
         const pagado = Math.max(0, d.valorInicial - d.saldoPendiente);
         const pct = d.valorInicial > 0 ? Math.min(100, Math.round((pagado / d.valorInicial) * 100)) : 0;
         dHtml += `
@@ -1376,8 +1366,8 @@ class MobileApp {
 
   async restablecerDatos() {
     if (confirm('¿Restablecer datos a la configuración inicial?')) {
-      await Finanzas.resetState();
-      this.mostrarToast('🔄 Datos iniciales restaurados');
+      try { await Finanzas.resetState(); this.mostrarToast('🔄 Datos iniciales restaurados'); }
+      catch (error) { this.mostrarToast(error.message); }
     }
   }
 
