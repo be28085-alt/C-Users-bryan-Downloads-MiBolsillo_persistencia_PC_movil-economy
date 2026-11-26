@@ -3,6 +3,7 @@ const path = require('node:path');
 const { argon2, randomBytes, createHash, timingSafeEqual } = require('node:crypto');
 const { promisify } = require('node:util');
 const { validateFinancialState } = require('./financial-validation.cjs');
+const { createPrivateSnapshot } = require('./private-files.cjs');
 if (typeof argon2 !== 'function') throw new Error('El acceso por cuenta requiere Node.js 24.22 o posterior con Argon2id.');
 const derive = promisify(argon2);
 const PARAMETERS = Object.freeze({ memory: 65536, passes: 3, parallelism: 1, tagLength: 32 });
@@ -39,7 +40,7 @@ function openAccounts(db, filename) {
     // VACUUM INTO produces a consistent SQLite snapshot, including an active WAL.
     if (db.prepare('SELECT raw FROM app_state WHERE id=1').get()) {
       backupPath = path.join(path.dirname(filename), 'respaldo-antes-cuentas-' + Date.now() + '-' + randomBytes(4).toString('hex') + '.sqlite');
-      db.prepare('VACUUM INTO ?').run(backupPath);
+      createPrivateSnapshot(db, backupPath);
     }
     db.exec('BEGIN IMMEDIATE');
     try {

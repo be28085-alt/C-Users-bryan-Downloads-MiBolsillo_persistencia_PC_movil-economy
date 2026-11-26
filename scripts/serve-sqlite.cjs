@@ -10,6 +10,7 @@ const { openAccounts } = require('./auth-store.cjs');
 const { validateFinancialState } = require('./financial-validation.cjs');
 const { revisionOf, applyOperations } = require('./storage-patch.cjs');
 const { createBackupService } = require('./backup-store.cjs');
+const { preparePrivateFile } = require('./private-files.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
 const MAX_BODY = 20 * 1024 * 1024;
@@ -33,7 +34,7 @@ function validEnvelope(raw) {
 }
 
 function openStore(filename) {
-  fs.mkdirSync(path.dirname(filename), { recursive: true });
+  preparePrivateFile(filename);
   const db = new DatabaseSync(filename);
   const version = db.prepare('PRAGMA user_version').get().user_version;
   if (version > 2) {
@@ -111,7 +112,9 @@ function openStore(filename) {
 function send(res, status, value, type = 'application/json; charset=utf-8') {
   const body = type.startsWith('application/json') ? JSON.stringify(value) : value;
   res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store',
-    'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin' });
+    'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin',
+    'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'SAMEORIGIN',
+    'Content-Security-Policy': "frame-ancestors 'self'; object-src 'none'; base-uri 'self'" });
   res.end(body);
 }
 
@@ -130,6 +133,12 @@ function readJSON(req, limit = MAX_BODY) {
     });
     req.on('error', reject);
   });
+}
+
+function publicResource(relative) {
+  return !relative.includes('\\') && !relative.split('/').some(part => part.startsWith('.'))
+    && (/^(?:index|desktop|mobile)\.html$/.test(relative)
+      || /^(?:src|styles)\/.+\.(?:js|css|svg|png|jpg|jpeg|webp|gif|woff2?|ttf|txt)$/.test(relative));
 }
 
 function createServer({ root = ROOT, dbPath = path.join(root, 'database', 'mibolsillo.sqlite'),
@@ -254,16 +263,19 @@ function createServer({ root = ROOT, dbPath = path.join(root, 'database', 'mibol
       if (requireAuth && !session && /^(desktop|mobile)\.html$/.test(relative)) {
         res.writeHead(302, { Location: '/', 'Cache-Control': 'no-store' }); return res.end();
       }
-      if (relative.includes('\\') || relative.split('/').some(part => part.startsWith('.'))
-        || !(/^(?:index|desktop|mobile)\.html$/.test(relative)
-          || /^(?:src|styles)\/.+\.(?:js|css|svg|png|jpg|jpeg|webp|gif|woff2?|ttf|txt)$/.test(relative)
-          || relative === 'vendor/chart.umd.js')) return send(res, 404, { error: 'Archivo no encontrado' });
+      if (!publicResource(relative) && relative !== 'vendor/chart.umd.js') return send(res, 404, { error: 'Archivo no encontrado' });
       const file = path.resolve(root, relative === 'vendor/chart.umd.js'
         ? 'node_modules/chart.js/dist/chart.umd.js' : relative);
       if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()
         || !fs.realpathSync(file).startsWith(fs.realpathSync(root) + path.sep)) {
         return send(res, 404, { error: 'Archivo no encontrado' });
       }
+      // A public-looking symlink/junction must not expose database/, backups/ or
+      // other private files inside the project. Validate the resolved path too.
+      const resolved = path.relative(fs.realpathSync(root), fs.realpathSync(file)).split(path.sep).join('/');
+      const vendor = relative === 'vendor/chart.umd.js'
+        && /^node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?chart\.js\/dist\/chart\.umd\.js$/.test(resolved);
+      if (!publicResource(resolved) && !vendor) return send(res, 404, { error: 'Archivo no encontrado' });
       const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
         '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
         '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',

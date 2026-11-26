@@ -1,5 +1,7 @@
 # Respaldos locales y restauración
 
+La gestión de archivos privados, entornos, permisos, cifrado y exclusiones de Git se rige por la [política de protección de datos](SEGURIDAD_DATOS_PRIVADOS.md). Consulte también [la auditoría de fase 1](AUDITORIA_SEGURIDAD_FASE_1.md) para los respaldos que aparecieron en el historial y las acciones de respuesta pendientes.
+
 La aplicación SQLite crea instantáneas locales cada 24 horas mientras su servidor está abierto. Al iniciar, crea la copia que corresponda si la última tiene más de 24 horas. No necesita mantener abierta una página del navegador y no sube datos a servicios externos.
 
 En **Perfil → Respaldos**, disponible en PC y móvil conectados al servidor SQLite, puede:

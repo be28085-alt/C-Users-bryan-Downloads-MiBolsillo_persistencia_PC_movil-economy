@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createHash, randomBytes } = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
+const { createPrivateSnapshot } = require('./private-files.cjs');
 function migrateAccountData({ dbPath, email, sourceFile, apply = false, confirmOwner }) {
   const db = new DatabaseSync(path.resolve(dbPath), { readOnly: !apply });
   try {
@@ -39,7 +40,7 @@ function migrateAccountData({ dbPath, email, sourceFile, apply = false, confirmO
     if (String(confirmOwner || '').trim().toLowerCase() !== user.email.toLowerCase())
       throw new Error('Verifica la propiedad y proporciona --confirm-owner con el correo destinatario.');
     const backup = path.join(path.dirname(path.resolve(dbPath)), 'respaldo-antes-importar-' + Date.now() + '-' + randomBytes(4).toString('hex') + '.sqlite');
-    db.prepare('VACUUM INTO ?').run(backup);
+    createPrivateSnapshot(db, backup);
     const envelope = JSON.stringify({ ...source, version: 'FINANZAS_V2', data, revision: randomBytes(16).toString('hex'), updatedAt: new Date().toISOString() });
     db.exec('PRAGMA foreign_keys=ON; BEGIN IMMEDIATE');
     try {

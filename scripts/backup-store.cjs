@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createHash, randomUUID } = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
+const { createPrivateSnapshot } = require('./private-files.cjs');
 
 const FORMAT = 'MIBOLSILLO_ACCOUNT_BACKUP';
 const DAY = 24 * 60 * 60 * 1000;
@@ -71,7 +72,7 @@ function createBackupService({ db, dbPath, accounts, validateState, revisionOf, 
     const temporary = filename + '.tmp';
     try {
       // VACUUM INTO creates a transactionally consistent snapshot, including WAL.
-      db.prepare('VACUUM INTO ?').run(temporary);
+      createPrivateSnapshot(db, temporary);
       const check = new DatabaseSync(temporary, { readOnly: true });
       try { if (check.prepare('PRAGMA quick_check').get().quick_check !== 'ok') throw Error('La instantánea SQLite no superó la verificación.'); }
       finally { check.close(); }
