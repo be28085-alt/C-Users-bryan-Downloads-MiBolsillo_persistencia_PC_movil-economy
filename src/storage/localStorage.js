@@ -146,7 +146,7 @@
         else report(true, 'saved');
         return merged;
       } catch (err) {
-        console.warn('No se pudo leer el almacenamiento; se bloquea la escritura:', err);
+        console.warn('storage-read-failed: se bloqueó la escritura para preservar los datos.');
         readBlocked = true;
         report(false, 'read-error');
         return fallback;
@@ -199,7 +199,7 @@
         }
         return report(true, 'saved');
       } catch (err) {
-        console.error('Error al guardar en el almacenamiento:', err);
+        console.error('storage-write-failed: conserva el formulario y reintenta.');
         return report(false, err.code === 'conflict' ? 'conflict' : 'error', 'La operación no se guardó. Revisa el almacenamiento del navegador y reintenta.');
       }
     },
@@ -272,7 +272,7 @@
     if (ACCOUNT_ID) return; // Browser legacy data has no authenticated owner.
     if (event.key !== STORAGE_KEY || !event.newValue) return;
     try { applyIncomingState(JSON.parse(event.newValue)); }
-    catch (error) { console.warn('No se pudo sincronizar el estado recibido:', error); }
+    catch (error) { console.warn('storage-sync-failed: no se aplicó el estado recibido.'); }
   });
 
   if (syncChannel) {

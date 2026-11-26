@@ -29,7 +29,7 @@ async function fixture(t, options = {}) {
   async function call(url, method = 'GET', body, active = session, token = active.csrfToken) {
     const result = { headers: {} };
     const res = { setHeader(key, value) { result.headers[key] = value; } };
-    const handled = await service.handle({ url, method, headers: { 'x-mibolsillo-token': token } }, res,
+    const handled = await service.handle({ url, method, headers: { 'x-mibolsillo-token': token, 'content-type': 'application/json' } }, res,
       { session: active, readJSON: async () => body, send(res, status, payload) { result.status = status; result.body = payload; } });
     assert.equal(handled, true); return result;
   }

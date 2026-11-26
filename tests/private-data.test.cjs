@@ -21,7 +21,7 @@ test('Git excluye respaldos, diarios, exportaciones y secretos en cualquier nive
   const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT }).toString().split('\0').filter(Boolean);
   const privatePath = /(?:^|\/)backups\/|\.(?:sqlite3?|db3?|sdb)(?:$|-)|(?:^|\/)\.env(?:$|\.(?!example$))|\.(?:pem|key|p12|pfx|jks|keystore|user)$/i;
   assert.deepEqual(tracked.filter(file => privatePath.test(file)), []);
-  const probes = ['database/backups/accounts/999/new.json', 'database/backups/database/new.sqlite',
+  const probes = ['database/security-audit/events.jsonl', 'database/backups/accounts/999/new.json', 'database/backups/database/new.sqlite',
     'database/backups/database/new.sqlite.tmp', 'database/development/profile.json',
     'database/test/fixture.json', 'private/export.json', 'exports/finanzas.csv',
     'other/backups/user.json', 'other/nested/app.sqlite-wal', 'other/app.sqlite-shm',

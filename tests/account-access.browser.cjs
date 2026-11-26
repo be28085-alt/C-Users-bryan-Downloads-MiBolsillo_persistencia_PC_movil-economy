@@ -155,7 +155,11 @@ async function state(context, origin) {
     const write = await other.request.post(origin + '/api/storage?user_id=1&id=' + encodeURIComponent(id), {
       headers: { 'X-MiBolsillo-Token': cfg.token }, data: { expectedRaw: otherRaw, raw: JSON.stringify(tampered), user_id: 1 }
     });
-    assert.equal(write.status(), 200);
+    assert.equal(write.status(), 400);
+    assert.equal((await (await other.request.get(origin + '/api/storage')).json()).raw, otherRaw);
+    assert.equal((await other.request.post(origin + '/api/storage', {
+      headers: { 'X-MiBolsillo-Token': cfg.token }, data: { expectedRaw: otherRaw, raw: JSON.stringify(tampered) }
+    })).status(), 200);
     assert.equal((await state(context, origin)).movimientos[0].id, id);
     await other.close();
     // Delete via its real confirmation and verify it after a full restart.

@@ -6,6 +6,7 @@ const ROOT = path.resolve(__dirname, '..');
 const fail = message => { throw Object.assign(new Error(message), { status: 400, code: 'validation' }); };
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const collections = ['movimientos','cuentas','metas','deudas','aportesMetas','abonosDeudas','negocios','productos','clientes','proveedores','ventas','compras','ingresosNegocio','gastosNegocio','gastos','empleados','pagosEmpleado','pagosVenta','pagosCompra','pagosGasto','movimientosInventario','formulas','producciones','devolucionesNegocio'];
+const rootFields = new Set([...collections,'usuario','saldoOculto','saldoInicial','capitalBase','presupuestoMensual','limitesCategorias','periodoAnio','periodoMes','moduloActivo','negocioActivoId','version','presupuestosVersion','presupuestosPorPeriodo','recordatoriosDeudasVistos','businessSchemaVersion','businessLedger','facturacion']);
 const businessCollections = new Set(collections.slice(collections.indexOf('productos')));
 const moneyFields = new Set(['valor','monto','saldoInicial','presupuestoMensual','limite','saldo','saldoPendiente','montoInicial','valorInicial','montoObjetivo','objetivo','montoActual','ahorrado','cuotaMensual','total','subtotal','montoPagado','costoTotalVenta','costoTotal','costoUnitario','precioVenta','precioCompra','precioUnitario','stock','stockMinimo','stockAnterior','stockPosterior','cantidad','cantidadBase','cantidadRequerida','cantidadProducida','salario','impuestos','impuesto','amount','unitPrice','unitCost','quantity','gross','discount','base','tax','cost','invoicePaid','taxRate','discountPercent']);
 const dateFields = new Set(['fecha','fechaLimite','fechaVencimiento','fechaIngreso','proximoPago','date','dueDate','from','to']);
@@ -24,7 +25,9 @@ function required(value, label) { if (typeof value !== 'string' || !value.trim()
 function inspect(value, label, key = '', depth = 0) {
   if (depth > 45) fail('Los datos superan la profundidad permitida.');
   if (typeof value === 'number' && !Number.isFinite(value)) fail(`Número no finito en ${label}.`);
-  if (moneyFields.has(key) && value !== undefined && value !== null) amount(value,label);
+  if (moneyFields.has(key) && value !== undefined) amount(value,label);
+  if (typeof value === 'string' && value.length > 20000) fail('El texto supera la longitud permitida.');
+  if (['archivada','saldada','pagada','fiscalValidity','signed'].includes(key) && typeof value !== 'boolean') fail('Indicador de estado inválido.');
   if (dateFields.has(key) && value !== undefined && value !== null && value !== '' && !date(value)) fail(`Fecha inválida en ${label}; use una fecha real AAAA-MM-DD.`);
   if (value && typeof value === 'object') for (const [k,v] of Object.entries(value)) {
     if (forbidden.has(k)) fail('Campo no permitido.');
@@ -42,6 +45,9 @@ function sharedSchemas() {
 }
 function validateFinancialState(next, previous = null, { strict = false } = {}) {
   if (!object(next)) fail('El estado financiero debe ser un objeto.');
+  for (const key of Object.keys(next)) if (!rootFields.has(key) && JSON.stringify(next[key]) !== JSON.stringify(previous?.[key])) fail('El estado contiene un campo no permitido.');
+  if (next.moduloActivo !== undefined && !['PERSONAL','EMPRESARIAL'].includes(next.moduloActivo)) fail('Módulo inválido.');
+  if (next.saldoOculto !== undefined && typeof next.saldoOculto !== 'boolean') fail('Preferencia inválida.');
   (function rejectUnsafe(value,depth=0){
     if(depth>45)fail('Los datos superan la profundidad permitida.');
     if(value&&typeof value==='object')for(const [key,child]of Object.entries(value)){
@@ -51,6 +57,8 @@ function validateFinancialState(next, previous = null, { strict = false } = {}) 
   for(const k of Object.keys(next)) if(forbidden.has(k)) fail('Campo no permitido.');
   if(next.usuario!==undefined && !object(next.usuario)) fail('Usuario inválido.');
   if(next.usuario && (strict || JSON.stringify(next.usuario)!==JSON.stringify(previous?.usuario))) {
+    for (const key of ['alertasPresupuesto','recordatoriosDeudas','notificacionesEmail','temaOscuro']) if (next.usuario[key] !== undefined && typeof next.usuario[key] !== 'boolean') fail('Preferencia del perfil inválida.');
+    if (next.usuario.moneda !== undefined && (typeof next.usuario.moneda !== 'string' || !/^[A-Z]{3}$/.test(next.usuario.moneda))) fail('Código de moneda inválido.');
     required(next.usuario.nombre,'usuario.nombre'); required(next.usuario.email,'usuario.email');
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next.usuario.email)) fail('Correo electrónico inválido.');
   }
@@ -78,7 +86,9 @@ function validateFinancialState(next, previous = null, { strict = false } = {}) 
       ids.set(r.id,r);
     }
   }
-  const same=(key,r)=>!strict && (previous?.[key]||[]).some(old=>old.id===r.id&&JSON.stringify(old)===JSON.stringify(r));
+  // Indexar el historial evita búsquedas cuadráticas por cada registro guardado.
+  const previousMaps = Object.fromEntries(collections.map(key => [key, new Map((Array.isArray(previous?.[key]) ? previous[key] : []).map(record => [record.id, JSON.stringify(record)]))]));
+  const same=(key,r)=>!strict && previousMaps[key].get(r.id) === JSON.stringify(r);
   const ref=(r,field,target,label,requiredRef=false)=>{
     if(!r[field]&&!requiredRef)return;
     if(typeof r[field]!=='string'||!maps[target]?.has(r[field]))fail(`Referencia inexistente en ${label}.${field}.`);
@@ -90,13 +100,16 @@ function validateFinancialState(next, previous = null, { strict = false } = {}) 
     // Always check references for retained records, so deletes cannot orphan data.
     if(businessCollections.has(key) && r.negocioId) ref(r,'negocioId','negocios',key,true);
     for(const [field,target] of Object.entries({clienteId:'clientes',proveedorId:'proveedores',productoId:'productos',empleadoId:'empleados',ventaId:'ventas',compraId:'compras',gastoId:'gastosNegocio',formulaId:'formulas',metaId:'metas',deudaId:'deudas',movimientoId:'movimientos',abonoDeudaId:'abonosDeudas',cuentaId:'cuentas'})) {
-      if(!unchanged || r[field] && previous?.[target]?.some(x=>x.id===r[field])) ref(r,field,target,key);
+      if(!unchanged || r[field] && previousMaps[target]?.has(r[field])) ref(r,field,target,key);
     }
     if(key==='abonosDeudas'&&r.movimientoId) {
       const movement=maps.movimientos.get(r.movimientoId);
       if(!movement||movement.tipo!=='GASTO'||Number(movement.valor)!==Number(r.monto??r.valor)||movement.deudaId!==r.deudaId||movement.abonoDeudaId!==r.id)fail('El abono y su egreso no concilian.');
     }
     if(unchanged)continue;
+    const crossRefs = businessCollections.has(key) || key === 'negocios' ? ['metaId','deudaId','abonoDeudaId']
+      : ['negocioId','clienteId','proveedorId','productoId','empleadoId','ventaId','compraId','gastoId','formulaId'];
+    if (crossRefs.some(field => r[field] !== undefined)) fail('La referencia cruza módulos no autorizados.');
     inspect(r,key);
     const requiredRefs={aportesMetas:['metaId','metas'],abonosDeudas:['deudaId','deudas'],pagosVenta:['ventaId','ventas'],pagosCompra:['compraId','compras'],pagosGasto:['gastoId','gastosNegocio'],pagosEmpleado:['empleadoId','empleados'],movimientosInventario:['productoId','productos'],formulas:['productoId','productos'],producciones:['formulaId','formulas']};
     if(requiredRefs[key])ref(r,...requiredRefs[key],key,true);

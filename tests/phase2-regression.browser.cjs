@@ -34,7 +34,7 @@ async function state(context, origin) {
     page.on('pageerror', error => errors.push(error.message));
     page.on('dialog', async dialog => { notices.push(dialog.message()); await dialog.accept(); });
     // Acortar solo el timeout del transporte hace verificable el caso sin esperar un minuto.
-    await page.addInitScript(() => { const native = AbortSignal.timeout.bind(AbortSignal); AbortSignal.timeout = ms => native(ms === 30000 ? 100 : ms); });
+    await page.addInitScript(() => { const native = AbortSignal.timeout.bind(AbortSignal); AbortSignal.timeout = ms => native(ms === 30000 && window.__shortTransportTimeout ? 100 : ms); });
     await page.goto(origin + '/' + mode + '.html');
     await page.waitForFunction(() => window.Finanzas);
     await page.addStyleTag({ content: '*{animation:none!important;transition:none!important;scroll-behavior:auto!important}' });
@@ -66,6 +66,7 @@ async function state(context, origin) {
       await open(label);
       const diskBefore = await state(context, origin), memoryBefore = await page.evaluate(() => Finanzas.state);
       fault = failure; const previousHits = hits;
+      await page.evaluate(short => { window.__shortTransportTimeout = short; }, failure === 'timeout');
       await submit();
       assert.ok(hits > previousHits, 'interceptación efectiva: ' + failure);
       assert.equal(await page.locator(modal).evaluate(el => el.classList.contains('hidden')), false);
@@ -78,7 +79,9 @@ async function state(context, origin) {
       if (['connection','timeout','lost-response'].includes(failure)) {
         assert.equal(new Set(operationIds.slice(-2)).size, 1, 'el reintento conserva operationId');
         assert.equal((await page.evaluate(() => FinanzasStorage.getPersistenceStatus())).ambiguous, true);
+        if (failure === 'timeout') assert.equal((await page.evaluate(() => FinanzasStorage.getPersistenceStatus())).code, 'timeout');
       }
+      await page.evaluate(() => { window.__shortTransportTimeout = false; });
       fault = null;
       if (failure === 'lost-response') {
         const beforeEditedRetry = hits;

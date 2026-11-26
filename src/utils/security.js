@@ -46,7 +46,7 @@
     escaparCSV(valor) {
       if (valor === null || valor === undefined) return '""';
       let str = String(valor).replace(/"/g, '""');
-      if (/^[=+\-@\t\r]/.test(str)) {
+      if (/^[\s\uFEFF]*[=+\-@]|^[\t\r\n]/.test(str)) {
         str = "'" + str;
       }
       return `"${str}"`;

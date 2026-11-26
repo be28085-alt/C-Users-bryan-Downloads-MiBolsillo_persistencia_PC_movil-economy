@@ -10,6 +10,7 @@ Esta política cubre las bases SQLite, sus diarios, las copias de seguridad, las
 | Desarrollo | `database/development/mibolsillo.sqlite`, con `.env.development` local | Solo cuentas y datos sintéticos; puerto separado. |
 | Pruebas | Directorios únicos bajo `tmp/` o el temporal del sistema, según cada prueba | Nunca reutilizar una base real. Las pruebas nuevas de privacidad usan `tmp/private-data-*`. |
 | Copias | `backups/` junto a cada base | No mezclar carpetas de copias entre entornos. |
+| Auditoría de seguridad | `security-audit/` junto a cada base | Metadatos mínimos, carpeta privada ignorada por Git; no contiene cuerpos, identidades ni tokens. |
 | Exportaciones manuales | `exports/` o una carpeta privada fuera del repositorio | Revisar antes de adjuntar archivos, capturas o registros a un chat o incidencia. |
 
 Para desarrollar sin abrir los datos reales, desde la raíz del proyecto:
@@ -61,6 +62,22 @@ La exclusión de Git no cifra los archivos, no impide `git add -f` y no elimina 
 
 BitLocker y sus modalidades se describen en la [documentación oficial de Microsoft](https://learn.microsoft.com/en-us/windows/security/operating-system-security/data-protection/bitlocker/). La auditoría no pudo verificar su estado con los permisos disponibles. **Las copias actuales continúan en texto claro a nivel de archivo; no se afirma que estén cifradas.** Activar cifrado del soporte y custodiar su recuperación es una acción del propietario, no una modificación automática de sus datos.
 
+### Claves, dispositivos y migración futura
+
+BitLocker evita cambiar el formato y suele aprovechar aceleración del equipo; debe medirse el impacto de disco en ese hardware y no ofrece protección frente a un proceso autorizado con el volumen abierto. Las copias cifradas externas requieren cifrado autenticado, formato versionado y una clave distinta del repositorio/archivo. Medir creación, verificación y restauración, también con espacio libre reducido y en dispositivos de menor capacidad. No generar una clave junto al respaldo ni guardarla en localStorage.
+
+En Windows, [DPAPI](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata) puede custodiar material ligado a la cuenta/máquina, con limitaciones al moverlo a otro equipo. En Android, [Keystore](https://developer.android.com/privacy-and-security/keystore) permite claves protegidas por el sistema y, cuando existe, hardware; desinstalación, pérdida del dispositivo y restauraciones requieren un plan de recuperación. Ninguna de estas integraciones existe actualmente en MiBolsillo. No guardar un token de sesión en preferencias para aparentar soporte nativo.
+
+Un motor SQLite cifrado exigiría cambiar el controlador, compilar/probar Qt/Android y definir licencias, claves y compatibilidad; no se activó. Antes de aprobar una migración: inventariar versiones y soportes, crear snapshot consistente privado, probar cifrado sobre una **copia aislada**, comparar conteos/totales/relaciones y `integrity_check`, ensayar recuperación con clave separada y rollback al formato original. Nunca cifrar el archivo activo in situ como primer ensayo. Los diarios y temporales también deben quedar protegidos; cifrar solo JSON no protege la base de origen.
+
+El propietario debe custodiar recuperación fuera del equipo/Git, con al menos una copia controlada y una prueba de acceso en otro entorno autorizado. Definir quién puede obtener claves, cómo se rotan y cómo se destruyen al vencer la retención; no destruir la única clave ni el único respaldo. La fase 3 solo documenta esta evaluación, no cambia los archivos existentes.
+
+## Sesiones, eventos y operación desde fase 3
+
+La política vigente crea sesiones de 12 horas con inactividad persistida de 30 minutos; login rota la cookie y cambiar contraseña revoca sesiones transaccionalmente. Producción requiere proxy HTTPS autorizado con servidor en loopback; la configuración local sigue siendo HTTP local. No publicar el puerto de desarrollo. Contratos, cuotas y configuración se detallan en [la auditoría de fase 3](AUDITORIA_SEGURIDAD_FASE_3.md).
+
+La auditoría privada rota cinco archivos con umbral de 1 MiB y vencimiento de siete días comprobado al escribir. Guardar solamente metadatos permitidos y revisar el diagnóstico local de fallo; no adjuntar estados financieros o excepciones originales. La ausencia de un evento tras un fallo del disco no invalida un COMMIT financiero ya confirmado. No copiar estas carpetas a `src/` ni a un directorio estático.
+
 ## Git y exposición anterior
 
 Antes de cada commit, revisar sin imprimir contenido privado:
@@ -73,4 +90,4 @@ node --test tests/private-data.test.cjs
 
 La primera orden debe quedar sin resultados. La prueba también comprueba las exclusiones de archivos nuevos, secretos y diarios. No publicar diffs completos de los respaldos retirados: su eliminación en Git puede mostrar el contenido anterior.
 
-Si ya se confirmó información sensible, restringir el acceso a las copias y revisar clones, ramas, etiquetas, adjuntos y registros de CI. La reescritura del historial requiere una autorización separada y coordinación con quienes tengan copias; no garantiza borrar clones o descargas ajenas. El procedimiento y las revocaciones pendientes se detallan en [la auditoría de fase 1](AUDITORIA_SEGURIDAD_FASE_1.md).
+Si ya se confirmó información sensible, restringir el acceso a las copias y revisar clones, ramas, etiquetas, adjuntos y registros de CI. La reescritura del historial requiere una autorización separada y coordinación con quienes tengan copias; no garantiza borrar clones o descargas ajenas. El procedimiento vigente y las revocaciones pendientes están en [el plan revisable de exposición histórica](PLAN_RESPUESTA_EXPOSICION.md); la [auditoría de fase 1](AUDITORIA_SEGURIDAD_FASE_1.md) conserva la evidencia inicial.

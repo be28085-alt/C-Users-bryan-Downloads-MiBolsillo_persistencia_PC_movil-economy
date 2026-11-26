@@ -4,6 +4,8 @@ const path = require('node:path');
 const { createHash, randomUUID } = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { createPrivateSnapshot } = require('./private-files.cjs');
+const { sameToken, allowedFields } = require('./security-policy.cjs');
+const { restoredProfile } = require('./state-authorization.cjs');
 
 const FORMAT = 'MIBOLSILLO_ACCOUNT_BACKUP';
 const DAY = 24 * 60 * 60 * 1000;
@@ -86,7 +88,7 @@ function createBackupService({ db, dbPath, accounts, validateState, revisionOf, 
   }
   function scheduled() {
     try { createScheduledBackup(); }
-    catch (error) { console.error('No se pudo crear el respaldo local automático:', error.message); }
+    catch (error) { console.error('backup-schedule-failed', randomUUID()); }
   }
   // Start on the next turn, after the server has finished opening its database.
   const initial = setImmediate(scheduled);
@@ -99,7 +101,7 @@ function createBackupService({ db, dbPath, accounts, validateState, revisionOf, 
     if (!session?.user || !accounts) { send(res, 401, { error: 'Inicia sesión para consultar tus respaldos.' }); return true; }
     try {
       const user = session.user;
-      if (req.method !== 'GET' && req.headers['x-mibolsillo-token'] !== session.csrfToken) throw fail(403, 'Token de sesión no válido.');
+      if (req.method !== 'GET' && !sameToken(req.headers['x-mibolsillo-token'], session.csrfToken)) throw fail(403, 'Token de sesión no válido.');
       if (req.method === 'GET' && resource === '/api/backups') {
         send(res, 200, { backups: list(user.id), automaticIntervalHours: intervalMs / 3600000,
           automaticError: lastError ? 'No se pudo crear el respaldo automático más reciente. Puedes crear uno manual.' : null });
@@ -107,7 +109,9 @@ function createBackupService({ db, dbPath, accounts, validateState, revisionOf, 
         const created = accountBackup(user);
         send(res, 201, { backup: publicBackup(created) });
       } else if (req.method === 'POST' && resource === '/api/backups/restore') {
+        if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) throw fail(415, 'Use application/json.');
         const body = await readJSON(req);
+        allowedFields(body, ['id','backup','confirm','expectedRevision'], 403);
         if (!body || body.confirm !== true || (Boolean(body.id) === Boolean(body.backup))) throw fail(400, 'Selecciona una copia y confirma que deseas reemplazar tus datos actuales.');
         const backup = body.id ? readBackup(user.id, body.id) : body.backup;
         if (!backup || backup.format !== FORMAT || backup.version !== 1 || typeof backup.raw !== 'string'
@@ -119,8 +123,8 @@ function createBackupService({ db, dbPath, accounts, validateState, revisionOf, 
         if (body.expectedRevision !== revisionOf(current)) throw fail(409, 'Tus datos cambiaron mientras revisabas la copia. Actualiza la lista y vuelve a intentarlo.');
         const candidate = validRaw(backup.raw), original = validRaw(current);
         // A finance restore never changes the login email, password or current identity.
-        candidate.data.usuario = { ...candidate.data.usuario, nombre: original.data.usuario.nombre,
-          email: original.data.usuario.email, iniciales: original.data.usuario.iniciales };
+        candidate.data.usuario = restoredProfile({ ...candidate.data.usuario, nombre: original.data.usuario.nombre,
+          email: original.data.usuario.email, iniciales: original.data.usuario.iniciales }, original.data.usuario);
         validateState(candidate.data, null, { strict: true });
         const safety = accountBackup(user, 'before-restore', current);
         const raw = JSON.stringify({ ...candidate, updatedAt: new Date().toISOString(), updatedBy: 'backup-restore', revision: randomUUID() });

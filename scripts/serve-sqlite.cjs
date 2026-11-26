@@ -4,13 +4,17 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const os = require('node:os');
-const { randomBytes, createHash } = require('node:crypto');
+const { randomBytes, createHash, randomUUID } = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { openAccounts } = require('./auth-store.cjs');
 const { validateFinancialState } = require('./financial-validation.cjs');
 const { revisionOf, applyOperations } = require('./storage-patch.cjs');
 const { createBackupService } = require('./backup-store.cjs');
 const { preparePrivateFile } = require('./private-files.cjs');
+const { securityPolicy, requestIdentity, allowedFields, sameToken } = require('./security-policy.cjs');
+const { createRateLimiter } = require('./rate-limiter.cjs');
+const { createSecurityAudit } = require('./security-audit.cjs');
+const { initializeReceipts, receipts } = require('./storage-receipts.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
 const MAX_BODY = 20 * 1024 * 1024;
@@ -41,6 +45,8 @@ function openStore(filename) {
     db.close();
     throw new Error('La base de datos pertenece a una versión más reciente de MiBolsillo');
   }
+  initializeReceipts(db);
+  const operations = receipts(db, 'legacy');
   db.exec(`PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;
     CREATE TABLE IF NOT EXISTS app_state (
       id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -91,8 +97,9 @@ function openStore(filename) {
     ON CONFLICT(id) DO UPDATE SET raw=excluded.raw, updated_at=strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`);
   return {
     db,
+    receipt: id => operations.get(id),
     get() { return read.get()?.raw ?? null; },
-    compareAndSet(expectedRaw, raw) {
+    compareAndSet(expectedRaw, raw, receipt) {
       if ((expectedRaw !== null && typeof expectedRaw !== 'string') || !validEnvelope(raw)) {
         throw new TypeError('Formato de estado inválido');
       }
@@ -101,6 +108,7 @@ function openStore(filename) {
         const current = read.get()?.raw ?? null;
         if (current !== expectedRaw) { db.exec('ROLLBACK'); return { ok: false, raw: current }; }
         write.run(raw);
+        operations.remember(receipt);
         db.exec('COMMIT');
         return { ok: true };
       } catch (error) { db.exec('ROLLBACK'); throw error; }
@@ -110,28 +118,43 @@ function openStore(filename) {
 }
 
 function send(res, status, value, type = 'application/json; charset=utf-8') {
+  if (status >= 400 && type.startsWith('application/json')) value = { ...value, requestId: res.getHeader('X-Request-Id') };
   const body = type.startsWith('application/json') ? JSON.stringify(value) : value;
   res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin',
     'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'SAMEORIGIN',
-    'Content-Security-Policy': "frame-ancestors 'self'; object-src 'none'; base-uri 'self'" });
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" });
   res.end(body);
 }
 
 function readJSON(req, limit = MAX_BODY) {
   return new Promise((resolve, reject) => {
     let length = 0;
-    const chunks = [];
+    const chunks = []; let settled = false;
+    const finish = (failure, value) => {
+      if (settled) return; settled = true; clearTimeout(timer);
+      chunks.length = 0;
+      if (failure) reject(failure); else resolve(value);
+    };
+    const timer = setTimeout(() => finish(Object.assign(new Error('Se agotó el tiempo de lectura.'), { status: 408 })), 15000);
+    timer.unref();
+    if (Number(req.headers['content-length']) > limit) {
+      req.resume(); finish(Object.assign(new Error('Solicitud demasiado grande'), { status: 413 })); return;
+    }
     req.on('data', chunk => {
+      if (settled) return;
       length += chunk.length;
-      if (length <= limit) chunks.push(chunk);
+      if (length > limit) return finish(Object.assign(new Error('Solicitud demasiado grande'), { status: 413 }));
+      chunks.push(chunk);
     });
     req.on('end', () => {
-      if (length > limit) return reject(Object.assign(new Error('Solicitud demasiado grande'), { status: 413 }));
-      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
-      catch { reject(Object.assign(new Error('JSON inválido'), { status: 400 })); }
+      if (settled) return;
+      try { finish(null, JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+      catch (error) { finish(Object.assign(new Error('JSON inválido'), { status: 400 })); }
     });
-    req.on('error', reject);
+    req.on('error', () => finish(Object.assign(new Error('No se pudo leer la solicitud.'), { status: 400 })));
+    req.on('aborted', () => finish(Object.assign(new Error('Solicitud interrumpida.'), { status: 400 })));
   });
 }
 
@@ -142,17 +165,21 @@ function publicResource(relative) {
 }
 
 function createServer({ root = ROOT, dbPath = path.join(root, 'database', 'mibolsillo.sqlite'),
-  host = '127.0.0.1', requireAuth = true, backupOptions = {} } = {}) {
+  host = '127.0.0.1', requireAuth = true, backupOptions = {}, security = {} } = {}) {
+  const policy = securityPolicy(security, host, requireAuth);
   root = path.resolve(root);
   dbPath = path.resolve(dbPath);
   const store = openStore(dbPath);
   let accounts;
-  try { accounts = requireAuth ? openAccounts(store.db, dbPath) : null; }
+  try { accounts = requireAuth ? openAccounts(store.db, dbPath, { secureCookies: policy.production,
+    sessionSeconds: policy.sessionSeconds, idleMs: policy.idleMs, maxSessions: policy.maxSessions }) : null; }
   catch (error) { store.close(); throw error; }
   const backups = createBackupService({ db: store.db, dbPath, accounts, validateState: validateFinancialState, revisionOf, ...backupOptions });
   const token = randomBytes(32).toString('hex');
-  const baseConfig = { backend: 'sqlite', token, database: path.basename(dbPath), authRequired: requireAuth };
-  const attempts = new Map();
+  const baseConfig = { backend: 'sqlite', authRequired: requireAuth,
+    ...(!requireAuth ? { token, database: path.basename(dbPath) } : {}) };
+  const limiter = createRateLimiter(policy.rates);
+  const audit = createSecurityAudit(path.join(path.dirname(dbPath), 'security-audit'));
   const allowedHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
   if (host === '0.0.0.0' || host === '::') {
     for (const entries of Object.values(os.networkInterfaces())) {
@@ -160,21 +187,30 @@ function createServer({ root = ROOT, dbPath = path.join(root, 'database', 'mibol
     }
   } else allowedHosts.add(host);
 
-  const server = http.createServer(async (req, res) => {
+  const server = http.createServer({ requestTimeout: policy.requestTimeoutMs, headersTimeout: Math.min(10000, policy.requestTimeoutMs),
+    keepAliveTimeout: 5000, maxHeaderSize: 16384 }, async (req, res) => {
+    const requestId = randomUUID(); let auditRoute = 'other';
+    res.setHeader('X-Request-Id', requestId);
+    res.once('finish', () => {
+      const status = res.statusCode;
+      const event = status >= 500 ? 'internal-error' : status >= 400 ? 'rejected'
+        : auditRoute === 'access' ? 'authentication' : req.url === '/api/auth/logout' ? 'logout'
+        : req.url === '/api/auth/password' ? 'password-change' : ['POST','PATCH'].includes(req.method) ? 'write' : null;
+      if (event) audit.write({ event, requestId, status, route: auditRoute, method: req.method });
+    });
     try {
-      let requested;
-      try { requested = new URL(req.url, `http://${req.headers.host}`); }
-      catch { return send(res, 400, { error: 'Host inválido' }); }
+      if (!req.url.startsWith('/') || req.url.startsWith('//')) return send(res, 403, { error: 'Ruta no autorizada.' });
       const address = server.address();
-      if (!allowedHosts.has(requested.hostname) || Number(requested.port || 80) !== address.port
-        || req.url.startsWith('http:') || req.url.startsWith('https:')) {
-        return send(res, 403, { error: 'Host no autorizado' });
-      }
+      const { url: requested, client } = requestIdentity(req, address, allowedHosts, policy);
+      if (policy.production) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
       if ((req.headers.origin && req.headers.origin !== requested.origin)
         || (req.headers['sec-fetch-site'] && !['same-origin', 'none'].includes(req.headers['sec-fetch-site']))) {
         return send(res, 403, { error: 'Origen no autorizado' });
       }
       const resource = requested.pathname;
+      if (resource.startsWith('/api/')) limiter.publicApi(client);
+      auditRoute = resource.startsWith('/api/auth/login') || resource.startsWith('/api/auth/register') ? 'access'
+        : resource.startsWith('/api/backups') ? 'backups' : resource === '/api/storage' ? 'storage' : resource.startsWith('/api/auth/') ? 'session' : 'other';
       if (resource === '/api/app-info' && req.method === 'GET') {
         return send(res, 200, { app: 'MiBolsillo', backend: 'sqlite',
           identity: serverIdentity(root, dbPath), authRequired: requireAuth });
@@ -191,28 +227,36 @@ function createServer({ root = ROOT, dbPath = path.join(root, 'database', 'mibol
         if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) return send(res, 415, { error: 'Use application/json' });
         const body = await readJSON(req, 16384);
         if (!body || typeof body !== 'object' || Array.isArray(body)) return send(res, 400, { error: 'Datos de acceso inválidos.' });
-        const key = String(req.socket.remoteAddress) + ':' + String(body.email || '').trim().toLowerCase();
-        const now = Date.now();
-        if (attempts.size >= 1000) for (const [id, value] of attempts) if (value.until <= now) attempts.delete(id);
-        const previous = attempts.get(key);
-        if (previous && previous.until > now && previous.count >= 12) return send(res, 429, { error: 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.' });
-        if (attempts.size >= 1000 && !previous) return send(res, 429, { error: 'Demasiados intentos. Vuelve a intentarlo más tarde.' });
-        attempts.set(key, { until: previous?.until > now ? previous.until : now + 5 * 60 * 1000, count: previous?.until > now ? previous.count + 1 : 1 });
-        const result = resource.endsWith('/register') ? await accounts.register(body) : await accounts.login(body);
-        attempts.delete(key);
+        allowedFields(body, resource.endsWith('/register') ? ['nombre','email','password'] : ['email','password']);
+        limiter.authentication(client, body.email);
+        const result = resource.endsWith('/register') ? await accounts.register(body, { replaceToken: session?.tokenHash }) : await accounts.login(body, { replaceToken: session?.tokenHash });
         res.setHeader('Set-Cookie', result.cookie);
         return send(res, resource.endsWith('/register') ? 201 : 200, { user: result.user, csrfToken: result.csrfToken });
       }
       if (requireAuth && resource.startsWith('/api/') && !session) return send(res, 401, { error: 'Tu sesión no está activa. Inicia sesión de nuevo.' });
+      if (session && resource.startsWith('/api/')) {
+        if (req.headers['x-mibolsillo-account'] && req.headers['x-mibolsillo-account'] !== String(session.user.id)) return send(res, 401, { error: 'La cuenta activa cambió. Inicia sesión de nuevo.' });
+        limiter.authenticated(session.user.id, ['POST','PATCH'].includes(req.method), resource.startsWith('/api/backups'));
+      }
+      if (resource === '/api/auth/password') {
+        if (req.method !== 'POST') return send(res, 405, { error: 'Método no permitido.' });
+        if (!accounts || !sameToken(req.headers['x-mibolsillo-token'], session.csrfToken)) return send(res, 403, { error: 'Token de sesión no válido.' });
+        if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) return send(res, 415, { error: 'Use application/json' });
+        limiter.authentication(client, session.user.email);
+        const body = await readJSON(req, 16384); allowedFields(body, ['currentPassword','newPassword']);
+        const result = await accounts.changePassword(session, body);
+        res.setHeader('Set-Cookie', result.cookie);
+        return send(res, 200, { user: result.user, csrfToken: result.csrfToken });
+      }
       if (resource === '/api/auth/logout') {
         if (req.method !== 'POST') return send(res, 405, { error: 'Método no permitido' });
         if (!accounts) return send(res, 409, { error: 'Este modo no tiene sesión.' });
-        if (req.headers['x-mibolsillo-token'] !== session.csrfToken) return send(res, 403, { error: 'Token de sesión no válido.' });
+        if (!sameToken(req.headers['x-mibolsillo-token'], session.csrfToken)) return send(res, 403, { error: 'Token de sesión no válido.' });
         res.setHeader('Set-Cookie', accounts.logout(session));
         return send(res, 200, { ok: true });
       }
       if (resource === '/api/auth/legacy-status' && req.method === 'GET') return send(res, 200, accounts ? accounts.legacyStatus() : { available: false });
-      const config = session ? { ...baseConfig, token: session.csrfToken, user: session.user,
+      const config = session ? { ...baseConfig, token: session.csrfToken, database: path.basename(dbPath), user: session.user,
         authenticated: true, allowLegacyImport: false } : baseConfig;
       const activeStore = session ? accounts.scoped(session.user.id) : store;
       const bootstrapConfig = () => {
@@ -225,6 +269,7 @@ function createServer({ root = ROOT, dbPath = path.join(root, 'database', 'mibol
       }
       if (await backups.handle(req, res, { session, readJSON, send })) return;
       if (resource === '/api/storage') {
+        if ([...requested.searchParams.keys()].some(key => key !== 'revision')) return send(res, 400, { error: 'Parámetro no permitido.' });
         if (session && req.headers['x-mibolsillo-account'] && req.headers['x-mibolsillo-account'] !== String(session.user.id)) return send(res, 401, { error: 'La cuenta activa cambió. Inicia sesión de nuevo.' });
         if (req.method === 'GET') {
           const raw = activeStore.get(), revision = revisionOf(raw);
@@ -232,26 +277,35 @@ function createServer({ root = ROOT, dbPath = path.join(root, 'database', 'mibol
             ? { unchanged: true, revision } : { raw, revision });
         }
         if (!['POST', 'PATCH'].includes(req.method)) return send(res, 405, { error: 'Método no permitido' });
-        if (req.headers['x-mibolsillo-token'] !== config.token) return send(res, 403, { error: 'Token no válido' });
+        if (!sameToken(req.headers['x-mibolsillo-token'], config.token)) return send(res, 403, { error: 'Token no válido' });
         if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) {
           return send(res, 415, { error: 'Use application/json' });
         }
         const body = await readJSON(req);
+        allowedFields(body, req.method === 'PATCH' ? ['expectedRevision','operationId','operations'] : ['expectedRaw','raw'], 403);
         if (req.method === 'PATCH') {
           if (!body || !Object.prototype.hasOwnProperty.call(body,'expectedRevision') || (body.expectedRevision !== null && typeof body.expectedRevision !== 'string') || typeof body.operationId !== 'string' || !body.operationId || body.operationId.length > 300) return send(res, 400, { error: 'Revisión u operación inválida.' });
           const current = activeStore.get(), revision = revisionOf(current);
-          if (revision === body.operationId) return send(res, 200, { ok: true, duplicate: true, revision });
+          const requestHash = createHash('sha256').update(JSON.stringify(body)).digest('hex');
+          const receipt = activeStore.receipt(body.operationId);
+          if (receipt) {
+            if (receipt.request_hash !== requestHash || revision !== body.operationId) return send(res, 409, { error: 'La operación ya se utilizó o los datos cambiaron. Revisa el estado guardado.' });
+            return send(res, 200, { ok: true, duplicate: true, revision });
+          }
+          if (revision === body.operationId) return send(res, 409, { error: 'No se puede verificar el intento anterior. Revisa el estado guardado.' });
           if (revision !== body.expectedRevision) return send(res, 409, { error: 'conflict', raw: current, revision });
           const raw = applyOperations(current, body.operations);
+          if (Buffer.byteLength(raw) > policy.maxStateBytes) return send(res, 413, { error: 'El estado supera el tamaño permitido.' });
           if (!validEnvelope(raw) || revisionOf(raw) !== body.operationId) return send(res, 400, { error: 'El estado incremental o su revisión no es válido.' });
           validateFinancialState(JSON.parse(raw).data, current ? JSON.parse(current).data : null);
-          const result = activeStore.compareAndSet(current, raw);
+          const result = activeStore.compareAndSet(current, raw, { operationId: body.operationId, requestHash });
           return send(res, result.ok ? 200 : 409, result.ok ? { ok: true, revision: revisionOf(raw) } : { error: 'conflict', raw: result.raw, revision: revisionOf(result.raw) });
         }
         if (!body || (body.expectedRaw !== null && typeof body.expectedRaw !== 'string') || !validEnvelope(body.raw)) {
           return send(res, 400, { error: 'Formato de estado inválido' });
         }
         const current = activeStore.get();
+        if (Buffer.byteLength(body.raw) > policy.maxStateBytes) return send(res, 413, { error: 'El estado supera el tamaño permitido.' });
         if (current === body.expectedRaw) validateFinancialState(JSON.parse(body.raw).data, current ? JSON.parse(current).data : null);
         const result = activeStore.compareAndSet(body.expectedRaw, body.raw);
         return send(res, result.ok ? 200 : 409, result.ok ? result : { error: 'conflict', raw: result.raw });
@@ -289,27 +343,35 @@ function createServer({ root = ROOT, dbPath = path.join(root, 'database', 'mibol
       }
       send(res, 200, req.method === 'HEAD' ? '' : body, types[path.extname(file)]);
     } catch (error) {
-      if (!error.status) console.error('SQLite:', error.message);
+      if (error.retryAfter) res.setHeader('Retry-After', String(error.retryAfter));
       if (!res.headersSent) send(res, error.status || 500, { error: error.status ? error.message : 'No se pudo acceder a la base de datos' });
       else res.end();
     }
   });
+  server.maxConnections = 128;
+  server.maxRequestsPerSocket = 1000;
   server.on('close', () => { backups.close(); store.close(); });
-  server.sqlite = { store, dbPath, host, requireAuth, accounts, backups };
+  server.sqlite = { store, dbPath, host, requireAuth, accounts, backups, security: { policy, audit, limiter } };
   return server;
 }
 
 if (require.main === module) {
-  const host = process.env.MIBOLSILLO_HOST || '127.0.0.1';
-  const port = Number(process.env.PORT || 5500);
-  const server = createServer({ host, ...(process.env.MIBOLSILLO_DB_PATH ? { dbPath: process.env.MIBOLSILLO_DB_PATH } : {}) });
-  server.listen(port, host, () => {
-    console.log(`MiBolsillo SQLite: http://${host}:${server.address().port}/desktop.html`);
-    console.log(`Móvil: http://${host}:${server.address().port}/mobile.html`);
-    console.log(`Base de datos: ${server.sqlite.dbPath}`);
-  });
-  server.on('error', error => { console.error(error.message); process.exitCode = 1; server.sqlite.store.close(); });
-  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close());
+  try {
+    const host = process.env.MIBOLSILLO_HOST || '127.0.0.1';
+    const port = Number(process.env.PORT || 5500);
+    const server = createServer({ host, ...(process.env.MIBOLSILLO_DB_PATH ? { dbPath: process.env.MIBOLSILLO_DB_PATH } : {}) });
+    server.listen(port, host, () => {
+      const origin = server.sqlite.security.policy.publicOrigin || `http://${host}:${server.address().port}`;
+      console.log(`MiBolsillo SQLite: ${origin}/desktop.html`);
+      console.log(`Móvil: ${origin}/mobile.html`);
+      console.log('Base SQLite configurada; consulta la ruta en la configuración local.');
+    });
+    server.on('error', error => { console.error('No se pudo iniciar el servicio local. Comprueba el puerto y los permisos.'); process.exitCode = 1; server.sqlite.store.close(); });
+    for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close());
+  } catch (error) {
+    console.error('No se pudo iniciar el servicio. Revisa la configuración y los permisos. Referencia:', randomUUID());
+    process.exitCode = 1;
+  }
 }
 
 module.exports = { createServer, openStore, validEnvelope, serverIdentity, revisionOf, validateFinancialState };

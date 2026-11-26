@@ -20,12 +20,12 @@ Las páginas directas `desktop.html` y `mobile.html` también exigen sesión. Un
 
 - Base local: `database/mibolsillo.sqlite`. No hay sincronización entre equipos o teléfonos.
 - `auth_users`: identidad de acceso y contraseñas Argon2id con sal aleatoria de 32 bytes, 64 MiB de memoria y tres pasadas, mediante la biblioteca nativa `node:crypto` de Node 24.22. Nunca se envían hashes ni contraseñas en las respuestas de la API.
-- `auth_sessions`: identificadores aleatorios de sesión conservados como hashes, vencimiento de 30 días y protección CSRF por sesión. La cookie es HttpOnly y SameSite=Strict. Cerrar sesión revoca la sesión de la base.
+- `auth_sessions`: identificadores aleatorios de sesión conservados como hashes, nuevas sesiones de 12 horas y protección CSRF por sesión. La actividad se persiste para aplicar 30 minutos de inactividad; las sesiones anteriores conservan su vencimiento absoluto. La cookie es HttpOnly y SameSite=Strict, y Secure en el modo producción HTTPS. Cerrar sesión revoca la sesión de la base. Login rota la sesión del navegador; el servicio de cambio de contraseña verifica la actual y revoca las sesiones de la cuenta transaccionalmente.
 - `user_states`: estado completo de TODOS los módulos por `user_id`. Las lecturas y escrituras se autorizan con la sesión del servidor; los IDs enviados por el cliente no eligen a otro propietario. Se mantiene la comparación de versión y el commit transaccional antes de confirmar un guardado.
 - Las pantallas viejas de otra cuenta se invalidan al cambiar de sesión; la sincronización entre pestañas usa un canal por usuario. Las restauraciones de páginas desde la caché del navegador vuelven a validar la sesión antes de mostrarse.
 - `app_state` y las vistas `vista_*` anteriores se conservan como archivo sin propietario asignado. Las vistas históricas no representan los estados nuevos de los usuarios; para inspeccionar datos actuales en DB Browser consulte `user_states.raw` junto con `auth_users.id`.
 
-El servidor está pensado para acceso local por loopback. No es un servicio público de Internet: no se ha configurado HTTPS, verificación de correo ni recuperación de contraseña por correo. No publique el servidor ni exponga su puerto sin preparar esos componentes.
+El servidor está pensado para acceso local por loopback. La fase 3 incorpora comprobaciones de configuración para un proxy HTTPS autorizado; no ha desplegado TLS real, verificación de correo ni recuperación de contraseña por correo. No publique el servidor ni exponga su puerto sin preparar esos componentes. Consulte controles, límites y configuración en [la auditoría de fase 3](AUDITORIA_SEGURIDAD_FASE_3.md) y las acciones autorizables del [plan de exposición histórica](PLAN_RESPUESTA_EXPOSICION.md).
 
 ## Migración automática del esquema
 

@@ -27,9 +27,10 @@
     function pending(value) { busy = value; card.setAttribute('aria-busy', String(value)); buttons.forEach(button => { button.disabled = value; }); select.disabled = value || !rows.length; }
     async function request(url, options = {}) {
       const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', ...options,
-        headers: { 'Content-Type': 'application/json', 'X-MiBolsillo-Token': config.token, ...options.headers } });
+        headers: { 'Content-Type': 'application/json', 'X-MiBolsillo-Token': config.token, 'X-MiBolsillo-Account': String(config.user.id), ...options.headers } });
       let body;
       try { body = await response.json(); } catch (_) { throw new Error('No se pudo leer la respuesta del servidor. Conserva tu copia y vuelve a intentarlo.'); }
+      if (response.status === 401) window.dispatchEvent(new CustomEvent('mibolsillo:session-expired'));
       if (!response.ok) throw new Error(body.error || 'No se pudo completar la operación.');
       return body;
     }

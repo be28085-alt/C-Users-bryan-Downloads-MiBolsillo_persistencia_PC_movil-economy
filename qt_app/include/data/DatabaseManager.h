@@ -7,6 +7,7 @@
 #include <QSqlError>
 #include <QString>
 #include <QDebug>
+#include <QtEnvironmentVariables>
 
 /**
  * @brief Capa de Acceso a Datos (DAO / DatabaseManager)
@@ -19,11 +20,12 @@ class DatabaseManager : public QObject {
 public:
     static DatabaseManager& instance();
 
+    // Conector archivado: la credencial se configura fuera de Git, sin valor de respaldo.
     bool connectToDatabase(const QString& host = "localhost",
                           int port = 3306,
                           const QString& dbName = "gestor_financiero",
                           const QString& user = "root",
-                          const QString& password = "root");
+                          const QString& password = qEnvironmentVariable("MIBOLSILLO_MYSQL_PASSWORD"));
 
     void disconnect();
     bool isConnected() const;

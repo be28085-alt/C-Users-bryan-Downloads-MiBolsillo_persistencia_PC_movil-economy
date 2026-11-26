@@ -97,12 +97,15 @@ test('cada lectura y escritura usa el usuario de sesión, incluida edición/elim
   const savedA = (await a.read()).value.raw;
   assert.equal((await b.read()).value.raw.includes('Privado A'), false);
   const stolenLookup = await b.request('/api/storage?user_id=' + a.user.id);
-  assert.equal(stolenLookup.value.raw.includes('Privado A'), false);
+  assert.equal(stolenLookup.status, 400);
+  assert.equal(stolenLookup.value.raw, undefined);
+  assert.equal((await b.read()).value.raw.includes('Privado A'), false);
   assert.equal((await b.request('/api/storage', undefined, { 'X-MiBolsillo-Account': String(a.user.id) })).status, 401);
-  assert.equal((await b.write(savedA, { data: { movimientos: [] } }, { user_id: a.user.id })).status, 409);
+  assert.equal((await b.write(savedA, { data: { movimientos: [] } }, { user_id: a.user.id })).status, 403);
   const ownRawB = (await b.read()).value.raw;
   const ownB = JSON.parse(ownRawB); ownB.data.movimientos = [];
-  assert.equal((await b.write(ownRawB, ownB, { user_id: a.user.id })).status, 200);
+  assert.equal((await b.write(ownRawB, ownB, { user_id: a.user.id })).status, 403);
+  assert.equal((await b.read()).value.raw, ownRawB);
   assert.equal((await a.read()).value.raw, savedA);
   stateA.data.movimientos[0].valor = 140.25;
   assert.equal((await a.write(savedA, stateA)).status, 200);
@@ -199,7 +202,8 @@ test('migración aditiva conserva datos anteriores sin propietario y prepara res
 
 test('el límite de intentos libera los correos vencidos y vuelve a permitir cuentas nuevas', { timeout: 20000 }, async t => {
   const fixtureDb = fixture(t);
-  const { base } = await fixtureDb.start();
+  // Este caso agota el límite global; el límite por IP se prueba por separado.
+  const { base } = await fixtureDb.start({ security: { rates: { authIp: 2000, publicApi: 2000 } } });
   const browser = client(base);
   let clock = Date.now();
   t.mock.method(Date, 'now', () => clock);

@@ -165,7 +165,7 @@
         try {
           fn(this.state);
         } catch (e) {
-          console.error('Error en suscriptor FinanzasCore:', e);
+          console.error('financial-view-refresh-failed: no se pudo actualizar una vista.');
         }
       });
     }
