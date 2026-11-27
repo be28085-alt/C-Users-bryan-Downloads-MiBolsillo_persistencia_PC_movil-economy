@@ -53,7 +53,7 @@
     if (tab === 'production') return nav + list(root, m.formulas, [col('Receta', r => r.nombre), col('Producto', r => r.productoNombre), col('Cantidad base', r => r.cantidadBase), col('Estado', status, true), col('Acciones', r => catalogActions(r, 'formulas', 'formula') + (isActive(r) ? action('Producir', 'form', 'formulas', r.id, 'production') : ''), true)], button('+ Receta', 'form', 'data-kind="formula"', true)) + `<section class="bm-card"><h2>Lotes fabricados</h2>${tableHtml(m.productions.slice().reverse(), [col('Fecha', r => r.fecha), col('Producto', r => r.productoNombre), col('Cantidad', r => r.cantidadProducida), col('Costo total', r => money(r.costoTotal)), col('Acciones', r => action('Consultar', 'detail', 'producciones', r.id), true)])}</section>`;
     const state = window.Finanzas.state, businessId = m.report.business.id;
     const canDelete = state.negocios.length > 1 && !window.BusinessSchema.collections.some(key => key !== 'negocios' && state[key].some(r => r.negocioId === businessId)) && !(state.facturacion?.documents || []).some(d => d.businessId === businessId);
-    return nav + `<section class="bm-card"><h2>Información y negocios</h2><p>${E(m.report.business.name)}</p><div class="bm-actions">${button('Editar negocio activo', 'form', `data-kind="business" data-id="${E(m.report.business.id)}"`)}${button('+ Crear negocio', 'form', 'data-kind="business"')}${canDelete ? button('Eliminar negocio sin historial', 'form', `data-kind="deleteBusiness" data-id="${E(m.report.business.id)}"`) : ''}</div><p class="bm-note">Los negocios con movimientos o documentos no se eliminan. Las copias JSON del perfil incluyen todo el estado; cada negocio conserva sus relaciones.</p></section>`;
+    return nav + `<section class="bm-card"><h2>Información y negocios</h2><label class="bm-switch-business">Cambiar negocio<select data-bm-active aria-label="Cambiar negocio">${window.Finanzas.getNegocios().map(n => `<option value="${E(n.id)}" ${n.id === businessId ? 'selected' : ''}>${E(n.nombre)}</option>`).join('')}</select></label><div class="bm-actions">${button('Editar negocio activo', 'form', `data-kind="business" data-id="${E(m.report.business.id)}"`)}${button('+ Crear negocio', 'form', 'data-kind="business"')}${canDelete ? button('Eliminar negocio sin historial', 'form', `data-kind="deleteBusiness" data-id="${E(m.report.business.id)}"`) : ''}</div><p class="bm-note">Los negocios con movimientos o documentos no se eliminan. Las copias JSON del perfil incluyen todo el estado; cada negocio conserva sus relaciones.</p></section>`;
   }
   const screens = window.BusinessWorkspaceScreens.create({ E, money, button, action, col, status, list, tableHtml, catalogActions, commercialActions });
   function renderRoot(root, model) {
@@ -62,6 +62,8 @@
     document.querySelectorAll('[data-business-profile]').forEach(b => { b.textContent = window.Finanzas.state.usuario?.iniciales || 'Yo'; });
     root.classList.add('business-manager');
     const section = root.dataset.businessSection;
+    root.setAttribute('role', 'region');
+    root.setAttribute('aria-label', titles[section] || 'Mi Negocio');
     root.innerHTML = screens.header(root) + ({ ...screens, management }[section])(root, m);
     const nav = root.querySelector('.bm-mobile-sections'), selected = nav?.querySelector('[aria-current="page"]');
     if (selected) nav.scrollLeft = Math.max(0, selected.offsetLeft - nav.offsetLeft - (nav.clientWidth - selected.offsetWidth) / 2);

@@ -63,10 +63,11 @@ const server = http.createServer((req, res) => {
         else mobileApp.switchBusinessTab('informes');
       });
       const report = page.locator('[data-business-report]');
-      await report.getByRole('heading', { name: 'Informes', exact: true }).waitFor();
-      assert.equal(await report.locator('.br-header [data-report-action]').count(), 1);
+      await report.locator('[data-report-period]').waitFor();
+      assert.equal(await report.locator('.br-toolbar [data-report-action="print"]').count(), 1);
       assert.equal(await report.locator('[data-report-action="csv"], [data-report-action="save-view"], .br-eyebrow, .br-storage-note').count(), 0);
-      assert.equal(await report.locator('.br-header p').innerText(), 'Mi Negocio / Informes');
+      assert.equal(await report.locator('.br-header,h1').count(), 0);
+      assert.equal(await report.getAttribute('aria-label'), 'Informes de Mi Negocio');
       const values = await Promise.all(['netProfit', 'income', 'expenses', 'salesCount'].map(field => report.locator(`[data-report-value="${field}"]`).innerText()));
       assert.deepEqual(values, ['+2.000.000.00 COP', '7.000.000.00 COP', '5.000.000.00 COP', '2']); results.push(values);
       assert.equal(await report.locator('svg.br-bars').count(), 1);
@@ -160,10 +161,9 @@ const server = http.createServer((req, res) => {
       assert.ok(layout.scroll <= layout.width + 2, `${name} ${width}: report overflow ${JSON.stringify(layout)}`);
       assert.ok(await report.evaluate(el => el.getBoundingClientRect().right <= innerWidth + 2), `${width}: report must fit viewport`);
       await page.evaluate(() => BusinessUI.navigate('management', 'payables'));
-      const header = page.locator('[data-business-section="management"] .bm-header');
-      assert.equal(await header.locator('small').count(), 0);
-      assert.equal(await header.locator('.bm-location').innerText(), 'Mi Negocio / Gestión');
-      assert.ok(await header.evaluate(el => el.querySelector('h1').getBoundingClientRect().bottom <= el.querySelector('.bm-location').getBoundingClientRect().top));
+      const management = page.locator('[data-business-section="management"]');
+      assert.equal(await management.locator('.bm-header,.bm-location,h1').count(), 0);
+      assert.equal(await management.locator('[data-tab="business"]').isVisible(), true);
       await page.locator('[data-business-section="management"] [data-bm="report"]').click();
       assert.equal(await report.locator('[data-report-tab="balances"]').getAttribute('aria-selected'), 'true');
       const previousPersonal = await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos));

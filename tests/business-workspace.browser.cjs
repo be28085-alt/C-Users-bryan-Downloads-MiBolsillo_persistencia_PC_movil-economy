@@ -116,7 +116,7 @@ async function flow(page, mobile) {
   await view.locator('[data-tab="business"]').click(); await view.getByRole('button', { name: 'Editar negocio activo', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Negocio comprobado' }); await save(page);
   const originalBusiness = await page.evaluate(() => Finanzas.state.negocioActivoId);
   view = await nav(page, 'management', mobile); await view.locator('[data-tab="business"]').click(); await view.getByRole('button', { name: '+ Crear negocio', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Segundo negocio' }); await save(page);
-  assert.equal(await page.evaluate(() => Finanzas.getVentas().length), 0); await page.locator('[data-business-section="dashboard"] [data-bm-active]').selectOption(originalBusiness); await page.waitForFunction(id => Finanzas.state.negocioActivoId === id, originalBusiness);
+  assert.equal(await page.evaluate(() => Finanzas.getVentas().length), 0); view = await nav(page, 'management', mobile); await view.locator('[data-tab="business"]').click(); await view.getByLabel('Cambiar negocio').selectOption(originalBusiness); await page.waitForFunction(id => Finanzas.state.negocioActivoId === id, originalBusiness);
   // The bell/menu now shows business alerts instead of opening the personal plan.
   if (mobile) { await page.locator('#mobileBusinessOptionsToggle').click(); await page.locator('[data-quick-action="business-alerts"]').click(); }
   else await page.evaluate(() => pcApp.toggleAlertsSummary());
@@ -155,7 +155,8 @@ async function seed(page) {
         const bounds = await view.evaluate(el => ({ right: el.getBoundingClientRect().right, scroll: el.scrollWidth, client: el.clientWidth, viewport: innerWidth }));
         assert.ok(bounds.right <= bounds.viewport + 2, `${name} ${width} ${section}: right=${bounds.right}`);
         assert.ok(bounds.scroll <= bounds.client + 2, `${name} ${width} ${section}: horizontal overflow ${bounds.scroll}/${bounds.client}`);
-        assert.equal(await view.locator('h1').count(), 1);
+        assert.equal(await view.locator('.bm-header,.bm-location,h1').count(), 0);
+        assert.ok(await view.getAttribute('aria-label'), 'la sección conserva su nombre accesible');
         if (!['management', 'movements', 'reports'].includes(section)) assert.equal(await view.locator('.bm-kpis article').count(), 4);
         if (section === 'inventory') assert.equal(await view.getByRole('button', { name: 'Historial de inventario', exact: true }).count(), 0);
         if ((!mobile && width === 1366) || (mobile && width === 390)) await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-${section}.png`), animations: 'disabled' });
@@ -164,7 +165,7 @@ async function seed(page) {
             // Gastos contiene dos acciones legítimas: comprobar ambas sin selector ambiguo.
             const actions = section === 'expenses' ? ['expense', 'income'] : [null];
             for (const kind of actions) {
-              await view.locator('.bm-header .bm-primary' + (kind ? `[data-kind="${kind}"]` : '')).click();
+              await view.locator('.bm-toolbar [data-bm="form"]' + `[data-kind="${kind || ({ purchases: 'purchase', products: 'product', cash: 'income' }[section])}"]`).click();
               const dialog = page.locator('.bm-dialog[open]'); await dialog.waitFor();
               assert.ok(await dialog.locator('form').count());
               await dialog.locator('[data-bm="close"]').first().click();
@@ -189,7 +190,7 @@ async function seed(page) {
         await nav(page, 'dashboard', mobile);
       }
       const personal = await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos));
-      await page.evaluate(() => { if (typeof pcApp !== 'undefined') pcApp.setModulo('PERSONAL', 'inicio'); else mobileApp.setModulo('PERSONAL', 'inicio'); });
+      await page.evaluate(async () => { if (typeof pcApp !== 'undefined') await pcApp.setModulo('PERSONAL', 'inicio'); else await mobileApp.setModulo('PERSONAL', 'inicio'); });
       assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)), personal); assert.equal(await page.locator('#view-inicio').evaluate(el => el.classList.contains('active')), true);
       await page.setViewportSize({ width: width < 800 ? 1366 : 390, height: 950 });
       assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)), personal);

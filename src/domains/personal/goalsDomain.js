@@ -8,6 +8,33 @@
   'use strict';
 
   const goalsDomain = {
+    /** Normaliza una entidad histórica sin mutar el registro recibido ni persistir datos. */
+    normalizar(meta = {}, index = 0) {
+      if (!meta || typeof meta !== 'object') return {
+        id: `meta-${Date.now()}-${index}`,
+        nombre: 'Meta',
+        objetivo: 0,
+        ahorrado: 0,
+        fechaLimite: '',
+        color: '#10b981',
+        icono: '🎯'
+      };
+
+      const objetivo = Number(meta.montoObjetivo ?? meta.objetivo ?? 0) || 0;
+      const ahorrado = Number(meta.montoActual ?? meta.ahorrado ?? 0) || 0;
+      return {
+        ...meta,
+        id: meta.id || `meta-${Date.now()}-${index}`,
+        nombre: (meta.nombre || 'Meta').trim() || 'Meta',
+        objetivo: Math.max(objetivo, 0),
+        ahorrado: Math.max(ahorrado, 0),
+        montoObjetivo: Math.max(objetivo, 0),
+        montoActual: Math.max(ahorrado, 0),
+        fechaLimite: meta.fechaLimite || '',
+        color: meta.color || '#10b981',
+        icono: meta.icono || '🎯'
+      };
+    },
     /**
      * Calcula métricas y porcentaje de cumplimiento para cada meta.
      * @param {Array} metas - Lista de metas de ahorro.

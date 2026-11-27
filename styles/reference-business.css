@@ -1,10 +1,10 @@
 /* Mi Negocio: the same clear workspace on desktop, tablet and phone. */
 .business-manager,
 .bm-dialog {
-  --bm-ink: #203b49;
-  --bm-muted: #607c8c;
-  --bm-border: #dfebf1;
-  --bm-green: #24576b;
+  --bm-ink: var(--app-text-title);
+  --bm-muted: var(--app-text-muted);
+  --bm-border: var(--app-border);
+  --bm-green: var(--app-primary);
   font-family: var(--font-family, 'Inter', system-ui, sans-serif);
   font-size: 1rem;
 }
@@ -21,7 +21,7 @@
   letter-spacing: .1em;
 }
 .business-manager .bm-header h1 {
-  color: #203b49;
+  color: var(--app-text-title);
   font-size: clamp(1.55rem, 2.2vw, 2rem);
   font-weight: 650;
   letter-spacing: -.035em;
@@ -34,7 +34,7 @@
 .bm-dialog label { font-size: .875rem; font-weight: 500; }
 .business-manager button,
 .bm-dialog button {
-  border-color: #d9e6ee;
+  border-color: var(--app-border);
   border-radius: 7px;
   padding: 10px 14px;
   min-height: 42px;
@@ -42,25 +42,26 @@
   font-weight: 600;
 }
 .business-manager .bm-primary,
-.bm-dialog .bm-primary { background: #24576b; border-color: #24576b; }
+.bm-dialog .bm-primary { background: var(--app-primary); border-color: var(--app-primary); }
 .business-manager .bm-primary:hover,
-.bm-dialog .bm-primary:hover { background: #1b475a; border-color: #1b475a; }
+.bm-dialog .bm-primary:hover { background: var(--app-primary-hover); border-color: var(--app-primary-hover); }
 .business-manager button:hover,
-.bm-dialog button:hover { border-color: #9dbac9; background: #edf5f9; }
+.bm-dialog button:hover { border-color: var(--app-primary-light); background: var(--app-primary-soft); }
 .business-manager input,
 .business-manager select,
 .bm-dialog input,
 .bm-dialog select,
 .bm-dialog textarea {
   font-size: .875rem;
-  border-color: #d9e6ee;
+  border-color: var(--app-border);
   border-radius: 7px;
   padding: 10px 12px;
   min-height: 42px;
 }
 .business-manager .bm-business-picker select { font-size: .875rem; min-height: 42px; }
+.business-manager .bm-switch-business { max-width: 20rem; margin: 16px 0; }
 .business-manager :focus-visible,
-.bm-dialog :focus-visible { outline: 3px solid #78a6bb; outline-offset: 3px; }
+.bm-dialog :focus-visible { outline: 3px solid var(--app-focus); outline-offset: 3px; }
 
 .business-manager .bm-period { flex-wrap: wrap; gap: 8px 20px; margin-bottom: 16px; }
 .business-manager .bm-period label { font-size: .875rem; }
@@ -93,9 +94,9 @@
   overflow-wrap: anywhere;
 }
 .business-manager .bm-kpis small { font-size: .75rem; line-height: 1.55; margin-top: auto; }
-.business-manager .bm-kpis .bm-hero { grid-column: auto; background: #24576b; border-color: #24576b; }
+.business-manager .bm-kpis .bm-hero { grid-column: auto; background: var(--app-primary); border-color: var(--app-primary); }
 .business-manager .bm-kpis .bm-hero span,
-.business-manager .bm-kpis .bm-hero small { color: #d9eaf1; }
+.business-manager .bm-kpis .bm-hero small { color: var(--app-on-primary-muted); }
 .business-manager .bm-kpis .bm-hero svg { color: #b9d4e0; }
 
 .business-manager .bm-grid {
@@ -118,15 +119,15 @@
 .business-manager .bm-note { font-size: .8125rem; line-height: 1.65; }
 .business-manager .bm-count { font-size: .75rem; padding: 3px 7px; }
 .business-manager .bm-context-note {
-  background: #eaf3f8;
-  border-color: #deebf2;
-  color: #507386;
+  background: var(--app-primary-soft);
+  border-color: var(--app-border);
+  color: var(--app-text-body);
   font-size: .8125rem;
   line-height: 1.65;
   padding: 14px 16px;
   border-radius: 7px;
 }
-.business-manager .bm-context-note.bm-warning { background: #fcf8ec; border-color: #f1e8ce; color: #8b6b2d; }
+.business-manager .bm-context-note.bm-warning { background: var(--app-warning-soft); border-color: #f1e8ce; color: var(--app-warning); }
 .business-manager .bm-context-note button { min-height: 40px; font-size: .8125rem; }
 .business-manager .bm-tabs { gap: 22px; scrollbar-width: thin; }
 .business-manager .bm-tabs button { font-size: .875rem; min-height: 44px; padding: 12px 2px; }
@@ -136,16 +137,16 @@
 .business-manager .bm-search label:first-child { min-width: 130px; max-width: 300px; }
 .business-manager .bm-search label:last-child { max-width: 180px; }
 
-.business-manager .bm-table-wrap { border-color: #e5edf2; border-radius: 7px; }
+.business-manager .bm-table-wrap { border-color: var(--app-border); border-radius: 7px; }
 .business-manager .bm-table-wrap table { font-size: .875rem; }
 .business-manager .bm-table-wrap th {
-  background: #f5f9fb;
-  color: #627e8e;
+  background: var(--app-surface-muted);
+  color: var(--app-text-muted);
   font-size: .8125rem;
   font-weight: 500;
   padding: 13px 12px;
 }
-.business-manager .bm-table-wrap td { padding: 15px 12px; border-color: #ecf2f5; }
+.business-manager .bm-table-wrap td { padding: 15px 12px; border-color: var(--app-border-soft); }
 .business-manager .bm-row-actions { min-width: 130px; gap: 6px; }
 .business-manager .bm-row-actions button { min-height: 36px; padding: 7px 9px; font-size: .75rem; }
 .business-manager .bm-product-actions {
@@ -161,7 +162,7 @@
   min-height: 38px;
   white-space: nowrap;
 }
-.business-manager .bm-product-actions [data-bm="archive"] { color: #9b453b; }
+.business-manager .bm-product-actions [data-bm="archive"] { color: var(--app-danger); }
 .business-manager .bm-badge { font-size: .75rem; padding: 4px 8px; border-radius: 5px; }
 .business-manager .bm-pagination { font-size: .8125rem; line-height: 1.5; flex-wrap: wrap; }
 .business-manager .bm-pagination button { min-height: 40px; }
@@ -188,10 +189,11 @@
 .business-manager .bm-donut strong { font-size: .875rem; }
 .business-manager .bm-workspace-footer { font-size: .75rem; line-height: 1.6; margin-top: 26px; }
 
-.bm-dialog { background: #f4f8fb; border-radius: 14px; }
-.bm-dialog > header { background: #24576b; }
+.bm-dialog { background: var(--app-bg); border-radius: 14px; }
+.bm-dialog > header { background: var(--app-primary); }
 .bm-dialog h2 { font-size: 1.25rem; font-weight: 650; }
 .bm-dialog h3 { font-size: 1rem; }
+.business-reports .br-toolbar { margin: 0 0 20px; }
 .bm-dialog .bm-detail dt,
 .bm-dialog legend,
 .bm-dialog summary,
@@ -217,7 +219,7 @@
   #view-negocio .bm-grid { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
   #view-negocio .bm-toolbar { flex-direction: row; align-items: end; }
   #view-negocio .bm-context-note { flex-direction: row; align-items: center; }
-  #view-negocio .bm-table-wrap { overflow-x: auto; border: 1px solid #e5edf2; background: white; }
+  #view-negocio .bm-table-wrap { overflow-x: auto; border: 1px solid var(--app-border); background: white; }
   #view-negocio .bm-table-wrap table { display: table; }
   #view-negocio .bm-table-wrap thead { display: table-header-group; }
   #view-negocio .bm-table-wrap tbody { display: table-row-group; }
@@ -227,7 +229,7 @@
     display: table-cell;
     padding: 15px 12px;
     font-size: .875rem;
-    border-bottom: 1px solid #ecf2f5;
+    border-bottom: 1px solid var(--app-border-soft);
   }
   #view-negocio .bm-table-wrap td::before { display: none; }
   #view-negocio .bm-workspace-footer { flex-direction: row; }
@@ -277,7 +279,7 @@
     gap: 11px;
     padding: 16px 13px;
     margin: 12px 0;
-    border: 1px solid #e0eaf1;
+    border: 1px solid var(--app-border);
     border-radius: 9px;
     background: #fff;
   }
@@ -303,7 +305,7 @@
   #view-negocio .bm-table-wrap td[data-label="Acciones"] {
     grid-template-columns: minmax(0, 1fr);
     padding-top: 12px;
-    border-top: 1px solid #eaf0f4;
+    border-top: 1px solid var(--app-border-soft);
   }
   .business-manager .bm-table-wrap td[data-label="Acciones"]::before,
   .business-manager .bm-table-wrap .bm-empty-cell::before { display: none; }

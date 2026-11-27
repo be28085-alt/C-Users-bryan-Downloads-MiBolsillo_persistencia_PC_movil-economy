@@ -32,7 +32,7 @@ const server = http.createServer((req, res) => {
         BusinessUI.navigate('sales');
       });
       await page.evaluate(async () => { await Finanzas.getBusinessService().execute('saveCustomer', { nombre: 'Cliente automático', cedula: '123456789', email: 'auto@example.co', direccion: 'Bogotá' }); });
-      await page.locator('[data-business-section="sales"] .bm-header .bm-primary').click();
+      await page.locator('[data-business-section="sales"] .bm-toolbar [data-kind="sale"]').click();
       assert.equal(await page.locator('[name="name"]').inputValue(), 'Cliente automático');
       assert.equal(await page.locator('[name="email"]').inputValue(), 'auto@example.co');
       assert.equal(await page.locator('[name="unitPrice"]').inputValue(), '10.000.00');

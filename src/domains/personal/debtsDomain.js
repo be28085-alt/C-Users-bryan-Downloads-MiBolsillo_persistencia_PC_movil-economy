@@ -8,6 +8,35 @@
   'use strict';
 
   const debtsDomain = {
+    /** Normaliza una entidad histórica sin mutar el registro recibido ni persistir datos. */
+    normalizar(deuda = {}, index = 0) {
+      if (!deuda || typeof deuda !== 'object') return {
+        id: `deuda-${Date.now()}-${index}`,
+        nombre: 'Deuda',
+        valorInicial: 0,
+        saldoPendiente: 0,
+        cuotaMensual: 0,
+        proximoPago: '',
+        concepto: 'Deuda'
+      };
+
+      const valorInicial = Number(deuda.valorInicial ?? deuda.montoInicial ?? 0) || 0;
+      const saldoPendiente = Number(deuda.saldoPendiente ?? deuda.saldo ?? 0) || 0;
+      const cuotaMensual = Number(deuda.cuotaMensual ?? 0) || 0;
+
+      return {
+        ...deuda,
+        id: deuda.id || `deuda-${Date.now()}-${index}`,
+        nombre: (deuda.nombre || deuda.concepto || deuda.acreedor || 'Deuda').trim() || 'Deuda',
+        valorInicial: Math.max(valorInicial, 0),
+        saldoPendiente: Math.max(saldoPendiente, 0),
+        cuotaMensual: Math.max(cuotaMensual, 0),
+        montoInicial: Math.max(valorInicial, 0),
+        proximoPago: deuda.proximoPago || deuda.fechaVencimiento || '',
+        concepto: deuda.concepto || deuda.nombre || 'Deuda',
+        acreedor: deuda.acreedor || deuda.nombre || 'Entidad'
+      };
+    },
     /**
      * Clasifica sin alterar el historial ni los registros originales.
      * @param {Array<object>} deudas Registros personales confirmados.

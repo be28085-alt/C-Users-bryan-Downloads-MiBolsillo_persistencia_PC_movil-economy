@@ -474,23 +474,13 @@ class MobileApp {
     if (balanceEl) balanceEl.textContent = formatCOP(Finanzas.calcBalanceNeto(), true);
 
     const filterType = this.filtroTipo;
-    const query = (document.getElementById('mobileInputSearch')?.value || '').toLowerCase().trim();
+    const query = document.getElementById('mobileInputSearch')?.value || '';
 
     // Filtra por el período seleccionado
-    let items = Finanzas.getMovimientosPeriodo();
-    if (filterType !== 'TODOS') {
-      items = items.filter(m => m.tipo === filterType);
-    }
-    if (query) {
-      items = items.filter(m => 
-        (m.concepto || '').toLowerCase().includes(query) || 
-        (m.categoria || '').toLowerCase().includes(query)
-      );
-    }
     const category = document.getElementById('mobileSelectCategory')?.value || 'TODAS';
-    if (category !== 'TODAS') {
-      items = items.filter(m => m.categoria === category);
-    }
+    const items = window.PersonalMovementsDomain.filtrarMovimientos(Finanzas.getMovimientosPeriodo(), {
+      tipo: filterType, categoria: category, busqueda: query, campos: ['concepto', 'categoria']
+    });
 
     if (items.length === 0) {
       container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem;">No hay movimientos registrados en ${Finanzas.getNombrePeriodo()}.</div>`;
@@ -781,8 +771,8 @@ class MobileApp {
       data: {
         labels: labels,
         datasets: [
-          { label: 'Ingresos', data: ingresosData, backgroundColor: '#0f8b65', borderRadius: 4 },
-          { label: 'Gastos', data: gastosData, backgroundColor: '#d9383a', borderRadius: 4 }
+          { label: 'Ingresos', data: ingresosData, backgroundColor: window.FinanzasVisualPalette.color('chart-income'), borderRadius: 4 },
+          { label: 'Gastos', data: gastosData, backgroundColor: window.FinanzasVisualPalette.color('chart-expense'), borderRadius: 4 }
         ]
       },
       options: {
@@ -807,7 +797,7 @@ class MobileApp {
         labels: categories.length ? categories.map(category => category.nombre) : ['Sin gastos en el período'],
         datasets: [{
           data: categories.length ? categories.map(category => totals[category.id]) : [1],
-          backgroundColor: categories.length ? categories.map(category => category.color) : ['#cbd5e1'],
+          backgroundColor: categories.length ? categories.map(category => window.FinanzasVisualPalette.category(CATEGORIAS_GASTO.indexOf(category))) : [window.FinanzasVisualPalette.color('border')],
           borderWidth: 2,
           borderColor: '#ffffff'
         }]
@@ -1066,12 +1056,14 @@ class MobileApp {
   }
 
   updateLiveImpact() {
-    const rawAmount = Number(document.getElementById('mobInputMonto')?.value || 0);
-    const amount = Number.isFinite(rawAmount) && rawAmount > 0 ? rawAmount : 0;
-    const isIncome = this.modalType === 'INGRESO';
-    const currentBalance = Finanzas.calcSaldoTotal();
-    const projectedBalance = currentBalance + (isIncome ? amount : -amount);
     const category = document.getElementById('mobSelectCategoria')?.value || 'Alimentación';
+    const preview = window.PersonalBudgetDomain.proyectarMovimiento({
+      tipo: this.modalType, valor: document.getElementById('mobInputMonto')?.value || 0,
+      saldoActual: Finanzas.calcSaldoTotal(), presupuesto: Finanzas.calcPresupuestoStatus(),
+      gastoCategoria: Finanzas.calcGastosPorCategoria()[category] || 0,
+      limiteCategoria: Finanzas.getLimitesCategorias()[category] ?? 0
+    });
+    const { esIngreso: isIncome, saldoActual: currentBalance, saldoProyectado: projectedBalance } = preview;
     const currentEl = document.getElementById('mobLblSaldoActual');
     const projectedEl = document.getElementById('mobLblSaldoProyectado');
     const categoryEl = document.getElementById('mobLblRegCategory');
@@ -1082,18 +1074,13 @@ class MobileApp {
 
     const alertEl = document.getElementById('mobRegImpactAlert');
     if (alertEl) {
-      const status = Finanzas.calcPresupuestoStatus();
       if (impactEl) {
         impactEl.textContent = isIncome
           ? 'Aporte a liquidez'
-          : `+${(status.limite > 0 ? amount / status.limite * 100 : 0).toFixed(1)}% del presupuesto`;
+          : `+${preview.impactoPresupuesto.toFixed(1)}% del presupuesto`;
       }
-      const categorySpent = Finanzas.calcGastosPorCategoria()[category] || 0;
-      const categoryLimit = (Finanzas.getLimitesCategorias()[category] ?? 0);
-      alertEl.textContent = !isIncome && (
-        (status.limite > 0 && status.gastado + amount > status.limite) ||
-        categorySpent + amount > categoryLimit
-      ) ? '⚠️ Este gasto puede superar el presupuesto mensual o el límite de su categoría.' : '';
+      alertEl.textContent = preview.excedePresupuesto || preview.excedeCategoria
+        ? '⚠️ Este gasto puede superar el presupuesto mensual o el límite de su categoría.' : '';
     }
   }
 
@@ -1336,20 +1323,8 @@ class MobileApp {
   }
 
   exportarCSV() {
-    let csv = 'ID,Tipo,Concepto,Categoria,Cuenta,Monto_COP,Fecha\n';
-    Finanzas.getMovimientosPeriodo().forEach(m => {
-      csv += `${escaparCSV(m.id)},${escaparCSV(m.tipo)},${escaparCSV(m.concepto)},${escaparCSV(m.categoria)},${escaparCSV(m.cuenta || 'Principal')},${(Number(m.valor) || 0).toFixed(2)},${escaparCSV(m.fecha)}\n`;
-    });
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const periodoLabel = `${Finanzas.state.periodoAnio}_${String(Finanzas.state.periodoMes + 1).padStart(2, '0')}`;
-    a.download = `mibolsillo_movimientos_${periodoLabel}_movil.csv`;
-    a.click();
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 1000);
+    window.FinanzasExportService.descargarMovimientosPeriodoCSV(
+      Finanzas.getMovimientosPeriodo(), Finanzas.state.periodoAnio, Finanzas.state.periodoMes, true);
     this.mostrarToast('📥 CSV descargado');
   }
 

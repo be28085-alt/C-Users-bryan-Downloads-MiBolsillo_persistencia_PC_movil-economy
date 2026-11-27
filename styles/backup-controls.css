@@ -1,16 +1,17 @@
-.backup-controls { margin: 20px 0; padding: 20px; border: 1px solid #dde8ee; border-radius: 12px; background: #fff; color: #243946; min-width: 0; }
+.backup-controls { margin: 20px 0; padding: 20px; border: 1px solid var(--app-border); border-radius: 12px; background: #fff; color: var(--app-text-title); min-width: 0; }
 .backup-controls h2 { margin: 0 0 10px; font: 550 1.125rem var(--font-family,system-ui); }
-.backup-controls .backup-description { color: #657f8e; font-size: .8125rem; line-height: 1.6; margin: 10px 0; }
+.backup-controls .backup-description { color: var(--app-text-muted); font-size: .8125rem; line-height: 1.6; margin: 10px 0; }
 .backup-controls .backup-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-.backup-controls button, .backup-controls select { min-height: 44px; max-width: 100%; padding: 10px 13px; border: 1px solid #d9e6ee; border-radius: 7px; background: #fff; color: #204f60; font: 500 .875rem var(--font-family,system-ui); }
+.backup-controls button, .backup-controls select { min-height: 44px; max-width: 100%; padding: 10px 13px; border: 1px solid var(--app-border); border-radius: 7px; background: #fff; color: var(--app-primary); font: 500 .875rem var(--font-family,system-ui); }
 .backup-controls button { cursor: pointer; }
-.backup-controls button[data-backup="create"] { background: #204f60; border-color: #204f60; color: white; }
-.backup-controls button:hover { border-color: #78a6bb; }
+.backup-controls button[data-backup="create"] { background: var(--app-primary); border-color: var(--app-primary); color: white; }
+.backup-controls button[data-backup="create"]:hover { background: var(--app-primary-hover); border-color: var(--app-primary-hover); }
+.backup-controls button:hover { border-color: var(--app-focus); }
 .backup-controls button:disabled, .backup-controls select:disabled { opacity: .6; cursor: default; }
-.backup-controls .backup-label { display: block; color: #405765; font-size: .875rem; margin: 18px 0 7px; }
+.backup-controls .backup-label { display: block; color: var(--app-text-body); font-size: .875rem; margin: 18px 0 7px; }
 .backup-controls select { width: 100%; min-width: 0; }
-.backup-controls .backup-notice { margin: 12px 0; font-size: .875rem; line-height: 1.6; color: #287f73; overflow-wrap: anywhere; }
-.backup-controls .backup-error { color: #a33e46; }
+.backup-controls .backup-notice { margin: 12px 0; font-size: .875rem; line-height: 1.6; color: var(--app-success); overflow-wrap: anywhere; }
+.backup-controls .backup-error { color: var(--app-danger); }
 .backup-controls :focus-visible { outline: 3px solid #549bb4; outline-offset: 3px; }
 @media(max-width:600px) { .backup-controls { padding: 18px 15px; } .backup-controls .backup-actions button { flex: 1 1 140px; } }
 @media print { .backup-controls { display: none; } }

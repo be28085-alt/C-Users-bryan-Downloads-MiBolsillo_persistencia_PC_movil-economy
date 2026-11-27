@@ -534,24 +534,12 @@ class DesktopApp {
 
     const filterType = this.currentMovFilter;
     const catSelect = document.getElementById('selectMovCategory')?.value || 'TODAS';
-    const textSearch = (document.getElementById('inputMovSearchTable')?.value || '').toLowerCase().trim();
+    const textSearch = document.getElementById('inputMovSearchTable')?.value || '';
 
     // Filtra por el período seleccionado
-    let items = Finanzas.getMovimientosPeriodo();
-
-    if (filterType !== 'TODOS') {
-      items = items.filter(m => m.tipo === filterType);
-    }
-    if (catSelect !== 'TODAS') {
-      items = items.filter(m => m.categoria === catSelect);
-    }
-    if (textSearch) {
-      items = items.filter(m => 
-        (m.concepto || '').toLowerCase().includes(textSearch) || 
-        (m.categoria || '').toLowerCase().includes(textSearch) ||
-        (m.cuenta || '').toLowerCase().includes(textSearch)
-      );
-    }
+    const items = window.PersonalMovementsDomain.filtrarMovimientos(Finanzas.getMovimientosPeriodo(), {
+      tipo: filterType, categoria: catSelect, busqueda: textSearch, campos: ['concepto', 'categoria', 'cuenta']
+    });
 
     const countLabel = document.getElementById('lblTableTotalCount');
     if (countLabel) {
@@ -636,9 +624,11 @@ class DesktopApp {
 
   updateLiveImpact() {
     const inputVal = document.getElementById('regInputMonto');
-    const rawVal = Number(inputVal?.value || 0);
-    const valor = (isFinite(rawVal) && rawVal > 0) ? rawVal : 0;
-    const isIncome = this.formType === 'INGRESO';
+    const preview = window.PersonalBudgetDomain.proyectarMovimiento({
+      tipo: this.formType, valor: inputVal?.value || 0,
+      saldoActual: Finanzas.calcSaldoTotal(), presupuesto: Finanzas.calcPresupuestoStatus()
+    });
+    const { monto: valor, esIngreso: isIncome, saldoActual, saldoProyectado } = preview;
 
     const lblAmount = document.getElementById('lblLiveImpactAmount');
     if (lblAmount) {
@@ -649,23 +639,20 @@ class DesktopApp {
     const lblCat = document.getElementById('lblLiveImpactCategory');
     if (lblCat) lblCat.textContent = this.formCategory;
 
-    const saldoActual = Finanzas.calcSaldoTotal();
     const lblCurBal = document.getElementById('lblLiveCurrentBalance');
     if (lblCurBal) lblCurBal.textContent = formatCOP(saldoActual);
 
-    const saldoProyectado = isIncome ? saldoActual + valor : saldoActual - valor;
     const lblProjBal = document.getElementById('lblLiveProjectedBalance');
     if (lblProjBal) lblProjBal.textContent = formatCOP(saldoProyectado);
 
-    const presStatus = Finanzas.calcPresupuestoStatus();
-    const impactPct = presStatus.limite > 0 ? ((valor / presStatus.limite) * 100).toFixed(1) : '0.0';
+    const impactPct = preview.impactoPresupuesto.toFixed(1);
     const lblImp = document.getElementById('lblLiveBudgetImpact');
     if (lblImp) lblImp.textContent = isIncome ? 'Aporte a liquidez' : `+${impactPct}% del presupuesto`;
 
     // Notificación lógica si excede
     const logicNotice = document.getElementById('liveLogicNoticeArea');
     if (logicNotice) {
-      if (!isIncome && presStatus.limite > 0 && (presStatus.gastado + valor > presStatus.limite)) {
+      if (preview.excedePresupuesto) {
         logicNotice.innerHTML = `
           <div class="alert-notice-box advertencia" style="padding: 0.6rem; margin: 0;">
             <span style="font-size: 1rem;">⚠️</span>
@@ -1090,13 +1077,13 @@ class DesktopApp {
           {
             label: 'Ingresos (COP)',
             data: ingresosData,
-            backgroundColor: '#0b3b3c',
+            backgroundColor: window.FinanzasVisualPalette.color('chart-income'),
             borderRadius: 6
           },
           {
             label: 'Gastos (COP)',
             data: gastosData,
-            backgroundColor: '#d97706',
+            backgroundColor: window.FinanzasVisualPalette.color('chart-expense'),
             borderRadius: 6
           }
         ]
@@ -1112,7 +1099,7 @@ class DesktopApp {
             ticks: {
               callback: (val) => '$' + (val / 1000000).toFixed(1) + 'M'
             },
-            grid: { color: '#f1f5f9' }
+            grid: { color: window.FinanzasVisualPalette.color('border') }
           },
           x: {
             grid: { display: false }
@@ -1149,13 +1136,13 @@ class DesktopApp {
             {
               label: 'Ingresos',
               data: dataIng,
-              backgroundColor: '#059669',
+              backgroundColor: window.FinanzasVisualPalette.color('chart-income'),
               borderRadius: 6
             },
             {
               label: 'Gastos',
               data: dataGas,
-              backgroundColor: '#e11d48',
+              backgroundColor: window.FinanzasVisualPalette.color('chart-expense'),
               borderRadius: 6
             }
           ]
@@ -1178,12 +1165,12 @@ class DesktopApp {
       const data = [];
       const colors = [];
 
-      CATEGORIAS_GASTO.forEach(c => {
+      CATEGORIAS_GASTO.forEach((c, index) => {
         const val = gastosCat[c.id] || 0;
         if (val > 0) {
           labels.push(c.nombre);
           data.push(val);
-          colors.push(c.color);
+          colors.push(window.FinanzasVisualPalette.category(index));
         }
       });
 
@@ -1191,7 +1178,7 @@ class DesktopApp {
       if (data.length === 0) {
         labels.push('Sin gastos en el período');
         data.push(1);
-        colors.push('#cbd5e1');
+        colors.push(window.FinanzasVisualPalette.color('border'));
       }
 
       this.chartInformesDonut = new Chart(canvasDonut, {
@@ -1557,21 +1544,8 @@ class DesktopApp {
   // EXPORTACIONES Y COPIAS
   // ==========================================================================
   exportarCSV() {
-    let csv = 'ID,Tipo,Concepto,Categoria,Cuenta,Monto_COP,Fecha\n';
-    Finanzas.getMovimientosPeriodo().forEach(m => {
-      csv += `${escaparCSV(m.id)},${escaparCSV(m.tipo)},${escaparCSV(m.concepto)},${escaparCSV(m.categoria)},${escaparCSV(m.cuenta || 'Principal')},${(Number(m.valor) || 0).toFixed(2)},${escaparCSV(m.fecha)}\n`;
-    });
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const periodoLabel = `${Finanzas.state.periodoAnio}_${String(Finanzas.state.periodoMes + 1).padStart(2, '0')}`;
-    a.download = `mibolsillo_movimientos_${periodoLabel}.csv`;
-    a.click();
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 1000);
+    window.FinanzasExportService.descargarMovimientosPeriodoCSV(
+      Finanzas.getMovimientosPeriodo(), Finanzas.state.periodoAnio, Finanzas.state.periodoMes);
     this.showToast('📥 Archivo CSV descargado con éxito.');
   }
 

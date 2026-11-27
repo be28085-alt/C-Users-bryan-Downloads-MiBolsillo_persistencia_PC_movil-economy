@@ -33,10 +33,7 @@
           if (status.ambiguous) this.core._unconfirmedBusiness = { key: operationKey, result: clone(result), operationId: status.operationId };
           throw new Error((status.ambiguous ? 'No se confirmó la operación.' : 'No se pudo guardar la operación.') + ' Conserva el formulario y reintenta. ' + (status.message || ''));
         }
-        this.core.state = state;
-        if (window.MiBolsilloStore) window.MiBolsilloStore.state = state;
-        this.core.lastPersistence = { ok: true, status: 'saved' };
-        this.core.notify();
+        this.core.publicarEstadoConfirmado(state, { ok: true, status: 'saved' });
         return clone(result);
       });
     }

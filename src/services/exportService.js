@@ -65,9 +65,10 @@
      * Genera y descarga un archivo CSV en el navegador del usuario.
      * @param {string} nombreArchivo - Nombre sugerido del archivo.
      * @param {string} contenidoCSV - Contenido CSV ya codificado.
+     * @param {object} opciones BOM y plazo de revocación exigidos por el formato exportado.
      */
-    descargarCSV(nombreArchivo, contenidoCSV) {
-      const blob = new Blob(['\uFEFF' + contenidoCSV], { type: 'text/csv;charset=utf-8;' });
+    descargarCSV(nombreArchivo, contenidoCSV, { incluirBOM = true, revocarTras = 0 } = {}) {
+      const blob = new Blob([(incluirBOM ? '\uFEFF' : '') + contenidoCSV], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const enlace = document.createElement('a');
       enlace.href = url;
@@ -75,7 +76,36 @@
       document.body.appendChild(enlace);
       enlace.click();
       document.body.removeChild(enlace);
-      URL.revokeObjectURL(url);
+      if (revocarTras > 0) setTimeout(() => URL.revokeObjectURL(url), revocarTras);
+      else URL.revokeObjectURL(url);
+    },
+
+    /**
+     * Construye el formato personal vigente: coma, LF, sin BOM y monto a dos decimales.
+     * @param {Array<object>} movimientos Registros del período autorizado en memoria.
+     * @returns {string} CSV con protección de fórmulas para los campos de texto.
+     */
+    crearCSVMovimientosPeriodo(movimientos = []) {
+      const escape = window.escaparCSV;
+      let csv = 'ID,Tipo,Concepto,Categoria,Cuenta,Monto_COP,Fecha\n';
+      movimientos.forEach(m => {
+        csv += `${escape(m.id)},${escape(m.tipo)},${escape(m.concepto)},${escape(m.categoria)},${escape(m.cuenta || 'Principal')},${(Number(m.valor) || 0).toFixed(2)},${escape(m.fecha)}\n`;
+      });
+      return csv;
+    },
+
+    /**
+     * Descarga el mismo CSV personal para ambos clientes, conservando sus nombres.
+     * @param {Array<object>} movimientos Proyección del período, sin consulta ni escritura.
+     * @param {number} anio Año seleccionado.
+     * @param {number} mes Mes seleccionado, de cero a once.
+     * @param {boolean} movil Conserva el sufijo histórico de la versión móvil.
+     * @returns {void}
+     */
+    descargarMovimientosPeriodoCSV(movimientos, anio, mes, movil = false) {
+      const periodo = `${anio}_${String(mes + 1).padStart(2, '0')}`;
+      this.descargarCSV(`mibolsillo_movimientos_${periodo}${movil ? '_movil' : ''}.csv`,
+        this.crearCSVMovimientosPeriodo(movimientos), { incluirBOM: false, revocarTras: 1000 });
     },
 
     /**

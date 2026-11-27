@@ -1,24 +1,24 @@
 /* Mobile presentation shared by the active pages. Financial state is untouched. */
 body:has(.mobile-device-shell) {
-  --color-primary: #214f60;
-  --color-primary-light: #2c6578;
-  --color-primary-dark: #183c49;
-  --color-primary-soft: #e5f0f5;
-  --bg-app: #f2f7fa;
-  --bg-device: #f2f7fa;
+  --color-primary: var(--app-primary);
+  --color-primary-light: var(--app-primary-light);
+  --color-primary-dark: var(--app-primary-hover);
+  --color-primary-soft: var(--app-primary-soft);
+  --bg-app: var(--app-bg);
+  --bg-device: var(--app-bg);
   --bg-card: #fff;
-  --bg-subtle: #edf4f8;
-  --bg-track: #dceaf0;
-  --text-main: #233c48;
-  --text-body: #405d6b;
-  --text-muted: #647f8e;
-  --text-light: #7b929e;
-  --border-card: #dce8ef;
-  --border-focus: #214f60;
-  --color-income: #227667;
-  --color-income-soft: #edf6f2;
-  --color-expense: #b4494c;
-  --color-expense-soft: #fcf1f1;
+  --bg-subtle: var(--app-surface-muted);
+  --bg-track: var(--app-border);
+  --text-main: var(--app-text-title);
+  --text-body: var(--app-text-body);
+  --text-muted: var(--app-text-muted);
+  --text-light: var(--app-text-light);
+  --border-card: var(--app-border);
+  --border-focus: var(--app-primary);
+  --color-income: var(--app-success);
+  --color-income-soft: var(--app-success-soft);
+  --color-expense: var(--app-danger);
+  --color-expense-soft: var(--app-danger-soft);
   --radius-xs: 5px;
   --radius-sm: 8px;
   --radius-md: 11px;
@@ -87,7 +87,7 @@ body:has(.mobile-device-shell) {
   line-height: 1.22;
   letter-spacing: -.045em;
   font-weight: 500;
-  color: #243d49;
+  color: var(--app-text-title);
 }
 
 .mobile-device-shell :is(.user-avatar-btn, .btn-icon-pill) {
@@ -123,7 +123,7 @@ body:has(.mobile-device-shell) {
 .mobile-device-shell .hero-balance-card {
   padding: 22px;
   border-radius: 16px;
-  background: #214f60;
+  background: var(--app-primary);
   box-shadow: none;
   margin-bottom: 16px;
 }
@@ -155,6 +155,7 @@ body:has(.mobile-device-shell) {
   font-weight: 500;
   line-height: 1.4;
 }
+.mobile-device-shell .btn-action-primary:hover { background: var(--app-primary-hover); }
 
 .mobile-device-shell .section-card {
   padding: 18px;
@@ -176,13 +177,13 @@ body:has(.mobile-device-shell) {
 .mobile-device-shell .tx-concept { font-size: .875rem; font-weight: 500; }
 .mobile-device-shell .tx-subtext { font-size: .75rem; line-height: 1.5; margin-top: 3px; }
 .mobile-device-shell .tx-amount { font-size: .8125rem; font-weight: 500; line-height: 1.5; max-width: 47%; font-variant-numeric: tabular-nums; }
-.mobile-device-shell .tx-amount.expense { color: var(--text-main); }
+.mobile-device-shell .tx-amount.expense { color: var(--color-expense); }
 .mobile-device-shell .transaction-row-item > div:last-child:has(.tx-amount) { max-width: 50%; flex-wrap: wrap; justify-content: flex-end; }
 .mobile-device-shell .transaction-row-item > div:last-child .tx-amount { max-width: 100%; }
 .mobile-device-shell .transaction-row-item button { min-width: 36px; }
 
 .mobile-device-shell .segmented-control-tabs {
-  background: #e4eef4;
+  background: var(--app-primary-soft);
   border: 0;
   padding: 4px;
   border-radius: 9px;
@@ -242,7 +243,7 @@ body:has(.mobile-device-shell) {
 .mobile-device-shell :is(#subpane-metas, #subpane-deudas) > .hero-balance-card .hero-label { color: var(--text-muted); }
 .mobile-device-shell :is(#subpane-metas, #subpane-deudas) > .hero-balance-card .hero-amount { margin: 10px 0 6px; }
 .mobile-device-shell .kpi-sub-badge { font-size: .75rem; color: var(--text-muted); }
-.mobile-device-shell :is(#mobileListMetasCards, #mobileListDeudasCards) > div { background: #f8fbfd !important; border: 1px solid var(--border-card); padding: 16px !important; }
+.mobile-device-shell :is(#mobileListMetasCards, #mobileListDeudasCards) > div { background: var(--app-surface-muted) !important; border: 1px solid var(--border-card); padding: 16px !important; }
 .mobile-device-shell :is(#mobileListMetasCards, #mobileListDeudasCards) .progress-bar-fill { background: var(--color-primary) !important; }
 .mobile-device-shell :is(#mobileListMetasCards, #mobileListDeudasCards) [style*="justify-content"] { gap: 10px; flex-wrap: wrap; }
 .mobile-device-shell :is(#mobileListMetasCards, #mobileListDeudasCards) button.btn-action-primary { margin-top: 12px !important; }
@@ -255,7 +256,7 @@ body:has(.mobile-device-shell) {
 .mobile-device-shell #mobileGridReportCategories > div > div { flex-wrap: wrap; gap: 6px 12px; }
 .mobile-device-shell #view-perfil > .section-card:has(#mobileProfileName) { padding: 6px 0 18px; background: transparent; border: 0; gap: 12px; }
 .mobile-device-shell :is(#mobileProfileName, #mobileProfileEmail) { overflow-wrap: anywhere; }
-.mobile-device-shell #mobileProfileAvatar { background: #e1edf3; border-color: transparent; }
+.mobile-device-shell #mobileProfileAvatar { background: var(--app-primary-soft); border-color: transparent; }
 .mobile-device-shell .module-toggle-btn { border-radius: 8px; min-height: 44px; padding: 9px; font-size: .875rem; font-weight: 500; }
 .mobile-device-shell .mobile-module-toggle { gap: 8px; }
 .mobile-device-shell #view-perfil input[type="checkbox"] {
@@ -293,12 +294,12 @@ body:has(.mobile-device-shell) {
   font-weight: 400;
   padding: 5px 2px;
   gap: 5px;
-  color: #647f90;
+  color: var(--app-text-muted);
   border-radius: 8px;
 }
 
 .mobile-device-shell .bottom-nav-bar .nav-btn.active { color: var(--color-primary); font-weight: 600; }
-.mobile-device-shell .bottom-nav-bar .nav-btn.active > span:first-child { background: #e7f0f5; border-radius: 9px; }
+.mobile-device-shell .bottom-nav-bar .nav-btn.active > span:first-child { background: var(--app-primary-soft); border-radius: 9px; }
 .mobile-device-shell .bottom-nav-bar .nav-btn > span:first-child { padding: 4px 9px; font-size: 1.25rem !important; line-height: 1.1; }
 .mobile-device-shell .bottom-nav-bar .nav-center-action-btn { width: 44px; min-width: 44px; height: 36px; flex-basis: 44px; border-radius: 10px; margin: 0 4px 13px; box-shadow: none; }
 .mobile-device-shell .business-options-backdrop { position: fixed; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
@@ -328,7 +329,7 @@ body:has(.mobile-device-shell) .form-inputs-group { gap: 16px; }
 body:has(.mobile-device-shell) .form-row-custom label { font-size: .8125rem; font-weight: 500; margin-bottom: 7px; }
 body:has(.mobile-device-shell) .form-row-custom :is(input, select, textarea) { min-height: 48px; padding: 12px 14px; border-radius: 9px; border: 1px solid var(--border-card); background: #fff; font-size: 1rem; width: 100%; }
 body:has(.mobile-device-shell) .bottom-sheet-container .btn-action-primary { min-height: 48px; border-radius: 9px; box-shadow: none; font-weight: 500; margin-bottom: 0; }
-body:has(.mobile-device-shell) .bottom-sheet-container .segmented-control-tabs { border-radius: 9px; box-shadow: none; background: #e4eef4; }
+body:has(.mobile-device-shell) .bottom-sheet-container .segmented-control-tabs { border-radius: 9px; box-shadow: none; background: var(--app-primary-soft); }
 body:has(.mobile-device-shell) .bottom-sheet-container .segment-tab { min-height: 44px; border-radius: 6px; font-size: .875rem; }
 body:has(.mobile-device-shell) .bottom-sheet-container .segmented-control-tabs .segment-tab.active { background: #fff; color: var(--color-primary); }
 body:has(.mobile-device-shell) #mobInputMonto { font-size: 2.25rem; font-weight: 400; text-align: center; color: var(--color-primary); background: transparent; border: 0; border-bottom: 1px solid var(--border-card); border-radius: 0; min-height: 76px; }

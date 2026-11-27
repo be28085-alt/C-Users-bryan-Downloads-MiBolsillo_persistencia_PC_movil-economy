@@ -9,6 +9,20 @@
 
   const movementsDomain = {
     /**
+     * Aplica los filtros de consulta compartidos sin mutar registros ni su orden.
+     * @param {Array<object>} movimientos Proyección del período ya seleccionado.
+     * @param {object} filtros Tipo, categoría, búsqueda y campos visibles en la interfaz.
+     * @returns {Array<object>} Registros que cumplen todos los filtros.
+     * Cada cliente declara sus campos de búsqueda para conservar su contrato actual.
+     */
+    filtrarMovimientos(movimientos = [], { tipo = 'TODOS', categoria = 'TODAS', busqueda = '', campos = ['concepto', 'categoria', 'cuenta'] } = {}) {
+      const query = busqueda.toLowerCase().trim();
+      return movimientos.filter(movimiento => (tipo === 'TODOS' || movimiento.tipo === tipo)
+        && (categoria === 'TODAS' || movimiento.categoria === categoria)
+        && (!query || campos.some(campo => (movimiento[campo] || '').toLowerCase().includes(query))));
+    },
+
+    /**
      * Obtiene los movimientos asociados a un mes y año específicos, o todos si se solicita.
      * @param {Array} movimientos - Lista de transacciones.
      * @param {number|null} anio - Año (ej: 2026).

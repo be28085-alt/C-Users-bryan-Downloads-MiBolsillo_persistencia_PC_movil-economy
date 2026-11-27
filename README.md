@@ -10,7 +10,7 @@ Para guardar en SQLite, instale Node.js 24.22 o posterior, instale las dependenc
 npm start
 ```
 
-Abra [MiBolsillo adaptable](http://127.0.0.1:5500/), que utiliza las pantallas originales según el ancho, o las entradas directas [PC](http://127.0.0.1:5500/desktop.html) y [móvil](http://127.0.0.1:5500/mobile.html). `npm run start:sqlite` inicia el mismo servidor. La información se guarda en `database/mibolsillo.sqlite`, compartida por ambas interfaces, y puede inspeccionarse en DB Browser for SQLite. Mantenga el servidor funcionando durante el uso. Consulte [la guía de SQLite](docs/SQLITE.md) para migrar datos, consultar la base y crear respaldos.
+Abra [MiBolsillo adaptable](http://127.0.0.1:5500/), que carga `desktop.html` y adapta el mismo documento al ancho, o las entradas directas [PC](http://127.0.0.1:5500/desktop.html) y [móvil](http://127.0.0.1:5500/mobile.html). `npm run start:sqlite` inicia el mismo servidor. La información se guarda en `database/mibolsillo.sqlite`, compartida por ambas interfaces, y puede inspeccionarse en DB Browser for SQLite. Mantenga el servidor funcionando durante el uso. Consulte [la guía de SQLite](docs/SQLITE.md) para migrar datos, consultar la base y crear respaldos.
 
 Al abrir aparece Iniciar sesión / Crear cuenta; una sesión válida entra directamente. Live Server, un servidor estático y `file://` no proporcionan la API de cuentas y no permiten cargar las finanzas privadas. Los datos antiguos del navegador se conservan, pero se deben migrar después de identificar al propietario.
 
@@ -23,12 +23,12 @@ No hay sincronización con la nube ni entre dispositivos. El paquete Android ind
 | `index.html`, `desktop.html`, `mobile.html` | Entrada adaptable e interfaces web activas completas |
 | `src/utils/desktop.js`, `src/utils/mobile.js` | Controladores activos de PC y móvil |
 | `src/domains/` | Reglas personales, empresariales y de usuario |
-| `src/services/`, `src/storage/` | Coordinación financiera, exportaciones y persistencia |
+| `src/services/`, `src/storage/` | Fachada y normalizador del agregado, exportaciones, unidades de trabajo personal/empresarial y adaptadores de persistencia |
 | `src/invoicing/` | Facturación simulada y exportación de documentos |
 | `src/ui/`, `styles/` | Vistas compartidas, avisos y estilos de las interfaces |
 | `android/`, `capacitor.config.json` | Proyecto Android de desarrollo y configuración de Capacitor |
 | `scripts/build-android-web.cjs` | Empaqueta las entradas activas para Android en `dist/android-web/` |
-| `scripts/serve-sqlite.cjs` | Servidor local y persistencia transaccional en SQLite |
+| `scripts/serve-sqlite.cjs`, `scripts/backend/` | Composición del servidor local, adaptadores HTTP y repositorio SQLite; seguridad y repositorio por cuenta en módulos privados de `scripts/` |
 | `database/mibolsillo.sqlite` | Base local generada al iniciar el servidor; datos privados, excluidos de Git |
 | `tests/`, `test_shared.js`, `test_dates.js` | Pruebas automatizadas; `test_shared.js` conserva cobertura del núcleo histórico |
 | `docs/` | Guías actuales; las revisiones anteriores están en `docs/historial/` |
@@ -70,8 +70,10 @@ Desde Inventario, «+ Producto» permite registrar una compra y crear sus produc
 
 Los importes de Mi Negocio se muestran como `10.490.00 COP`, siempre con dos decimales para los centavos. Al escribir un precio, `10.490` equivale a 10490 pesos; también se aceptan `10.490.00` y `10.490,00`. Las cantidades admiten punto o coma decimal y hasta cuatro decimales. Cada producto tiene una unidad seleccionable (unidades, kg, g, l, ml, m, m², m³, piezas, paquetes, cajas o pares) y admite unidades personalizadas. Las existencias se resumen por unidad; cambiar la etiqueta no convierte cantidades ni modifica los documentos históricos.
 
-- [Estructura y responsabilidades del código](docs/ESTRUCTURA.md)
-- [Guía de uso de Mi Negocio](docs/GUIA_MI_NEGOCIO.md)
+- [Arquitectura, contratos y desarrollo de módulos](docs/ARQUITECTURA.md)
+- [Estructura y responsabilidades del código](docs/ESTRUCTURA_PROYECTO.md)
+- [Auditoría de arquitectura de fase 4](docs/AUDITORIA_FASE_4.md)
+- [Seguridad y pendientes operativos](docs/AUDITORIA_SEGURIDAD_FASE_3.md)
 - [Proyecto Android y preparación para Google Play](docs/ANDROID.md)
 - [Uso de SQLite y DB Browser](docs/SQLITE.md)
 - [Acceso, aislamiento por usuario y migración con respaldo](docs/CUENTAS_Y_MIGRACION.md)

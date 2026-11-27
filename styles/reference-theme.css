@@ -1,22 +1,45 @@
+@import url("./palette.css");
+
 /* Shared visual language for both active interfaces. Financial state lives in
    the existing controllers and storage layer; this file only changes layout. */
 :root {
   --font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  --pc-teal-dark: #204f60;
-  --pc-teal-primary: #285e71;
-  --pc-teal-light: #39788d;
-  --pc-teal-subtle: #e8f2f6;
-  --pc-bg: #f2f7fa;
-  --pc-border: #dde8ee;
-  --pc-border-light: #edf3f6;
-  --pc-text-title: #243946;
-  --pc-text-body: #405765;
-  --pc-text-muted: #657f8e;
-  --pc-text-light: #788f9d;
-  --pc-green: #287f73;
-  --pc-green-bg: #eaf5f1;
-  --pc-red: #b86051;
-  --pc-red-bg: #fcf0ec;
+  --pc-teal-dark: var(--app-primary);
+  --pc-teal-primary: var(--app-primary);
+  --pc-teal-light: var(--app-primary-light);
+  --pc-teal-subtle: var(--app-primary-soft);
+  --pc-bg: var(--app-bg);
+  --pc-border: var(--app-border);
+  --pc-border-light: var(--app-border-soft);
+  --pc-text-title: var(--app-text-title);
+  --pc-text-body: var(--app-text-body);
+  --pc-text-muted: var(--app-text-muted);
+  --pc-text-light: var(--app-text-light);
+  --pc-green: var(--app-success);
+  --pc-green-bg: var(--app-success-soft);
+  --pc-red: var(--app-danger);
+  --pc-red-bg: var(--app-danger-soft);
+  --pc-yellow: var(--app-warning);
+  --pc-yellow-bg: var(--app-warning-soft);
+  --pc-card-bg: var(--app-surface);
+  --pc-teal-mint: var(--app-success-soft);
+  --biz-dark-teal: var(--app-primary);
+  --biz-dark-teal-hover: var(--app-primary-hover);
+  --biz-bg: var(--app-bg);
+  --biz-card-bg: var(--app-surface);
+  --biz-border: var(--app-border);
+  --biz-border-light: var(--app-border-soft);
+  --biz-text-title: var(--app-text-title);
+  --biz-text-body: var(--app-text-body);
+  --biz-text-muted: var(--app-text-muted);
+  --biz-green: var(--app-success);
+  --biz-green-bg: var(--app-success-soft);
+  --biz-amber: var(--app-warning);
+  --biz-amber-bg: var(--app-warning-soft);
+  --biz-red: var(--app-danger);
+  --biz-red-bg: var(--app-danger-soft);
+  --biz-blue: var(--app-primary);
+  --biz-blue-bg: var(--app-primary-soft);
   --pc-sidebar-w: 224px;
   --pc-header-h: 64px;
   --radius-sm: 7px;
@@ -33,7 +56,7 @@ button, input, select, textarea { font-family: inherit; }
 button { touch-action: manipulation; }
 button:focus-visible, a:focus-visible, input:focus-visible,
 select:focus-visible, textarea:focus-visible, summary:focus-visible {
-  outline: 3px solid #549bb4;
+  outline: 3px solid var(--app-focus);
   outline-offset: 3px;
 }
 .reference-icon {
@@ -50,12 +73,12 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
 .brand-info span { font-size: .75rem; }
 .sidebar-nav-list { padding: 16px 12px; gap: 4px; }
 .nav-item-btn { min-height: 44px; padding: 10px 12px; font-size: .875rem; font-weight: 500; border-radius: 7px; gap: 10px; }
-.nav-item-btn.active { background: #e8f2f6; color: var(--pc-teal-dark); box-shadow: none; }
+.nav-item-btn.active { background: var(--app-primary-soft); color: var(--pc-teal-dark); box-shadow: none; }
 .nav-item-btn.active .nav-icon { color: var(--pc-teal-dark); }
 .nav-item-btn .nav-icon { width: 20px; }
 .nav-item-btn .nav-icon svg { width: 19px; height: 19px; }
 .sidebar-footer { padding: 16px; }
-.user-avatar-mini { background: #e8f2f6; color: var(--pc-teal-dark); font-weight: 500; }
+.user-avatar-mini { background: var(--app-primary-soft); color: var(--pc-teal-dark); font-weight: 500; }
 .user-mini-meta strong { font-weight: 600; }
 .user-mini-meta small { display: block; overflow-wrap: anywhere; }
 .pc-top-header { padding-inline: 28px; box-shadow: none; gap: 16px; }
@@ -69,7 +92,7 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
 .header-right { gap: 10px; }
 .app-profile-shortcut { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; min-width: 0; max-width: 240px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--pc-text-title); font: 500 .875rem var(--font-family); text-align: left; cursor: pointer; }
 .app-profile-shortcut:hover { color: var(--pc-teal-primary); }
-.app-profile-avatar { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: #204f60; color: #fff; font-size: .8125rem; font-weight: 600; }
+.app-profile-avatar { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--app-primary); color: #fff; font-size: .8125rem; font-weight: 600; }
 .app-profile-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mobile-profile-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; min-width: 0; }
 .mobile-profile-row .app-profile-shortcut { flex: 0 1 auto; max-width: 100%; }
@@ -80,12 +103,12 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
 .view-heading h1 { font-size: clamp(1.5rem, 2.1vw, 1.875rem); font-weight: 550; letter-spacing: -.7px; line-height: 1.25; margin-bottom: 6px; }
 .view-heading p { font-size: .875rem; line-height: 1.65; }
 .btn-pc-primary, .btn-pc-secondary { min-height: 42px; border-radius: 7px; font-weight: 550; box-shadow: none; font-size: .875rem; }
-.btn-pc-primary:hover { transform: none; }
+.btn-pc-primary:hover { background: var(--app-primary-hover); transform: none; }
 .month-picker-pill { border-radius: 7px; box-shadow: none; font-weight: 500; padding: 2px 4px; }
 .month-picker-pill button { width: 36px; min-height: 36px; font-size: 1.25rem; }
 .pc-kpi-row, .pc-grid-2col, .pc-grid-equal, .pc-grid-3cards { gap: 18px; }
 .kpi-card { padding: 22px; box-shadow: none; border-radius: 10px; }
-.kpi-card.hero-teal { background: #204f60; box-shadow: none; border: 1px solid #204f60; }
+.kpi-card.hero-teal { background: var(--app-primary); box-shadow: none; border: 1px solid var(--app-primary); }
 .kpi-label { font-size: .8125rem; font-weight: 450; text-transform: none; letter-spacing: 0; }
 .kpi-amount { font-size: clamp(1.25rem, 2.15vw, 2rem); font-weight: 500; letter-spacing: -.7px; line-height: 1.3; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .kpi-sub-badge { font-size: .75rem; font-weight: 450; border-radius: 5px; padding: 3px 7px; }
@@ -95,7 +118,7 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
 .pc-card-title { font-size: 1rem; font-weight: 550; letter-spacing: -.15px; }
 .pc-card-subtitle { font-size: .75rem; line-height: 1.6; }
 .pc-link-btn { font-weight: 550; min-height: 32px; }
-.pc-table th { font-size: .75rem; font-weight: 500; color: var(--pc-text-muted); background: #f7fafc; text-transform: none; letter-spacing: 0; }
+.pc-table th { font-size: .75rem; font-weight: 500; color: var(--pc-text-muted); background: var(--app-surface-muted); text-transform: none; letter-spacing: 0; }
 .pc-table td { font-size: .8125rem; padding-block: 14px; }
 .table-category-badge { background: #f1f6f9; font-weight: 400; }
 .text-income, .text-expense { font-weight: 550; }
@@ -106,11 +129,11 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
 .goal-card-title, .debt-card-title { font-size: 1rem; font-weight: 550; }
 .goal-current-amount, .debt-pending-amount { font-weight: 500; font-variant-numeric: tabular-nums; }
 .btn-category-card { border-radius: 9px; box-shadow: none; min-height: 84px; }
-.btn-category-card.selected { background: #e7f1f6; box-shadow: none; }
+.btn-category-card.selected { background: var(--app-primary-soft); box-shadow: none; }
 .pc-form-input { background: #fff; border-radius: 7px; min-height: 46px; }
 .pc-form-group label { font-weight: 500; font-size: .875rem; }
 .pc-modal-window { border-radius: 14px; }
-.pc-modal-header { background: #f2f7fa; }
+.pc-modal-header { background: var(--app-bg); }
 .reference-register-action { display: none; }
 
 @media (min-width:800px) and (max-width:1100px) {
@@ -149,7 +172,7 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
   #view-inicio.active { display: flex; flex-direction: column; }
   #view-inicio > .pc-grid-2col { display: contents; }
   #view-inicio > .view-top-banner { order: 0; }
-  #view-inicio > .pc-kpi-row { order: 1; background: #204f60; padding: 20px; border-radius: 14px; gap: 14px; }
+  #view-inicio > .pc-kpi-row { order: 1; background: var(--app-primary); padding: 20px; border-radius: 14px; gap: 14px; }
   #view-inicio .pc-kpi-row .kpi-card { padding: 0; border: 0; border-radius: 0; background: transparent; }
   #view-inicio .pc-kpi-row .hero-teal { padding-bottom: 12px; border-bottom: 1px solid #ffffff26; }
   #view-inicio .pc-kpi-row .kpi-label { color: #d8e8ee; }
@@ -182,11 +205,11 @@ select:focus-visible, textarea:focus-visible, summary:focus-visible {
   #view-inicio .pc-table tbody td:nth-child(6) { grid-column: 2; grid-row: 3 / 5; align-self: center; }
   #view-inicio .pc-table tbody td[colspan] { grid-column: 1 / -1; }
   #responsiveBottomNav { border-color: var(--pc-border); box-shadow: none; }
-  #responsiveBottomNav button { color: #657f8e; border-radius: 0; font-size: .6875rem; font-weight: 450; gap: 5px; }
+  #responsiveBottomNav button { color: var(--app-text-muted); border-radius: 0; font-size: .6875rem; font-weight: 450; gap: 5px; }
   #responsiveBottomNav button.active { background: transparent; color: var(--pc-teal-dark); }
-  #responsiveBottomNav button.active > span:first-child { background: #e6f1f6; border-radius: 7px; }
+  #responsiveBottomNav button.active > span:first-child { background: var(--app-primary-soft); border-radius: 7px; }
   #responsiveBottomNav button > span:first-child { padding: 4px 12px; line-height: 1; }
-  #responsiveBottomNav button[data-responsive-view="registrar"] > span:first-child { background: #204f60; color: #fff; border-radius: 8px; }
+  #responsiveBottomNav button[data-responsive-view="registrar"] > span:first-child { background: var(--app-primary); color: #fff; border-radius: 8px; }
   #responsiveMenu { background: var(--pc-bg); }
 }
 @media (prefers-reduced-motion: reduce) {

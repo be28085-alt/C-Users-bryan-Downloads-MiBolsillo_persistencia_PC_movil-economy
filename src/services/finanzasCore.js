@@ -22,133 +22,23 @@
         store.setState(this.state);
       }
       this.state.moduloActivo = this.state.moduloActivo || 'PERSONAL';
+      this.lastPersistence = storage?.getPersistenceStatus?.() || { ok: false, status: 'unavailable' };
+      this._unsubscribeStorage = storage?.subscribe?.(event => {
+        if (event.type === 'persistence') this.lastPersistence = { ...event.result };
+        else if (event.type === 'state') this.publicarEstadoConfirmado(this.normalizeState(event.data), this.lastPersistence);
+      });
     }
 
     normalizeMeta(meta = {}, index = 0) {
-      if (!meta || typeof meta !== 'object') return {
-        id: `meta-${Date.now()}-${index}`,
-        nombre: 'Meta',
-        objetivo: 0,
-        ahorrado: 0,
-        fechaLimite: '',
-        color: '#10b981',
-        icono: '🎯'
-      };
-
-      const objetivo = Number(meta.montoObjetivo ?? meta.objetivo ?? 0) || 0;
-      const ahorrado = Number(meta.montoActual ?? meta.ahorrado ?? 0) || 0;
-      return {
-        ...meta,
-        id: meta.id || `meta-${Date.now()}-${index}`,
-        nombre: (meta.nombre || 'Meta').trim() || 'Meta',
-        objetivo: Math.max(objetivo, 0),
-        ahorrado: Math.max(ahorrado, 0),
-        montoObjetivo: Math.max(objetivo, 0),
-        montoActual: Math.max(ahorrado, 0),
-        fechaLimite: meta.fechaLimite || '',
-        color: meta.color || '#10b981',
-        icono: meta.icono || '🎯'
-      };
+      return window.PersonalGoalsDomain.normalizar(meta, index);
     }
 
     normalizeDeuda(deuda = {}, index = 0) {
-      if (!deuda || typeof deuda !== 'object') return {
-        id: `deuda-${Date.now()}-${index}`,
-        nombre: 'Deuda',
-        valorInicial: 0,
-        saldoPendiente: 0,
-        cuotaMensual: 0,
-        proximoPago: '',
-        concepto: 'Deuda'
-      };
-
-      const valorInicial = Number(deuda.valorInicial ?? deuda.montoInicial ?? 0) || 0;
-      const saldoPendiente = Number(deuda.saldoPendiente ?? deuda.saldo ?? 0) || 0;
-      const cuotaMensual = Number(deuda.cuotaMensual ?? 0) || 0;
-
-      return {
-        ...deuda,
-        id: deuda.id || `deuda-${Date.now()}-${index}`,
-        nombre: (deuda.nombre || deuda.concepto || deuda.acreedor || 'Deuda').trim() || 'Deuda',
-        valorInicial: Math.max(valorInicial, 0),
-        saldoPendiente: Math.max(saldoPendiente, 0),
-        cuotaMensual: Math.max(cuotaMensual, 0),
-        montoInicial: Math.max(valorInicial, 0),
-        proximoPago: deuda.proximoPago || deuda.fechaVencimiento || '',
-        concepto: deuda.concepto || deuda.nombre || 'Deuda',
-        acreedor: deuda.acreedor || deuda.nombre || 'Entidad'
-      };
+      return window.PersonalDebtsDomain.normalizar(deuda, index);
     }
 
     normalizeState(rawState = {}) {
-      const base = rawState && typeof rawState === 'object' ? rawState : {};
-      const next = JSON.parse(JSON.stringify(base));
-
-      if (!Array.isArray(next.movimientos)) next.movimientos = [];
-      if (!Array.isArray(next.metas)) next.metas = [];
-      if (!Array.isArray(next.deudas)) next.deudas = [];
-      if (!Array.isArray(next.negocios)) next.negocios = [];
-      if (!Array.isArray(next.productos)) next.productos = [];
-      if (!Array.isArray(next.proveedores)) next.proveedores = [];
-      if (!Array.isArray(next.cuentas)) next.cuentas = [];
-      if (!Array.isArray(next.ingresosNegocio)) next.ingresosNegocio = [];
-      for (const [key, collection, idKey, nameKey] of [
-        ['aportesMetas', 'metas', 'metaId', 'metaNombre'],
-        ['abonosDeudas', 'deudas', 'deudaId', 'deudaNombre']
-      ]) {
-        next[key] = (Array.isArray(next[key]) ? next[key] : []).map(record => ({
-          ...record, valor: Number(record.valor ?? record.monto) || 0,
-          monto: Number(record.monto ?? record.valor) || 0,
-          [nameKey]: record[nameKey] || next[collection].find(item => item.id === record[idKey])?.nombre || 'Registro histórico'
-        }));
-      }
-      const now = new Date();
-      if (!Number.isInteger(next.periodoAnio)) next.periodoAnio = now.getFullYear();
-      if (!Number.isInteger(next.periodoMes) || next.periodoMes < 0 || next.periodoMes > 11) next.periodoMes = now.getMonth();
-
-      next.movimientos = next.movimientos.map((item, index) => ({
-        ...item,
-        id: item.id || `tx-${Date.now()}-${index}`,
-        tipo: item.tipo || 'GASTO',
-        concepto: item.concepto || 'Movimiento',
-        categoria: item.categoria || 'Otros',
-        valor: Number(item.valor) || 0,
-        fecha: item.fecha || new Date().toISOString().split('T')[0]
-      }));
-
-      next.metas = next.metas.map((meta, index) => this.normalizeMeta(meta, index));
-      next.deudas = next.deudas.map((deuda, index) => this.normalizeDeuda(deuda, index));
-
-      next.usuario = next.usuario || {};
-      next.usuario.nombre = (next.usuario.nombre || 'Usuario').toString().trim() || 'Usuario';
-      next.usuario.email = (next.usuario.email || '').toString();
-      next.usuario.iniciales = (next.usuario.iniciales || 'US').toString().trim() || 'US';
-      next.saldoOculto = Boolean(next.saldoOculto);
-      next.moduloActivo = next.moduloActivo === 'EMPRESARIAL' ? 'EMPRESARIAL' : 'PERSONAL';
-      next.negocioActivoId = next.negocioActivoId || (next.negocios[0] ? next.negocios[0].id : null);
-      next.presupuestoMensual = Math.max(Number(next.presupuestoMensual) || 0, 0);
-      // One-time migration: only the explicitly stored period owns the legacy budget.
-      if (next.presupuestosVersion !== 1) {
-        next.presupuestosPorPeriodo = next.presupuestosPorPeriodo || {};
-        next.presupuestosPorPeriodo[this.clavePeriodo(next.periodoAnio, next.periodoMes)] ||= {
-          limite: next.presupuestoMensual, limitesCategorias: { ...(next.limitesCategorias || {}) }
-        };
-        next.presupuestosVersion = 1;
-      }
-      next.presupuestosPorPeriodo ||= {};
-      const budget = next.presupuestosPorPeriodo[this.clavePeriodo(next.periodoAnio, next.periodoMes)];
-      next.presupuestoMensual = Math.max(Number(budget?.limite) || 0, 0);
-      next.limitesCategorias = { ...(budget?.limitesCategorias || {}) };
-      next.recordatoriosDeudasVistos ||= {};
-      if (!next.cuentas.length) next.cuentas.push({ id: 'cuenta-principal', nombre: 'Principal', tipo: 'EFECTIVO' });
-      // Never infer historical cash exits from equal amounts/descriptions.
-      next.abonosDeudas.forEach(payment => {
-        const linked = payment.movimientoId && next.movimientos.find(m => m.id === payment.movimientoId && m.tipo === 'GASTO' && Number(m.valor) === Number(payment.valor) && m.deudaId === payment.deudaId);
-        payment.estadoVinculacion = linked ? 'vinculado' : 'historico-sin-egreso';
-      });
-
-      window.BusinessSchema?.migrate(next);
-      return next;
+      return window.FinanzasStateNormalizer.normalizeState(rawState);
     }
 
     subscribe(callback) {
@@ -168,6 +58,19 @@
           console.error('financial-view-refresh-failed: no se pudo actualizar una vista.');
         }
       });
+    }
+
+    /**
+     * Publica una proyección confirmada por el repositorio o la sincronización.
+     * @param {object} state Agregado confirmado, nunca un borrador de formulario.
+     * @param {object} persistence Resultado de persistencia ya verificado.
+     * Los stores opcionales son espejos compatibles y no nuevos propietarios.
+     */
+    publicarEstadoConfirmado(state, persistence) {
+      this.state = state;
+      if (window.MiBolsilloStore) window.MiBolsilloStore.state = state;
+      this.lastPersistence = { ...persistence };
+      this.notify();
     }
 
     async guardarEstado() {
@@ -233,7 +136,7 @@
     }
 
     clavePeriodo(anio = this.state.periodoAnio, mes = this.state.periodoMes) {
-      return String(anio) + '-' + String(mes + 1).padStart(2, '0');
+      return window.FinanzasStateNormalizer.clavePeriodo(anio, mes);
     }
 
     getLimitesCategorias(anio = this.state.periodoAnio, mes = this.state.periodoMes) {
@@ -374,89 +277,33 @@
       return 'Te quedan ' + window.formatCOP(status.disponible) + ' disponibles para este mes.';
     }
 
-    getAlertasStockBajo() {
-      return [];
-    }
-
     agregarMovimiento(datos) {
-      return this.escribirPersonal(next => {
-        const valor = this.importePersonal(datos.valor);
-        const concepto = String(datos.concepto || '').trim();
-        const fecha = datos.fecha || window.obtenerFechaHoyISO();
-        if (!['INGRESO', 'GASTO'].includes(datos.tipo) || !concepto || concepto.length > 255 || !window.esFechaISOValida(fecha)) throw new Error('Revisa el tipo, el concepto y la fecha del movimiento.');
-        const nuevo = window.PersonalMovementsDomain.crearMovimiento({ ...datos, valor, concepto, fecha });
-        next.movimientos.unshift(nuevo);
-        const period = window.parseFechaLocal(fecha);
-        next.periodoAnio = period.getFullYear(); next.periodoMes = period.getMonth();
-        return nuevo;
-      });
+      return this.escribirPersonal(next => window.PersonalCommands.agregarMovimiento(next, datos));
     }
 
     importePersonal(value, permitirCero = false) {
-      if (value === '' || value === null || value === undefined) throw new Error('Escribe un importe válido.');
-      const number = Number(value);
-      if (!Number.isFinite(number) || number < 0 || (!permitirCero && number === 0) || number > 1000000000000) throw new Error('El importe debe ser positivo y estar dentro del límite permitido.');
-      const rounded = Math.round((number + Number.EPSILON) * 100) / 100;
-      if (!permitirCero && rounded === 0) throw new Error('El importe mínimo es 0,01 COP.');
-      return rounded;
+      return window.PersonalCommands.importe(value, permitirCero);
     }
 
     // Publish only a confirmed commit. On failure the caller keeps its form,
     // and retrying cannot duplicate an operation previously held in memory.
+    getPersonalRepository() {
+      if (!this._personalRepository) this._personalRepository = new window.PersonalRepository(this);
+      return this._personalRepository;
+    }
+
     async persistirEstado(next, { locked = false } = {}) {
-      if (!locked && window.navigator?.locks?.request) return window.navigator.locks.request('mibolsillo-invoicing-v1', { mode: 'exclusive' }, () => this.persistirEstado(next, { locked: true }));
-      const storage = window.FinanzasStorage || window.MiBolsilloStorage;
-      if (!storage || storage.hasPendingChanges?.()) return false;
-      next = this.normalizeState(next);
-      if (!await storage.saveState(next, { keepPending: false })) return false;
-      const confirmed = storage.getRawState?.();
-      this.state = confirmed ? this.normalizeState(JSON.parse(confirmed).data) : next;
-      if (window.MiBolsilloStore) window.MiBolsilloStore.state = this.state;
-      this.lastPersistence = storage.getPersistenceStatus();
-      this.notify();
-      return true;
+      return this.getPersonalRepository().persistirEstado(next, { locked });
     }
 
     async escribirPersonal(mutate) {
-      const operationKey = this._personalOperationKey;
-      const write = async () => {
-        try {
-          const storage = window.FinanzasStorage;
-          if (this._unconfirmedBusiness || this._unconfirmedPersonal && (!operationKey || operationKey !== this._unconfirmedPersonal.key)) {
-            return { error: 'Hay una operación anterior sin confirmar. Reintenta su formulario original o recarga para revisar lo guardado.' };
-          }
-          if (!await storage.refreshFromBackend({ recover: true })) return { error: storage.getPersistenceStatus().message || 'No se pudo comprobar el estado guardado.' };
-          if (this._unconfirmedPersonal) {
-            const previous = this._unconfirmedPersonal;
-            if (window.MiBolsilloSQLiteBackend?.getWriteStatus().confirmedOperation === previous.operationId) {
-              this._unconfirmedPersonal = null;
-              if (operationKey && operationKey === previous.key) return previous.result;
-              return { error: 'La operación anterior se confirmó. Revisa el estado guardado antes de registrar otra.' };
-            }
-          }
-          const next = this.normalizeState(this.state);
-          const result = mutate(next);
-          if (!await this.persistirEstado(next, { locked: true })) {
-            const status = storage.getPersistenceStatus();
-            if (status.ambiguous) this._unconfirmedPersonal = { key: operationKey, result, operationId: status.operationId };
-            return { error: status.message || 'No se confirmó el guardado. Conserva el formulario y revisa el aviso de persistencia.' };
-          }
-          return result;
-        } catch (error) { return { error: error.message || 'No se pudo completar la operación.' }; }
-      };
-      if (window.navigator?.locks?.request) return window.navigator.locks.request('mibolsillo-invoicing-v1', { mode: 'exclusive' }, write);
-      this._personalTail = (this._personalTail || Promise.resolve()).then(write, write);
-      return this._personalTail;
+      return this.getPersonalRepository().escribirPersonal(mutate);
     }
 
     eliminarMovimiento(id) {
       if (!Array.isArray(this.state.movimientos)) return false;
       if (!this.state.movimientos.some(m => m.id === id)) return false;
-      return this.escribirPersonal(next => {
-        if (next.movimientos.find(m => m.id === id)?.abonoDeudaId) throw new Error('Este egreso está vinculado a un pago de deuda y no se puede eliminar por separado.');
-        next.movimientos = next.movimientos.filter(m => m.id !== id);
-        return { ok: true };
-      }).then(result => !result.error);
+      return this.escribirPersonal(next => window.PersonalCommands.eliminarMovimiento(next, id)).then(result => !result.error);
     }
 
     persistirMovimientos(movimientos) {
@@ -509,20 +356,11 @@
     }
 
     actualizarPresupuesto(monto) {
-      return this.escribirPersonal(next => {
-        const key = this.clavePeriodo(next.periodoAnio, next.periodoMes);
-        next.presupuestosPorPeriodo[key] = { ...(next.presupuestosPorPeriodo[key] || { limitesCategorias: {} }), limite: this.importePersonal(monto, true) };
-        return { ok: true };
-      });
+      return this.escribirPersonal(next => window.PersonalCommands.actualizarPresupuesto(next, monto));
     }
 
     actualizarLimiteCategoria(categoria, monto) {
-      return this.escribirPersonal(next => {
-        const key = this.clavePeriodo(next.periodoAnio, next.periodoMes);
-        const budget = next.presupuestosPorPeriodo[key] ||= { limite: 0, limitesCategorias: {} };
-        budget.limitesCategorias[categoria] = this.importePersonal(monto, true);
-        return { ok: true };
-      });
+      return this.escribirPersonal(next => window.PersonalCommands.actualizarLimiteCategoria(next, categoria, monto));
     }
 
     // Metas de Ahorro
@@ -533,59 +371,18 @@
     }
 
     agregarMeta(datos = {}) {
-      return this.escribirPersonal(next => {
-        const objetivo = this.importePersonal(datos.montoObjetivo ?? datos.objetivo);
-        const ahorrado = this.importePersonal(datos.montoActual ?? datos.ahorrado ?? 0, true);
-        const nombre = String(datos.nombre || '').trim();
-        if (!nombre) throw new Error('Escribe el nombre de la meta.');
-        const meta = {
-          id: `meta-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          nombre, objetivo, ahorrado, montoObjetivo: objetivo, montoActual: ahorrado,
-          plazo: String(datos.plazo || datos.fechaLimite || '').trim(),
-          fechaLimite: datos.fechaLimite || '',
-          color: datos.color || '#10b981',
-          icono: datos.icono || '🎯',
-          categoria: datos.categoria || 'Ahorro'
-        };
-        next.metas.push(meta);
-        if (ahorrado) next.aportesMetas.push({ id: `ap-${meta.id}`, metaId: meta.id, metaNombre: nombre,
-          monto: ahorrado, valor: ahorrado, fecha: window.obtenerFechaHoyISO(), nota: 'Ahorro inicial' });
-        return meta;
-      });
+      return this.escribirPersonal(next => window.PersonalCommands.agregarMeta(next, datos));
     }
 
     abonarAMeta(metaId, monto, nota = '') {
-      return this.escribirPersonal(next => {
-        const meta = next.metas.find(m => m.id === metaId);
-        if (!meta) throw new Error('La meta no pertenece a tus datos actuales.');
-        const baseMeta = this.normalizeMeta(meta);
-        const valor = this.importePersonal(monto);
-        const nuevoActual = this.importePersonal(baseMeta.montoActual + valor);
-        baseMeta.montoActual = nuevoActual;
-        baseMeta.ahorrado = nuevoActual;
-        baseMeta.objetivo = Number(baseMeta.montoObjetivo ?? baseMeta.objetivo ?? 0) || 0;
-        Object.assign(meta, baseMeta);
-        const aporte = {
-          id: `ap-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          metaId, metaNombre: meta.nombre,
-          monto: valor, valor,
-          fecha: window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0],
-          nota: (nota || '').trim()
-        };
-        next.aportesMetas.push(aporte);
-        return { ...aporte, mensaje: 'Aporte guardado correctamente.' };
-      });
+      return this.escribirPersonal(next => window.PersonalCommands.abonarAMeta(next, metaId, monto, nota));
     }
 
     aportarMeta(metaId, monto, nota = '') { return this.abonarAMeta(metaId, monto, nota); }
 
     async eliminarMeta(id) {
-      if (!this.state.metas.some(m => m.id === id)) return false;
-      return !(await this.escribirPersonal(next => {
-        next.metas = next.metas.filter(m => m.id !== id);
-        next.aportesMetas = next.aportesMetas.filter(a => a.metaId !== id);
-        return { ok: true };
-      })).error;
+      if (!this.state.metas.some(item => item.id === id)) return false;
+      return !(await this.escribirPersonal(next => window.PersonalCommands.eliminarMeta(next, id))).error;
     }
 
     // Deudas
@@ -600,61 +397,12 @@
     }
 
     agregarDeuda(datos = {}) {
-      return this.escribirPersonal(next => {
-        const montoInicial = this.importePersonal(datos.montoInicial ?? datos.valorInicial);
-        const saldo = this.importePersonal(datos.saldoPendiente ?? datos.saldo ?? montoInicial, true);
-        const cuota = this.importePersonal(datos.cuotaMensual ?? 0, true);
-        const nombre = String(datos.nombre || datos.concepto || datos.acreedor || '').trim();
-        if (!nombre || saldo > montoInicial) throw new Error('Revisa el nombre y el saldo pendiente de la deuda.');
-        if ((datos.proximoPago && !window.esFechaISOValida(datos.proximoPago)) || (datos.fechaVencimiento && !window.esFechaISOValida(datos.fechaVencimiento))) throw new Error('Revisa la fecha de vencimiento de la deuda.');
-        const deuda = {
-          id: `deuda-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          nombre,
-          acreedor: (datos.acreedor || datos.nombre || 'Entidad').trim() || 'Entidad',
-          concepto: (datos.concepto || datos.nombre || 'Deuda').trim() || 'Deuda',
-          montoInicial: Math.max(montoInicial || saldo, 0),
-          valorInicial: Math.max(montoInicial || saldo, 0),
-          saldoPendiente: saldo,
-          cuotaMensual: cuota,
-          condiciones: String(datos.condiciones || '').trim(),
-          tasaInteres: Number(datos.tasaInteres) || 0,
-          fechaVencimiento: datos.fechaVencimiento || '',
-          proximoPago: datos.proximoPago || datos.fechaVencimiento || '',
-          categoria: datos.categoria || 'Otros',
-          estado: saldo === 0 ? 'PAGADA' : 'AL_DIA'
-        };
-        next.deudas.push(deuda);
-        return deuda;
-      });
+      return this.escribirPersonal(next => window.PersonalCommands.agregarDeuda(next, datos));
     }
 
     pagarDeuda(deudaId, monto, metodo = 'Transferencia', options = {}) {
       const operationKey = options.operationKey || window.crypto?.randomUUID?.() || ('debt-' + Date.now() + '-' + Math.random());
-      return this.escribirPersonal(next => {
-        const valor = this.importePersonal(monto);
-        const selected = options.cuenta || next.cuentas[0]?.id;
-        const cuenta = next.cuentas.find(c => c.id === selected || c.nombre === selected);
-        if (!cuenta) throw new Error('Selecciona una cuenta existente para el pago.');
-        const previous = next.abonosDeudas.find(p => p.operationKey === operationKey);
-        if (previous) {
-          if (previous.deudaId !== deudaId || Number(previous.valor) !== valor || previous.cuentaId !== cuenta.id) throw new Error('La clave del pago ya se utilizó con otros datos.');
-          return { ...previous, duplicate: true, mensaje: 'El pago ya estaba guardado; no se duplicó.' };
-        }
-        const deuda = window.PersonalDebtsDomain.clasificar(next.deudas).visibles.find(d => d.id === deudaId);
-        if (!deuda) throw new Error('La deuda no pertenece a tus datos actuales.');
-        if (valor > deuda.saldoPendiente) throw new Error('El abono no puede superar el saldo pendiente.');
-        const fecha = options.fecha || window.obtenerFechaHoyISO();
-        if (!window.esFechaISOValida(fecha)) throw new Error('La fecha del pago no es válida.');
-        const { deudaActualizada, abono } = window.PersonalDebtsDomain.registrarPago(deuda, valor, metodo);
-        const movement = window.PersonalMovementsDomain.crearMovimiento({ tipo: 'GASTO', valor, concepto: 'Pago de deuda: ' + deuda.nombre, categoria: 'Deudas', cuenta: cuenta.nombre, fecha });
-        Object.assign(movement, { cuentaId: cuenta.id, deudaId, abonoDeudaId: abono.id, operationKey });
-        Object.assign(deuda, deudaActualizada);
-        Object.assign(abono, { valor, monto: valor, fecha, deudaNombre: deuda.nombre, cuentaId: cuenta.id, cuenta: cuenta.nombre, movimientoId: movement.id, operationKey, estadoVinculacion: 'vinculado' });
-        next.movimientos.unshift(movement);
-        next.abonosDeudas.push(abono);
-        if (valor >= Math.min(Number(deuda.cuotaMensual) || valor, Number(deuda.saldoPendiente) + valor) && deuda.proximoPago) next.recordatoriosDeudasVistos[deuda.id + ':' + deuda.proximoPago] = window.obtenerFechaHoyISO();
-        return { ...abono, mensaje: 'Pago y salida de dinero guardados correctamente.' };
-      });
+      return this.escribirPersonal(next => window.PersonalCommands.pagarDeuda(next, deudaId, monto, metodo, options, operationKey));
     }
 
     abonarDeuda(deudaId, monto, metodo = 'Transferencia', options = {}) { return this.pagarDeuda(deudaId, monto, metodo, options); }
@@ -677,17 +425,8 @@
     }
 
     async eliminarDeuda(id) {
-      if (!this.state.deudas.some(d => d.id === id)) return false;
-      return !(await this.escribirPersonal(next => {
-        if (next.abonosDeudas.some(a => a.deudaId === id)) {
-          const debt = next.deudas.find(d => d.id === id);
-          debt.archivada = true; debt.estado = 'ARCHIVADA';
-          return { ok: true, archivada: true };
-        }
-        next.deudas = next.deudas.filter(d => d.id !== id);
-        next.abonosDeudas = next.abonosDeudas.filter(a => a.deudaId !== id);
-        return { ok: true };
-      })).error;
+      if (!this.state.deudas.some(item => item.id === id)) return false;
+      return !(await this.escribirPersonal(next => window.PersonalCommands.eliminarDeuda(next, id))).error;
     }
 
     // Usuario y Ajustes

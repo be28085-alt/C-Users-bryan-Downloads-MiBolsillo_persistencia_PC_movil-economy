@@ -1,0 +1,35 @@
+/* Paleta compartida por PC, móvil, Mi Negocio y acceso. Los estados financieros
+   mantienen sus colores semánticos; los colores de marca no cambian por módulo. */
+:root {
+  --app-primary: #24576b;
+  --app-primary-hover: #1b4556;
+  --app-primary-light: #39788d;
+  --app-primary-soft: #e8f2f6;
+  --app-bg: #f2f7fa;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f7fafc;
+  --app-border: #dde8ee;
+  --app-border-soft: #edf3f6;
+  --app-text-title: #243946;
+  --app-text-body: #405765;
+  --app-text-muted: #566f7d;
+  --app-text-light: #788f9d;
+  --app-on-primary: #ffffff;
+  --app-on-primary-muted: #d9eaf1;
+  --app-focus: #39788d;
+  --app-success: #267b70;
+  --app-success-soft: #eaf5f1;
+  --app-danger: #b4494c;
+  --app-danger-soft: #fcf0ec;
+  --app-warning: #8b6b2d;
+  --app-warning-soft: #fcf8ec;
+  --app-chart-1: var(--app-primary);
+  --app-chart-2: #4c8498;
+  --app-chart-3: #82acbc;
+  --app-chart-4: #aecbd6;
+  --app-chart-5: #d5e4ea;
+  --app-chart-6: #647f8e;
+  --app-chart-sales: var(--app-primary-light);
+  --app-chart-income: var(--app-success);
+  --app-chart-expense: var(--app-danger);
+}

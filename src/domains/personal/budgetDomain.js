@@ -8,6 +8,31 @@
   'use strict';
 
   const budgetDomain = {
+    /** Identifica el período presupuestal sin depender de una vista ni del reloj. */
+    clavePeriodo(anio, mes) {
+      return String(anio) + '-' + String(mes + 1).padStart(2, '0');
+    },
+
+    /**
+     * Proyecta un movimiento para las vistas previas de PC y móvil, sin guardarlo.
+     * @param {object} datos Tipo, importe de entrada, saldo y límites confirmados.
+     * @returns {object} Importes y alertas numéricas; el cliente decide cómo mostrarlos.
+     * Conserva el tratamiento de entradas incompletas como cero y no redondea la
+     * proyección: el redondeo y la validación del guardado siguen en sus servicios.
+     */
+    proyectarMovimiento({ tipo, valor, saldoActual, presupuesto, gastoCategoria = 0, limiteCategoria = 0 }) {
+      const entrada = Number(valor);
+      const monto = Number.isFinite(entrada) && entrada > 0 ? entrada : 0;
+      const esIngreso = tipo === 'INGRESO';
+      return {
+        monto, esIngreso, saldoActual,
+        saldoProyectado: esIngreso ? saldoActual + monto : saldoActual - monto,
+        impactoPresupuesto: presupuesto.limite > 0 ? monto / presupuesto.limite * 100 : 0,
+        excedePresupuesto: !esIngreso && presupuesto.limite > 0 && presupuesto.gastado + monto > presupuesto.limite,
+        excedeCategoria: !esIngreso && gastoCategoria + monto > limiteCategoria
+      };
+    },
+
     /**
      * Calcula el estado de ejecución presupuestal global para un conjunto de gastos.
      * @param {number} limiteMensual - Presupuesto total asignado.

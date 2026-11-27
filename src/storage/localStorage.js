@@ -27,12 +27,23 @@
   let refreshing = false;
   let writeQueue = Promise.resolve();
   let writes = 0;
+  const subscribers = new Set();
+
+  // El almacenamiento publica hechos; desconoce qué fachada o vista los consume.
+  function emit(event) {
+    let accepted = true;
+    for (const listener of subscribers) {
+      try { listener(clone(event)); }
+      catch (_) { accepted = false; console.error('storage-subscriber-failed: no se pudo actualizar un consumidor.'); }
+    }
+    return accepted;
+  }
 
   function readRaw() { return backend.getItem(STORAGE_KEY); }
 
   function report(ok, status, message, details = {}) {
     lastResult = { ok, status, ...(message ? { message } : {}), ...details };
-    if (window.Finanzas) window.Finanzas.lastPersistence = { ...lastResult };
+    emit({ type: 'persistence', result: lastResult });
     if (typeof window.CustomEvent === 'function') {
       window.dispatchEvent(new window.CustomEvent('mibolsillo:persistence', { detail: lastResult }));
     }
@@ -100,6 +111,16 @@
   }
 
   const storageService = {
+    /**
+     * @param {Function} listener Recibe state o persistence, siempre como copia.
+     * @returns {Function} Cancela la suscripción; no registra datos en disco.
+     * Un consumidor que falle no cambia el resultado de un COMMIT confirmado.
+     */
+    subscribe(listener) {
+      if (typeof listener !== 'function') throw new TypeError('El consumidor de almacenamiento debe ser una función.');
+      subscribers.add(listener);
+      return () => subscribers.delete(listener);
+    },
     getStorageKey() {
       return STORAGE_KEY;
     },
@@ -242,6 +263,7 @@
     if (!force && raw.updatedBy === CLIENT_ID) return;
     if (pendingState || readBlocked) { report(false, 'conflict'); return; }
     // storage y BroadcastChannel pueden entregar eventos de una revisión antigua.
+    const previousRaw = expectedRaw;
     try {
       const current = readRaw();
       const envelope = JSON.parse(current);
@@ -252,16 +274,11 @@
     } catch (error) { return; }
     applyingRemoteState = true;
     try {
-      const core = window.Finanzas;
-      if (core && typeof core.normalizeState === 'function') {
-        core.state = core.normalizeState(raw.data);
-        if (typeof core.notify === 'function') core.notify();
-        else if (typeof core.notifyListeners === 'function') core.notifyListeners();
-      }
-      if (window.MiBolsilloStore && typeof window.MiBolsilloStore.setState === 'function') {
-        // El store conserva la misma fuente de verdad y no genera escrituras recursivas.
-        window.MiBolsilloStore.state = clone(raw.data);
-        window.MiBolsilloStore.notifyListeners?.();
+      if (!emit({ type: 'state', data: raw.data })) {
+        // Una proyección rechazada debe bloquear la siguiente escritura; un
+        // fallo de observador de status, en cambio, nunca revierte un COMMIT.
+        expectedRaw = previousRaw;
+        throw new Error('No se pudo actualizar el estado confirmado. Conserva el formulario y reintenta.');
       }
     } finally {
       applyingRemoteState = false;

@@ -1,23 +1,23 @@
-// Local SQLite service for the active PC/mobile web application. Node.js >= 22.13.
+// Composición HTTP de la aplicación PC/móvil; los adaptadores preservan sus contratos.
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const os = require('node:os');
 const { randomBytes, createHash, randomUUID } = require('node:crypto');
-const { DatabaseSync } = require('node:sqlite');
 const { openAccounts } = require('./auth-store.cjs');
 const { validateFinancialState } = require('./financial-validation.cjs');
-const { revisionOf, applyOperations } = require('./storage-patch.cjs');
+const { revisionOf } = require('./storage-patch.cjs');
 const { createBackupService } = require('./backup-store.cjs');
-const { preparePrivateFile } = require('./private-files.cjs');
 const { securityPolicy, requestIdentity, allowedFields, sameToken } = require('./security-policy.cjs');
 const { createRateLimiter } = require('./rate-limiter.cjs');
 const { createSecurityAudit } = require('./security-audit.cjs');
-const { initializeReceipts, receipts } = require('./storage-receipts.cjs');
+const { openStore } = require('./backend/sqlite-state-repository.cjs');
+const { validEnvelope } = require('./backend/state-envelope.cjs');
+const { send, readJSON } = require('./backend/http-transport.cjs');
+const { handleStorage } = require('./backend/storage-controller.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
-const MAX_BODY = 20 * 1024 * 1024;
 
 // Identifies an already running instance without exposing private filesystem paths.
 function serverIdentity(root, dbPath) {
@@ -26,136 +26,6 @@ function serverIdentity(root, dbPath) {
     return process.platform === 'win32' ? absolute.toLowerCase() : absolute;
   };
   return createHash('sha256').update(canonical(root) + '\0' + canonical(dbPath)).digest('hex');
-}
-
-function validEnvelope(raw) {
-  if (typeof raw !== 'string' || !raw.length) return false;
-  try {
-    const value = JSON.parse(raw);
-    return value !== null && typeof value === 'object' && !Array.isArray(value)
-      && value.data !== null && typeof value.data === 'object' && !Array.isArray(value.data);
-  } catch { return false; }
-}
-
-function openStore(filename) {
-  preparePrivateFile(filename);
-  const db = new DatabaseSync(filename);
-  const version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 2) {
-    db.close();
-    throw new Error('La base de datos pertenece a una versión más reciente de MiBolsillo');
-  }
-  initializeReceipts(db);
-  const operations = receipts(db, 'legacy');
-  db.exec(`PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;
-    CREATE TABLE IF NOT EXISTS app_state (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      raw TEXT NOT NULL CHECK (json_valid(raw) AND json_type(raw, '$.data') IS 'object'),
-      updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-    );
-    ${version === 0 ? 'PRAGMA user_version = 1;' : ''}`);
-  // Read-only projections make records browsable without changing the financial schema.
-  const collections = ['movimientos', 'metas', 'deudas', 'negocios', 'productos', 'proveedores',
-    'empleados', 'clientes', 'ventas', 'compras', 'gastos', 'cuentas', 'ingresosNegocio',
-    'gastosNegocio', 'pagosEmpleado', 'pagosVenta', 'pagosCompra', 'pagosGasto',
-    'movimientosInventario', 'formulas', 'producciones', 'devolucionesNegocio'];
-  const views = Object.fromEntries(collections.map(collection => [collection, collection]));
-  for (const collection of ['documents', 'operations', 'audit', 'refunds']) {
-    views[`facturacion_${collection}`] = `facturacion.${collection}`;
-  }
-  views.bitacora_operaciones = 'businessLedger.operations';
-  views.bitacora_auditoria = 'businessLedger.audit';
-  // Refresh only projections when reopening an existing DB; financial JSON is untouched.
-  db.exec('BEGIN');
-  try {
-    for (const [name, jsonPath] of Object.entries(views)) {
-      db.exec(`DROP VIEW IF EXISTS vista_${name};
-        CREATE VIEW vista_${name} AS SELECT
-          json_extract(item.value, '$.id') AS id,
-          coalesce(json_extract(item.value, '$.nombre'), json_extract(item.value, '$.name'),
-            json_extract(item.value, '$.customer.name')) AS nombre,
-          coalesce(json_extract(item.value, '$.concepto'), json_extract(item.value, '$.descripcion'),
-            json_extract(item.value, '$.description'), json_extract(item.value, '$.reason')) AS concepto,
-          coalesce(json_extract(item.value, '$.fecha'), json_extract(item.value, '$.date'),
-            json_extract(item.value, '$.at'), json_extract(item.value, '$.createdAt')) AS fecha,
-          coalesce(json_extract(item.value, '$.tipo'), json_extract(item.value, '$.kind'),
-            json_extract(item.value, '$.action')) AS tipo,
-          coalesce(json_extract(item.value, '$.monto'), json_extract(item.value, '$.valor'),
-            json_extract(item.value, '$.amount')) AS valor,
-          coalesce(json_extract(item.value, '$.total'), json_extract(item.value, '$.totals.total'),
-            json_extract(item.value, '$.costoTotal')) AS total,
-          coalesce(json_extract(item.value, '$.negocioId'), json_extract(item.value, '$.businessId')) AS negocio_id,
-          json_extract(item.value, '$.stock') AS stock,
-          coalesce(json_extract(item.value, '$.estado'), json_extract(item.value, '$.status')) AS estado,
-          item.value AS registro_json
-        FROM app_state, json_each(app_state.raw, '$.data.${jsonPath}') AS item;`);
-    }
-    db.exec('COMMIT');
-  } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
-  const read = db.prepare('SELECT raw FROM app_state WHERE id = 1');
-  const write = db.prepare(`INSERT INTO app_state (id, raw) VALUES (1, ?)
-    ON CONFLICT(id) DO UPDATE SET raw=excluded.raw, updated_at=strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`);
-  return {
-    db,
-    receipt: id => operations.get(id),
-    get() { return read.get()?.raw ?? null; },
-    compareAndSet(expectedRaw, raw, receipt) {
-      if ((expectedRaw !== null && typeof expectedRaw !== 'string') || !validEnvelope(raw)) {
-        throw new TypeError('Formato de estado inválido');
-      }
-      db.exec('BEGIN IMMEDIATE');
-      try {
-        const current = read.get()?.raw ?? null;
-        if (current !== expectedRaw) { db.exec('ROLLBACK'); return { ok: false, raw: current }; }
-        write.run(raw);
-        operations.remember(receipt);
-        db.exec('COMMIT');
-        return { ok: true };
-      } catch (error) { db.exec('ROLLBACK'); throw error; }
-    },
-    close() { db.close(); }
-  };
-}
-
-function send(res, status, value, type = 'application/json; charset=utf-8') {
-  if (status >= 400 && type.startsWith('application/json')) value = { ...value, requestId: res.getHeader('X-Request-Id') };
-  const body = type.startsWith('application/json') ? JSON.stringify(value) : value;
-  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store',
-    'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin',
-    'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'SAMEORIGIN',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
-    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" });
-  res.end(body);
-}
-
-function readJSON(req, limit = MAX_BODY) {
-  return new Promise((resolve, reject) => {
-    let length = 0;
-    const chunks = []; let settled = false;
-    const finish = (failure, value) => {
-      if (settled) return; settled = true; clearTimeout(timer);
-      chunks.length = 0;
-      if (failure) reject(failure); else resolve(value);
-    };
-    const timer = setTimeout(() => finish(Object.assign(new Error('Se agotó el tiempo de lectura.'), { status: 408 })), 15000);
-    timer.unref();
-    if (Number(req.headers['content-length']) > limit) {
-      req.resume(); finish(Object.assign(new Error('Solicitud demasiado grande'), { status: 413 })); return;
-    }
-    req.on('data', chunk => {
-      if (settled) return;
-      length += chunk.length;
-      if (length > limit) return finish(Object.assign(new Error('Solicitud demasiado grande'), { status: 413 }));
-      chunks.push(chunk);
-    });
-    req.on('end', () => {
-      if (settled) return;
-      try { finish(null, JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
-      catch (error) { finish(Object.assign(new Error('JSON inválido'), { status: 400 })); }
-    });
-    req.on('error', () => finish(Object.assign(new Error('No se pudo leer la solicitud.'), { status: 400 })));
-    req.on('aborted', () => finish(Object.assign(new Error('Solicitud interrumpida.'), { status: 400 })));
-  });
 }
 
 function publicResource(relative) {
@@ -268,48 +138,7 @@ function createServer({ root = ROOT, dbPath = path.join(root, 'database', 'mibol
         return send(res, 200, `window.MiBolsilloSQLiteConfig = ${JSON.stringify(bootstrapConfig()).replace(/</g, '\\u003c')};`, 'text/javascript; charset=utf-8');
       }
       if (await backups.handle(req, res, { session, readJSON, send })) return;
-      if (resource === '/api/storage') {
-        if ([...requested.searchParams.keys()].some(key => key !== 'revision')) return send(res, 400, { error: 'Parámetro no permitido.' });
-        if (session && req.headers['x-mibolsillo-account'] && req.headers['x-mibolsillo-account'] !== String(session.user.id)) return send(res, 401, { error: 'La cuenta activa cambió. Inicia sesión de nuevo.' });
-        if (req.method === 'GET') {
-          const raw = activeStore.get(), revision = revisionOf(raw);
-          return send(res, 200, requested.searchParams.has('revision') && requested.searchParams.get('revision') === String(revision)
-            ? { unchanged: true, revision } : { raw, revision });
-        }
-        if (!['POST', 'PATCH'].includes(req.method)) return send(res, 405, { error: 'Método no permitido' });
-        if (!sameToken(req.headers['x-mibolsillo-token'], config.token)) return send(res, 403, { error: 'Token no válido' });
-        if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) {
-          return send(res, 415, { error: 'Use application/json' });
-        }
-        const body = await readJSON(req);
-        allowedFields(body, req.method === 'PATCH' ? ['expectedRevision','operationId','operations'] : ['expectedRaw','raw'], 403);
-        if (req.method === 'PATCH') {
-          if (!body || !Object.prototype.hasOwnProperty.call(body,'expectedRevision') || (body.expectedRevision !== null && typeof body.expectedRevision !== 'string') || typeof body.operationId !== 'string' || !body.operationId || body.operationId.length > 300) return send(res, 400, { error: 'Revisión u operación inválida.' });
-          const current = activeStore.get(), revision = revisionOf(current);
-          const requestHash = createHash('sha256').update(JSON.stringify(body)).digest('hex');
-          const receipt = activeStore.receipt(body.operationId);
-          if (receipt) {
-            if (receipt.request_hash !== requestHash || revision !== body.operationId) return send(res, 409, { error: 'La operación ya se utilizó o los datos cambiaron. Revisa el estado guardado.' });
-            return send(res, 200, { ok: true, duplicate: true, revision });
-          }
-          if (revision === body.operationId) return send(res, 409, { error: 'No se puede verificar el intento anterior. Revisa el estado guardado.' });
-          if (revision !== body.expectedRevision) return send(res, 409, { error: 'conflict', raw: current, revision });
-          const raw = applyOperations(current, body.operations);
-          if (Buffer.byteLength(raw) > policy.maxStateBytes) return send(res, 413, { error: 'El estado supera el tamaño permitido.' });
-          if (!validEnvelope(raw) || revisionOf(raw) !== body.operationId) return send(res, 400, { error: 'El estado incremental o su revisión no es válido.' });
-          validateFinancialState(JSON.parse(raw).data, current ? JSON.parse(current).data : null);
-          const result = activeStore.compareAndSet(current, raw, { operationId: body.operationId, requestHash });
-          return send(res, result.ok ? 200 : 409, result.ok ? { ok: true, revision: revisionOf(raw) } : { error: 'conflict', raw: result.raw, revision: revisionOf(result.raw) });
-        }
-        if (!body || (body.expectedRaw !== null && typeof body.expectedRaw !== 'string') || !validEnvelope(body.raw)) {
-          return send(res, 400, { error: 'Formato de estado inválido' });
-        }
-        const current = activeStore.get();
-        if (Buffer.byteLength(body.raw) > policy.maxStateBytes) return send(res, 413, { error: 'El estado supera el tamaño permitido.' });
-        if (current === body.expectedRaw) validateFinancialState(JSON.parse(body.raw).data, current ? JSON.parse(current).data : null);
-        const result = activeStore.compareAndSet(body.expectedRaw, body.raw);
-        return send(res, result.ok ? 200 : 409, result.ok ? result : { error: 'conflict', raw: result.raw });
-      }
+      if (resource === '/api/storage') return await handleStorage(req, res, { requested, session, activeStore, token: config.token, maxStateBytes: policy.maxStateBytes });
       if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'Método no permitido' });
       let relative;
       try { relative = resource === '/' ? 'index.html' : decodeURIComponent(resource).replace(/^\//, ''); }
