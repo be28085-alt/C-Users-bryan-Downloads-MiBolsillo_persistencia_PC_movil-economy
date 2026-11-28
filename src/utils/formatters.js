@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * FORMATTERS MODULE
+ * FORMATO DE IMPORTES Y TEXTO
  * Responsabilidad: Funciones de formateo monetario (COP), numérico y de texto.
  * ============================================================================
  */
@@ -19,7 +19,7 @@
       const num = Number.isFinite(parsed) ? parsed : 0;
       const formatted = num.toLocaleString('es-CO', {
         minimumFractionDigits: 0,
-        maximumFractionDigits: 2
+        maximumFractionDigits: 2,
       });
       if (incluirSigno && num > 0) return `+${formatted} COP`;
       if (incluirSigno && num < 0) return `${formatted} COP`;
@@ -56,7 +56,7 @@
      */
     configurarEntradasMonetarias(root = document) {
       if (!root || typeof root.querySelectorAll !== 'function') return;
-      root.querySelectorAll('input[type="number"][data-money="true"]').forEach(input => {
+      root.querySelectorAll('input[type="number"][data-money="true"]').forEach((input) => {
         input.addEventListener('blur', () => {
           const val = parseFloat(input.value);
           if (!isNaN(val) && val >= 0) {
@@ -64,7 +64,7 @@
           }
         });
       });
-    }
+    },
   };
 
   // Exportar en namespaces compatibles y globales

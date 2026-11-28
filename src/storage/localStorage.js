@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * SHARED STORAGE MODULE
+ * ALMACENAMIENTO COMPARTIDO
  * Responsabilidad: Persistencia SQLite local o del navegador, manejo de errores,
  * serialización segura y respaldo/restauración de datos.
  * ============================================================================
@@ -8,13 +8,22 @@
 (function () {
   'use strict';
 
+  /**
+   * @typedef {object} PersistenceResult
+   * @property {boolean} ok Indica confirmación, no solo que la solicitud se envió.
+   * @property {string} status Estado público consumido por los avisos existentes.
+   * @property {string} [message] Mensaje seguro; nunca incluye el sobre financiero.
+   * @property {boolean} [ambiguous] La falta de respuesta no permite deducir ROLLBACK.
+   * @property {string} [operationId] Intención conservada para el reintento original.
+   */
   const STORAGE_KEY = 'FINANZAS_ETAPA_DATA_V2';
   const STORAGE_VERSION = 'FINANZAS_V2';
   const ACCOUNT_ID = window.MiBolsilloSQLiteConfig?.user?.id;
   const SYNC_CHANNEL = 'mibolsillo-sync-v1' + (ACCOUNT_ID ? ':user-' + ACCOUNT_ID : '');
-  const CLIENT_ID = (window.crypto && typeof window.crypto.randomUUID === 'function')
-    ? window.crypto.randomUUID()
-    : `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const CLIENT_ID =
+    window.crypto && typeof window.crypto.randomUUID === 'function'
+      ? window.crypto.randomUUID()
+      : `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   let applyingRemoteState = false;
   let syncChannel = null;
   let expectedRaw = null;
@@ -33,33 +42,71 @@
   function emit(event) {
     let accepted = true;
     for (const listener of subscribers) {
-      try { listener(clone(event)); }
-      catch (_) { accepted = false; console.error('storage-subscriber-failed: no se pudo actualizar un consumidor.'); }
+      try {
+        listener(clone(event));
+      } catch {
+        accepted = false;
+        console.error('storage-subscriber-failed: no se pudo actualizar un consumidor.');
+      }
     }
     return accepted;
   }
 
-  function readRaw() { return backend.getItem(STORAGE_KEY); }
+  function readRaw() {
+    return backend.getItem(STORAGE_KEY);
+  }
 
+  /**
+   * Notifica el resultado sin permitir que un consumidor falsee un COMMIT.
+   * @param {boolean} ok Confirmación establecida por el escritor o lector.
+   * @param {string} status Estado público del protocolo de persistencia.
+   * @param {string} [message] Mensaje público saneado en la capa que lo origina.
+   * @param {object} details Metadatos técnicos, sin cuerpos financieros ni secretos.
+   * @returns {boolean} El mismo indicador recibido del escritor o lector.
+   */
   function report(ok, status, message, details = {}) {
     lastResult = { ok, status, ...(message ? { message } : {}), ...details };
     emit({ type: 'persistence', result: lastResult });
     if (typeof window.CustomEvent === 'function') {
-      window.dispatchEvent(new window.CustomEvent('mibolsillo:persistence', { detail: lastResult }));
+      window.dispatchEvent(
+        new window.CustomEvent('mibolsillo:persistence', { detail: lastResult }),
+      );
     }
     return ok;
   }
 
   try {
     if ('BroadcastChannel' in window) syncChannel = new BroadcastChannel(SYNC_CHANNEL);
-  } catch (error) { syncChannel = null; }
+  } catch {
+    // Algunos navegadores bloquean este canal; foco y eventos de storage siguen disponibles.
+    syncChannel = null;
+  }
 
-  function clone(val) {
-    if (val === null || val === undefined) return val;
+  /**
+   * La difusión es oportunista: perderla no revierte una escritura confirmada.
+   * SQLite anuncia solo la revisión; el modo histórico conserva su contrato de sobre.
+   * @param {object} event Mensaje del protocolo existente, sin registrar su contenido.
+   * @returns {void}
+   */
+  function broadcastStateUpdate(event) {
+    if (!syncChannel) return;
     try {
-      return JSON.parse(JSON.stringify(val));
-    } catch (e) {
-      return val;
+      syncChannel.postMessage(event);
+    } catch {
+      console.warn(
+        'storage-sync-notify-failed: otras pestañas comprobarán el estado al recuperar el foco.',
+      );
+    }
+  }
+
+  /** Copia datos JSON; el fallback histórico no sustituye la validación del escritor. */
+  function clone(value) {
+    if (value === null || value === undefined) return value;
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch {
+      // Se conserva el contrato anterior: la serialización del guardado rechazará lo inválido.
+      return value;
     }
   }
 
@@ -76,15 +123,29 @@
       ...source,
       usuario: {
         ...(fallback.usuario || {}),
-        ...(source.usuario || {})
+        ...(source.usuario || {}),
       },
       limitesCategorias: {
         ...(fallback.limitesCategorias || {}),
-        ...(source.limitesCategorias || {})
-      }
+        ...(source.limitesCategorias || {}),
+      },
     };
 
-    ['movimientos', 'metas', 'deudas', 'negocios', 'productos', 'proveedores', 'empleados', 'clientes', 'ventas', 'compras', 'gastos', 'cuentas', 'ingresosNegocio'].forEach((key) => {
+    [
+      'movimientos',
+      'metas',
+      'deudas',
+      'negocios',
+      'productos',
+      'proveedores',
+      'empleados',
+      'clientes',
+      'ventas',
+      'compras',
+      'gastos',
+      'cuentas',
+      'ingresosNegocio',
+    ].forEach((key) => {
       merged[key] = ensureArray(source[key], fallback[key]);
     });
 
@@ -97,7 +158,10 @@
     const base = clone(fallback || {});
     const migrated = mergeState(base, source);
 
-    if (typeof migrated.saldoInicial === 'undefined' && typeof migrated.capitalBase !== 'undefined') {
+    if (
+      typeof migrated.saldoInicial === 'undefined' &&
+      typeof migrated.capitalBase !== 'undefined'
+    ) {
       migrated.saldoInicial = Number(migrated.capitalBase) || 0;
     }
     if (typeof migrated.moduloActivo === 'undefined') {
@@ -117,7 +181,9 @@
      * Un consumidor que falle no cambia el resultado de un COMMIT confirmado.
      */
     subscribe(listener) {
-      if (typeof listener !== 'function') throw new TypeError('El consumidor de almacenamiento debe ser una función.');
+      if (typeof listener !== 'function') {
+        throw new TypeError('El consumidor de almacenamiento debe ser una función.');
+      }
       subscribers.add(listener);
       return () => subscribers.delete(listener);
     },
@@ -125,9 +191,13 @@
       return STORAGE_KEY;
     },
 
-    getRawState() { return readRaw(); },
+    getRawState() {
+      return readRaw();
+    },
     getBackendInfo() {
-      return sqlite ? backend.getInfo() : { mode: 'browser', database: 'localStorage', crossDevice: false };
+      return sqlite
+        ? backend.getInfo()
+        : { mode: 'browser', database: 'localStorage', crossDevice: false };
     },
 
     loadState(defaultState) {
@@ -148,7 +218,12 @@
         }
 
         const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || (parsed.data && (typeof parsed.data !== 'object' || Array.isArray(parsed.data)))) {
+        if (
+          !parsed ||
+          typeof parsed !== 'object' ||
+          Array.isArray(parsed) ||
+          (parsed.data && (typeof parsed.data !== 'object' || Array.isArray(parsed.data)))
+        ) {
           readBlocked = true;
           report(false, 'read-error');
           return fallback;
@@ -157,7 +232,10 @@
         // Compatibilidad con el formato envolvente que usa la versión de PC.
         const payload = parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
         let merged = mergeState(fallback, payload);
-        if (window.MiBolsilloMigrations && typeof window.MiBolsilloMigrations.applyMigrations === 'function') {
+        if (
+          window.MiBolsilloMigrations &&
+          typeof window.MiBolsilloMigrations.applyMigrations === 'function'
+        ) {
           merged = window.MiBolsilloMigrations.applyMigrations(merged, fallback);
         } else {
           merged = migrateLegacyState(merged, fallback);
@@ -166,7 +244,7 @@
         if (sqlite && expectedRaw === null) this.saveState(merged);
         else report(true, 'saved');
         return merged;
-      } catch (err) {
+      } catch {
         console.warn('storage-read-failed: se bloqueó la escritura para preservar los datos.');
         readBlocked = true;
         report(false, 'read-error');
@@ -174,8 +252,13 @@
       }
     },
 
-    ready() { return writeQueue; },
-    isSaving() { return writes > 0; },
+    /** @returns {Promise<void>} Barrera de orden; no representa el resultado de otra intención. */
+    ready() {
+      return writeQueue;
+    },
+    isSaving() {
+      return writes > 0;
+    },
     async refreshFromBackend({ recover = false } = {}) {
       await writeQueue;
       if (readBlocked || pendingState) return false;
@@ -186,14 +269,23 @@
           applyIncomingState(JSON.parse(raw), true);
         }
         return true;
-      } catch (error) { return report(false, error.code === 'conflict' ? 'conflict' : 'error', error.message, { code: error.code, ambiguous: error.ambiguous }); }
+      } catch (error) {
+        return report(false, error.code === 'conflict' ? 'conflict' : 'error', error.message, {
+          code: error.code,
+          ambiguous: error.ambiguous,
+        });
+      }
     },
 
     saveState(state, { keepPending = true } = {}) {
       if (sqlite) {
         const candidate = clone(state);
         const task = writeQueue.then(() => this.commitSQLite(candidate, keepPending));
-        writeQueue = task.then(() => {}, () => {});
+        // Cada llamador recibe task; esta barrera permite continuar la cola tras su resultado.
+        writeQueue = task.then(
+          () => undefined,
+          () => undefined,
+        );
         return task;
       }
       if (!state || typeof state !== 'object') return false;
@@ -208,7 +300,7 @@
           updatedAt: new Date().toISOString(),
           updatedBy: CLIENT_ID,
           revision: `${CLIENT_ID}:${++localRevision}`,
-          data: normalized
+          data: normalized,
         };
         const serialized = JSON.stringify(envelope);
         backend.setItem(STORAGE_KEY, serialized, expectedRaw);
@@ -216,12 +308,16 @@
         expectedRaw = serialized;
         pendingState = null;
         if (!applyingRemoteState && syncChannel) {
-          try { syncChannel.postMessage({ type: 'STATE_UPDATED', ...envelope }); } catch (error) {}
+          broadcastStateUpdate({ type: 'STATE_UPDATED', ...envelope });
         }
         return report(true, 'saved');
       } catch (err) {
         console.error('storage-write-failed: conserva el formulario y reintenta.');
-        return report(false, err.code === 'conflict' ? 'conflict' : 'error', 'La operación no se guardó. Revisa el almacenamiento del navegador y reintenta.');
+        return report(
+          false,
+          err.code === 'conflict' ? 'conflict' : 'error',
+          'La operación no se guardó. Revisa el almacenamiento del navegador y reintenta.',
+        );
       }
     },
 
@@ -233,35 +329,57 @@
       report(false, 'saving');
       try {
         if (readRaw() !== expectedRaw) return report(false, 'conflict');
-        const envelope = { version: STORAGE_VERSION, updatedAt: new Date().toISOString(), updatedBy: CLIENT_ID,
-          revision: `${CLIENT_ID}:${++localRevision}`, data: mergeState({}, state) };
+        const envelope = {
+          version: STORAGE_VERSION,
+          updatedAt: new Date().toISOString(),
+          updatedBy: CLIENT_ID,
+          revision: `${CLIENT_ID}:${++localRevision}`,
+          data: mergeState({}, state),
+        };
         const serialized = JSON.stringify(envelope);
         await backend.setItem(STORAGE_KEY, serialized, expectedRaw);
         expectedRaw = serialized;
         pendingState = null;
-        if (syncChannel) { try { syncChannel.postMessage({ type: 'STATE_UPDATED', revision: envelope.revision }); } catch (_) {} }
+        broadcastStateUpdate({ type: 'STATE_UPDATED', revision: envelope.revision });
         return report(true, 'saved');
-      } catch (error) { return report(false, error.code === 'conflict' ? 'conflict' : 'error', error.message, { code: error.code, ambiguous: error.ambiguous,
-        operationId: backend.getWriteStatus?.().uncertainOperation }); }
-      finally { writes--; }
+      } catch (error) {
+        return report(false, error.code === 'conflict' ? 'conflict' : 'error', error.message, {
+          code: error.code,
+          ambiguous: error.ambiguous,
+          operationId: backend.getWriteStatus?.().uncertainOperation,
+        });
+      } finally {
+        writes--;
+      }
     },
 
-    getPersistenceStatus() { return { ...lastResult }; },
-    hasPendingChanges() { return pendingState !== null; },
-    retryPendingSave() { return pendingState ? this.saveState(pendingState) : lastResult.ok; },
+    getPersistenceStatus() {
+      return { ...lastResult };
+    },
+    hasPendingChanges() {
+      return pendingState !== null;
+    },
+    retryPendingSave() {
+      return pendingState ? this.saveState(pendingState) : lastResult.ok;
+    },
 
     async resetState(defaultState) {
       const fresh = clone(defaultState || {});
       const normalized = { ...fresh, version: fresh.version || STORAGE_VERSION };
-      if (!await this.saveState(normalized)) throw new Error('No se pudo guardar el restablecimiento.');
+      if (!(await this.saveState(normalized))) {
+        throw new Error('No se pudo guardar el restablecimiento.');
+      }
       return normalized;
-    }
+    },
   };
 
   function applyIncomingState(raw, force = false) {
     if (!raw || typeof raw !== 'object' || !raw.data || typeof raw.data !== 'object') return;
     if (!force && raw.updatedBy === CLIENT_ID) return;
-    if (pendingState || readBlocked) { report(false, 'conflict'); return; }
+    if (pendingState || readBlocked) {
+      report(false, 'conflict');
+      return;
+    }
     // storage y BroadcastChannel pueden entregar eventos de una revisión antigua.
     const previousRaw = expectedRaw;
     try {
@@ -271,14 +389,19 @@
       if (envelope.revision && envelope.revision !== raw.revision) return;
       expectedRaw = current;
       report(true, 'saved');
-    } catch (error) { return; }
+    } catch {
+      // Un aviso ilegible no autoriza publicar otra revisión ni sobrescribir el disco.
+      return;
+    }
     applyingRemoteState = true;
     try {
       if (!emit({ type: 'state', data: raw.data })) {
         // Una proyección rechazada debe bloquear la siguiente escritura; un
         // fallo de observador de status, en cambio, nunca revierte un COMMIT.
         expectedRaw = previousRaw;
-        throw new Error('No se pudo actualizar el estado confirmado. Conserva el formulario y reintenta.');
+        throw new Error(
+          'No se pudo actualizar el estado confirmado. Conserva el formulario y reintenta.',
+        );
       }
     } finally {
       applyingRemoteState = false;
@@ -286,41 +409,62 @@
   }
 
   window.addEventListener('storage', (event) => {
-    if (ACCOUNT_ID) return; // Browser legacy data has no authenticated owner.
+    if (ACCOUNT_ID) return; // Los datos históricos del navegador no acreditan propietario.
     if (event.key !== STORAGE_KEY || !event.newValue) return;
-    try { applyIncomingState(JSON.parse(event.newValue)); }
-    catch (error) { console.warn('storage-sync-failed: no se aplicó el estado recibido.'); }
+    try {
+      applyIncomingState(JSON.parse(event.newValue));
+    } catch {
+      console.warn('storage-sync-failed: no se aplicó el estado recibido.');
+    }
   });
 
   if (syncChannel) {
-    syncChannel.addEventListener('message', (event) => {
-      if (event.data && event.data.type === 'STATE_UPDATED') {
-        if (sqlite) storageService.refreshFromBackend();
+    syncChannel.addEventListener('message', async (event) => {
+      if (!event.data || event.data.type !== 'STATE_UPDATED') return;
+      try {
+        if (sqlite) await storageService.refreshFromBackend();
         else applyIncomingState(event.data);
+      } catch {
+        // Una proyección rechazada conserva expectedRaw anterior y bloquea sobrescrituras.
+        console.warn('storage-sync-failed: no se aplicó el estado recibido.');
+        report(false, 'error');
       }
     });
   }
 
   window.MiBolsilloSync = {
     clientId: CLIENT_ID,
-    getStatus() { return { mode: sqlite ? 'sqlite-local-server' : 'same-origin-local', crossTab: true, crossDevice: false }; },
-    applyIncomingState
+    getStatus() {
+      return {
+        mode: sqlite ? 'sqlite-local-server' : 'same-origin-local',
+        crossTab: true,
+        crossDevice: false,
+      };
+    },
+    applyIncomingState,
   };
 
   window.FinanzasStorage = storageService;
   window.MiBolsilloStorage = storageService;
   window.addEventListener('mibolsillo:session-restored', () => {
-    report(false, 'error', 'Sesión recuperada. Revisa el formulario y vuelve a pulsar Guardar.', { code: 'session-restored' });
+    report(false, 'error', 'Sesión recuperada. Revisa el formulario y vuelve a pulsar Guardar.', {
+      code: 'session-restored',
+    });
   });
 
   // Actualizar cambios de otra ventana o de DB Browser al volver a la app.
   // No usar temporizadores que bloqueen la interfaz con lecturas síncronas.
-  if (sqlite) window.addEventListener('focus', async () => {
-    if (refreshing || readBlocked) return;
-    refreshing = true;
-    try {
-      await storageService.refreshFromBackend();
-    } catch (error) { report(false, 'error'); }
-    finally { refreshing = false; }
-  });
+  if (sqlite) {
+    window.addEventListener('focus', async () => {
+      if (refreshing || readBlocked) return;
+      refreshing = true;
+      try {
+        await storageService.refreshFromBackend();
+      } catch {
+        report(false, 'error');
+      } finally {
+        refreshing = false;
+      }
+    });
+  }
 })();

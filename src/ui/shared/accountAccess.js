@@ -1,13 +1,22 @@
+/**
+ * Acceso y reautenticación de la entrada web. Los mensajes entre ventanas no transportan
+ * contraseñas ni tokens; la identidad válida se comprueba mediante el servidor.
+ */
 (function () {
   'use strict';
   const host = document.getElementById('account-access');
   if (!host) return;
-  const reauthentication = new URLSearchParams(location.search).get('reauth') === '1' && window.parent !== window;
+  const reauthentication =
+    new URLSearchParams(location.search).get('reauth') === '1' && window.parent !== window;
   let mode = 'login';
   let busy = false;
   let activeUser = null;
   let channel;
-  try { channel = new BroadcastChannel('mibolsillo-account-session-v1'); } catch (error) { channel = null; }
+  try {
+    channel = new BroadcastChannel('mibolsillo-account-session-v1');
+  } catch {
+    channel = null;
+  }
   host.innerHTML = `<section class="account-card" aria-labelledby="account-title">
     <div class="account-brand"><span aria-hidden="true">❖</span> MiBolsillo</div>
     <p class="account-tagline">Tus finanzas personales y tu negocio, en su lugar.</p>
@@ -25,7 +34,7 @@
     <p class="account-note">Los datos se guardan en este dispositivo. No se sincronizan automáticamente entre equipos.</p>
   </section>`;
   const form = host.querySelector('#account-form');
-  const field = name => host.querySelector('#account-' + name);
+  const field = (name) => host.querySelector('#account-' + name);
   const errorBox = field('error');
   const submit = field('submit');
   const toggle = field('toggle');
@@ -39,7 +48,11 @@
     busy = value;
     form.setAttribute('aria-busy', String(value));
     submit.disabled = toggle.disabled = retry.disabled = value;
-    submit.textContent = value ? 'Espera un momento…' : mode === 'register' ? 'Crear cuenta' : 'Iniciar sesión';
+    submit.textContent = value
+      ? 'Espera un momento…'
+      : mode === 'register'
+        ? 'Crear cuenta'
+        : 'Iniciar sesión';
   }
   function showLogin(text) {
     activeUser = null;
@@ -73,8 +86,16 @@
   }
   async function responseJSON(response) {
     let body;
-    try { body = await response.json(); } catch (_) { throw new Error('El servicio de cuentas no está disponible. Abre MiBolsillo desde su servidor local.'); }
-    if (!response.ok) throw new Error(body.error || body.message || 'No se pudo completar la operación.');
+    try {
+      body = await response.json();
+    } catch {
+      throw new Error(
+        'El servicio de cuentas no está disponible. Abre MiBolsillo desde su servidor local.',
+      );
+    }
+    if (!response.ok) {
+      throw new Error(body.error || body.message || 'No se pudo completar la operación.');
+    }
     return body;
   }
   async function refreshSession() {
@@ -82,15 +103,23 @@
     pending(true);
     retry.hidden = true;
     try {
-      const response = await fetch('/api/auth/session', { credentials: 'same-origin', cache: 'no-store' });
-      if (response.status === 401) { showLogin(); return; }
+      const response = await fetch('/api/auth/session', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+      if (response.status === 401) {
+        showLogin();
+        return;
+      }
       const session = await responseJSON(response);
       if (session.legacyMode === true || session.user?.id) openAccount(session);
       else throw new Error('El servicio no devolvió una sesión válida.');
     } catch (error) {
       showLogin(error.message || 'No se pudo conectar con el servidor.');
       retry.hidden = false;
-    } finally { pending(false); }
+    } finally {
+      pending(false);
+    }
   }
   toggle.addEventListener('click', () => {
     mode = mode === 'login' ? 'register' : 'login';
@@ -106,7 +135,7 @@
     message('');
     (creating ? field('name') : field('email')).focus();
   });
-  form.addEventListener('submit', async event => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (busy || !form.reportValidity()) return;
     if (mode === 'register' && field('password').value !== field('confirm').value) {
@@ -119,21 +148,37 @@
     pending(true);
     message('');
     try {
-      const session = await responseJSON(await fetch('/api/auth/' + mode, {
-        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values)
-      }));
+      const session = await responseJSON(
+        await fetch('/api/auth/' + mode, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(values),
+        }),
+      );
       if (!session.user?.id) throw new Error('No se pudo confirmar la sesión.');
       if (!reauthentication) {
-        try { channel?.postMessage({ type: 'signed-in', userId: session.user.id }); }
-        catch (error) { message('La sesión se confirmó. Las otras pestañas se verificarán al volver a ellas.'); }
+        try {
+          channel?.postMessage({ type: 'signed-in', userId: session.user.id });
+        } catch {
+          message('La sesión se confirmó. Las otras pestañas se verificarán al volver a ellas.');
+        }
       }
       openAccount(session);
-    } catch (error) { message(error.message || 'No se pudo acceder a la cuenta.'); }
-    finally { pending(false); }
+    } catch (error) {
+      message(error.message || 'No se pudo acceder a la cuenta.');
+    } finally {
+      pending(false);
+    }
   });
   retry.addEventListener('click', refreshSession);
-  channel?.addEventListener('message', event => {
-    if (event.data?.type === 'signed-out' || (event.data?.type === 'signed-in' && activeUser && event.data.userId !== activeUser.id)) showLogin('La sesión cambió. Inicia sesión para continuar.');
+  channel?.addEventListener('message', (event) => {
+    if (
+      event.data?.type === 'signed-out' ||
+      (event.data?.type === 'signed-in' && activeUser && event.data.userId !== activeUser.id)
+    ) {
+      showLogin('La sesión cambió. Inicia sesión para continuar.');
+    }
   });
   window.MiBolsilloAccountAccess = Object.freeze({ showLogin, refreshSession });
   refreshSession();

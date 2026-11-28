@@ -22,7 +22,9 @@ test('las tres entradas conservan sus enlaces, scripts y estilos locales', () =>
     if (checkedStyles.has(file)) return;
     checkedStyles.add(file);
     const css = fs.readFileSync(path.join(root, file), 'utf8');
-    for (const match of css.matchAll(/url\(\s*['"]?([^'"\s)]+)['"]?\s*\)|@import\s+['"]([^'"]+)['"]/g)) {
+    for (const match of css.matchAll(
+      /url\(\s*['"]?([^'"\s)]+)['"]?\s*\)|@import\s+['"]([^'"]+)['"]/g,
+    )) {
       const target = localFile(file, match[1] || match[2]);
       if (target?.endsWith('.css')) checkStyle(target);
     }
@@ -32,7 +34,10 @@ test('las tres entradas conservan sus enlaces, scripts y estilos locales', () =>
     for (const [, reference] of html.matchAll(/(?:src|href)\s*=\s*["']([^"']+)["']/g)) {
       const file = localFile(page, reference);
       if (!file) continue;
-      assert.ok(!file.startsWith('legacy/'), `${page}: dependencia de una implementación archivada: ${file}`);
+      assert.ok(
+        !file.startsWith('legacy/'),
+        `${page}: dependencia de una implementación archivada: ${file}`,
+      );
       if (file.endsWith('.css')) checkStyle(file);
     }
   }
@@ -43,15 +48,17 @@ test('las tres entradas conservan sus enlaces, scripts y estilos locales', () =>
 test('PC y móvil mantienen el mismo núcleo y su controlador propio', () => {
   function scripts(page) {
     return [...fs.readFileSync(path.join(root, page), 'utf8').matchAll(/<script\s+src="([^"?]+)/g)]
-      .map(match => match[1]).filter(source => source.startsWith('src/'));
+      .map((match) => match[1])
+      .filter((source) => source.startsWith('src/'));
   }
-  const desktop = scripts('desktop.html'), mobile = scripts('mobile.html');
+  const desktop = scripts('desktop.html'),
+    mobile = scripts('mobile.html');
   assert.ok(desktop.includes('src/utils/desktop.js'));
   assert.ok(mobile.includes('src/utils/mobile.js'));
   assert.equal(new Set(desktop).size, desktop.length, 'PC carga un script dos veces');
   assert.equal(new Set(mobile).size, mobile.length, 'Móvil carga un script dos veces');
   assert.deepEqual(
-    desktop.filter(file => file !== 'src/utils/desktop.js'),
-    mobile.filter(file => file !== 'src/utils/mobile.js')
+    desktop.filter((file) => file !== 'src/utils/desktop.js'),
+    mobile.filter((file) => file !== 'src/utils/mobile.js'),
   );
 });

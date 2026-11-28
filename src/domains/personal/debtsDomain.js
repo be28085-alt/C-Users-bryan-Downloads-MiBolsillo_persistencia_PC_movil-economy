@@ -10,15 +10,17 @@
   const debtsDomain = {
     /** Normaliza una entidad histórica sin mutar el registro recibido ni persistir datos. */
     normalizar(deuda = {}, index = 0) {
-      if (!deuda || typeof deuda !== 'object') return {
-        id: `deuda-${Date.now()}-${index}`,
-        nombre: 'Deuda',
-        valorInicial: 0,
-        saldoPendiente: 0,
-        cuotaMensual: 0,
-        proximoPago: '',
-        concepto: 'Deuda'
-      };
+      if (!deuda || typeof deuda !== 'object') {
+        return {
+          id: `deuda-${Date.now()}-${index}`,
+          nombre: 'Deuda',
+          valorInicial: 0,
+          saldoPendiente: 0,
+          cuotaMensual: 0,
+          proximoPago: '',
+          concepto: 'Deuda',
+        };
+      }
 
       const valorInicial = Number(deuda.valorInicial ?? deuda.montoInicial ?? 0) || 0;
       const saldoPendiente = Number(deuda.saldoPendiente ?? deuda.saldo ?? 0) || 0;
@@ -34,7 +36,7 @@
         montoInicial: Math.max(valorInicial, 0),
         proximoPago: deuda.proximoPago || deuda.fechaVencimiento || '',
         concepto: deuda.concepto || deuda.nombre || 'Deuda',
-        acreedor: deuda.acreedor || deuda.nombre || 'Entidad'
+        acreedor: deuda.acreedor || deuda.nombre || 'Entidad',
       };
     },
     /**
@@ -44,11 +46,15 @@
      */
     clasificar(deudas = []) {
       const todas = Array.isArray(deudas) ? deudas : [];
-      const esArchivada = deuda => deuda.archivada || deuda.estado === 'ARCHIVADA';
+      const esArchivada = (deuda) => deuda.archivada || deuda.estado === 'ARCHIVADA';
       const archivadas = todas.filter(esArchivada);
-      const visibles = todas.filter(deuda => !esArchivada(deuda));
-      return { archivadas, visibles, activas: visibles.filter(d => Number(d.saldoPendiente) > 0),
-        pagadas: visibles.filter(d => Number(d.saldoPendiente) <= 0) };
+      const visibles = todas.filter((deuda) => !esArchivada(deuda));
+      return {
+        archivadas,
+        visibles,
+        activas: visibles.filter((d) => Number(d.saldoPendiente) > 0),
+        pagadas: visibles.filter((d) => Number(d.saldoPendiente) <= 0),
+      };
     },
     /**
      * Calcula los saldos consolidados de deudas personales.
@@ -56,13 +62,15 @@
      * @returns {{totalDeuda: number, cuotaMensualTotal: number, deudasEnriquecidas: Array}}
      */
     calcularResumenDeudas(deudas = []) {
-      if (!Array.isArray(deudas)) return { totalDeuda: 0, cuotaMensualTotal: 0, deudasEnriquecidas: [] };
+      if (!Array.isArray(deudas)) {
+        return { totalDeuda: 0, cuotaMensualTotal: 0, deudasEnriquecidas: [] };
+      }
 
       let totalDeuda = 0;
       let cuotaMensualTotal = 0;
 
       const grupos = this.clasificar(deudas);
-      const deudasEnriquecidas = grupos.visibles.map(d => {
+      const deudasEnriquecidas = grupos.visibles.map((d) => {
         const saldo = Number(d.saldoPendiente) || 0;
         const inicial = Number(d.montoInicial) || saldo;
         const cuota = Number(d.cuotaMensual) || 0;
@@ -77,7 +85,7 @@
           saldo,
           pagado,
           porcentajePagado: Math.min(porcentajePagado, 100),
-          saldada: saldo <= 0
+          saldada: saldo <= 0,
         };
       });
 
@@ -85,7 +93,7 @@
         ...grupos,
         totalDeuda,
         cuotaMensualTotal,
-        deudasEnriquecidas
+        deudasEnriquecidas,
       };
     },
 
@@ -99,26 +107,32 @@
     registrarPago(deuda, monto, metodo = 'Transferencia') {
       const valor = Number(monto);
       const saldoActual = Number(deuda.saldoPendiente) || 0;
-      if (!Number.isFinite(valor) || valor <= 0 || valor > saldoActual) throw new Error('El abono debe ser positivo y no superar el saldo pendiente.');
+      if (!Number.isFinite(valor) || valor <= 0 || valor > saldoActual) {
+        throw new Error('El abono debe ser positivo y no superar el saldo pendiente.');
+      }
       const nuevoSaldo = Math.round((saldoActual - valor + Number.EPSILON) * 100) / 100;
 
       const abono = {
-        id: window.crypto?.randomUUID?.() || `ab-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
+        id:
+          window.crypto?.randomUUID?.() ||
+          `ab-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
         deudaId: deuda.id,
         monto: valor,
-        fecha: window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0],
-        metodo: (metodo || 'Transferencia').trim()
+        fecha: window.obtenerFechaHoyISO
+          ? window.obtenerFechaHoyISO()
+          : new Date().toISOString().split('T')[0],
+        metodo: (metodo || 'Transferencia').trim(),
       };
 
       return {
         deudaActualizada: {
           ...deuda,
           saldoPendiente: nuevoSaldo,
-          estado: nuevoSaldo === 0 ? 'PAGADA' : deuda.estado
+          estado: nuevoSaldo === 0 ? 'PAGADA' : deuda.estado,
         },
-        abono
+        abono,
       };
-    }
+    },
   };
 
   window.PersonalDebtsDomain = debtsDomain;

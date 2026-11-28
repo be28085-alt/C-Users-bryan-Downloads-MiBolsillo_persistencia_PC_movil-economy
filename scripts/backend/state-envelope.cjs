@@ -9,8 +9,17 @@ function validEnvelope(raw) {
   if (typeof raw !== 'string' || !raw.length) return false;
   try {
     const value = JSON.parse(raw);
-    return value !== null && typeof value === 'object' && !Array.isArray(value)
-      && value.data !== null && typeof value.data === 'object' && !Array.isArray(value.data);
-  } catch { return false; }
+    return (
+      value !== null &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      value.data !== null &&
+      typeof value.data === 'object' &&
+      !Array.isArray(value.data)
+    );
+  } catch {
+    // No reflejar el JSON recibido; la ruta devuelve el rechazo genérico de formato.
+    return false;
+  }
 }
 module.exports = { validEnvelope };

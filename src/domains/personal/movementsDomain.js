@@ -15,11 +15,23 @@
      * @returns {Array<object>} Registros que cumplen todos los filtros.
      * Cada cliente declara sus campos de búsqueda para conservar su contrato actual.
      */
-    filtrarMovimientos(movimientos = [], { tipo = 'TODOS', categoria = 'TODAS', busqueda = '', campos = ['concepto', 'categoria', 'cuenta'] } = {}) {
+    filtrarMovimientos(
+      movimientos = [],
+      {
+        tipo = 'TODOS',
+        categoria = 'TODAS',
+        busqueda = '',
+        campos = ['concepto', 'categoria', 'cuenta'],
+      } = {},
+    ) {
       const query = busqueda.toLowerCase().trim();
-      return movimientos.filter(movimiento => (tipo === 'TODOS' || movimiento.tipo === tipo)
-        && (categoria === 'TODAS' || movimiento.categoria === categoria)
-        && (!query || campos.some(campo => (movimiento[campo] || '').toLowerCase().includes(query))));
+      return movimientos.filter(
+        (movimiento) =>
+          (tipo === 'TODOS' || movimiento.tipo === tipo) &&
+          (categoria === 'TODAS' || movimiento.categoria === categoria) &&
+          (!query ||
+            campos.some((campo) => (movimiento[campo] || '').toLowerCase().includes(query))),
+      );
     },
 
     /**
@@ -34,7 +46,7 @@
       let filtrados = [...movimientos];
 
       if (anio !== null && mes !== null) {
-        filtrados = filtrados.filter(m => {
+        filtrados = filtrados.filter((m) => {
           if (!m.fecha) return false;
           const f = window.parseFechaLocal ? window.parseFechaLocal(m.fecha) : new Date(m.fecha);
           if (!f || isNaN(f.getTime())) return false;
@@ -58,7 +70,7 @@
     calcularSaldoTotal(saldoInicial = 0, movimientos = []) {
       const base = Number(saldoInicial) || 0;
       let total = base;
-      (movimientos || []).forEach(m => {
+      (movimientos || []).forEach((m) => {
         const val = Number(m.valor) || 0;
         if (m.tipo === 'INGRESO') total += val;
         else if (m.tipo === 'GASTO') total -= val;
@@ -74,7 +86,7 @@
     calcularResumenPeriodo(movimientos = []) {
       let ingresos = 0;
       let gastos = 0;
-      (movimientos || []).forEach(m => {
+      (movimientos || []).forEach((m) => {
         const val = Number(m.valor) || 0;
         if (m.tipo === 'INGRESO') ingresos += val;
         else if (m.tipo === 'GASTO') gastos += val;
@@ -82,7 +94,7 @@
       return {
         ingresos: Math.round((ingresos + Number.EPSILON) * 100) / 100,
         gastos: Math.round((gastos + Number.EPSILON) * 100) / 100,
-        balance: Math.round((ingresos - gastos + Number.EPSILON) * 100) / 100
+        balance: Math.round((ingresos - gastos + Number.EPSILON) * 100) / 100,
       };
     },
 
@@ -97,20 +109,26 @@
       const concepto = (datos.concepto || '').trim();
       const categoria = (datos.categoria || 'Otros').trim();
       const cuenta = (datos.cuenta || 'Principal').trim();
-      const fecha = datos.fecha || (window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0]);
+      const fecha =
+        datos.fecha ||
+        (window.obtenerFechaHoyISO
+          ? window.obtenerFechaHoyISO()
+          : new Date().toISOString().split('T')[0]);
       const grupoFecha = window.formatearGrupoFecha ? window.formatearGrupoFecha(fecha) : fecha;
 
       return {
-        id: window.crypto?.randomUUID?.() || `tx-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
+        id:
+          window.crypto?.randomUUID?.() ||
+          `tx-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
         tipo,
         concepto,
         categoria,
         cuenta,
         valor,
         fecha,
-        grupoFecha
+        grupoFecha,
       };
-    }
+    },
   };
 
   window.PersonalMovementsDomain = movementsDomain;

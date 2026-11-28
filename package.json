@@ -18,12 +18,24 @@
     "test:product-measures:browser": "node tests/product-measures.browser.cjs",
     "build:android-web": "node scripts/build-android-web.cjs",
     "android:sync": "node scripts/build-android-web.cjs && cap sync android",
-    "android:open": "cap open android"
+    "android:open": "cap open android",
+    "lint": "eslint src scripts tests eslint.config.cjs test_shared.js test_dates.js --max-warnings=0",
+    "lint:fix": "eslint src scripts tests eslint.config.cjs test_shared.js test_dates.js --fix --max-warnings=0",
+    "format": "prettier --write \"src/**/*.js\" \"scripts/**/*.cjs\" \"tests/**/*.cjs\" \"*.cjs\" \"test_*.js\" package.json .prettierrc.json",
+    "format:check": "prettier --check \"src/**/*.js\" \"scripts/**/*.cjs\" \"tests/**/*.cjs\" \"*.cjs\" \"test_*.js\" package.json .prettierrc.json",
+    "quality:metrics": "node scripts/quality/metrics.cjs",
+    "quality": "npm run lint && npm run format:check"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.2",
     "@capacitor/cli": "^8.6.2",
     "@capacitor/core": "^8.6.2",
     "chart.js": "^4.6.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.15.0",
+    "globals": "17.14.0",
+    "prettier": "3.10.1"
   }
 }

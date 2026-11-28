@@ -2,8 +2,13 @@
    small line icons. Observe rendered nodes so controller refreshes keep them. */
 (function () {
   'use strict';
-  if (!document.body || typeof document.body.querySelectorAll !== 'function'
-    || typeof MutationObserver !== 'function') return;
+  if (
+    !document.body ||
+    typeof document.body.querySelectorAll !== 'function' ||
+    typeof MutationObserver !== 'function'
+  ) {
+    return;
+  }
   const paths = {
     home: 'M3 10 12 3l9 7v10H3ZM9 20v-7h6v7',
     movements: 'M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4',
@@ -23,21 +28,41 @@
     tag: 'M3 3h9l9 9-9 9-9-9ZM7 7h.01',
     more: 'M5 12h.01M12 12h.01M19 12h.01',
     inventory: 'm3 7 9-4 9 4v11l-9 4-9-4ZM3 7l9 4 9-4M12 11v11',
-    people: 'M9 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6M3 21v-4c0-6 12-6 12 0v4m1-17a3 3 0 0 1 0 6m2 4c3 0 3 4 3 7',
+    people:
+      'M9 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6M3 21v-4c0-6 12-6 12 0v4m1-17a3 3 0 0 1 0 6m2 4c3 0 3 4 3 7',
     receipt: 'M6 3h12v18l-3-2-3 2-3-2-3 2ZM9 7h6M9 11h6M9 15h3',
     folder: 'M3 6h7l2 3h9v12H3ZM3 6V3h7l2 3h9v3',
-    brand: 'M4 4h6v6H4Zm10 0h6v6h-6ZM4 14h6v6H4Zm10 0h6v6h-6Z'
+    brand: 'M4 4h6v6H4Zm10 0h6v6h-6ZM4 14h6v6H4Zm10 0h6v6h-6Z',
   };
   const tokens = {
-    '🏠': 'home', '⇋': 'movements', '⊕': 'plus', '🎯': 'plan',
-    '🐖': 'savings', '💳': 'card', '📊': 'reports', '📈': 'reports',
-    '⚙️': 'settings', '👁️': 'eye', '🛒': 'basket', '🚌': 'bus',
-    '☕': 'coffee', '⚕️': 'health', '💼': 'briefcase', '💻': 'laptop',
-    '🏷️': 'tag', '···': 'more', '✨': 'more', '📦': 'inventory',
-    '🏢': 'home', '👥': 'people', '🧾': 'receipt', '🗂️': 'folder',
-    '❖': 'brand'
+    '🏠': 'home',
+    '⇋': 'movements',
+    '⊕': 'plus',
+    '🎯': 'plan',
+    '🐖': 'savings',
+    '💳': 'card',
+    '📊': 'reports',
+    '📈': 'reports',
+    '⚙️': 'settings',
+    '👁️': 'eye',
+    '🛒': 'basket',
+    '🚌': 'bus',
+    '☕': 'coffee',
+    '⚕️': 'health',
+    '💼': 'briefcase',
+    '💻': 'laptop',
+    '🏷️': 'tag',
+    '···': 'more',
+    '✨': 'more',
+    '📦': 'inventory',
+    '🏢': 'home',
+    '👥': 'people',
+    '🧾': 'receipt',
+    '🗂️': 'folder',
+    '❖': 'brand',
   };
-  const selector = '.nav-icon, .nav-btn > span:first-child, .cat-icon, .tx-icon-bubble, .mov-icon-bubble, .btn-kpi-eye, .btn-eye-toggle, .brand-icon-coin';
+  const selector =
+    '.nav-icon, .nav-btn > span:first-child, .cat-icon, .tx-icon-bubble, .mov-icon-bubble, .btn-kpi-eye, .btn-eye-toggle, .brand-icon-coin';
   function decorate(root) {
     if (!root || root.nodeType !== 1 || typeof root.matches !== 'function') return;
     const nodes = [...(root.matches(selector) ? [root] : []), ...root.querySelectorAll(selector)];
@@ -49,10 +74,14 @@
     }
   }
   decorate(document.body);
-  new MutationObserver(records => {
-    for (const record of records) for (const node of record.addedNodes) {
-      if (node.nodeType === 1) decorate(node);
-      else if (node.nodeType === 3 && node.parentElement?.matches(selector)) decorate(node.parentElement);
+  new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (node.nodeType === 1) decorate(node);
+        else if (node.nodeType === 3 && node.parentElement?.matches(selector)) {
+          decorate(node.parentElement);
+        }
+      }
     }
   }).observe(document.body, { childList: true, subtree: true });
 })();

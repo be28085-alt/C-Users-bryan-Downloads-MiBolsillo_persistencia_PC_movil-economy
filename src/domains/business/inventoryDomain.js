@@ -18,12 +18,12 @@
       let unidadesTotales = 0;
       let enAlerta = 0;
 
-      (productos || []).forEach(p => {
+      (productos || []).forEach((p) => {
         const stock = Math.max(Number(p.stock) || 0, 0);
         const costo = Number(p.costoUnitario) || Number(p.precioCompra) || 0;
         const minimo = Number(p.stockMinimo) || 0;
 
-        valorTotal += (stock * costo);
+        valorTotal += stock * costo;
         unidadesTotales += stock;
         if (stock <= minimo) enAlerta++;
       });
@@ -31,7 +31,7 @@
       return {
         valorTotal,
         unidadesTotales,
-        enAlerta
+        enAlerta,
       };
     },
 
@@ -42,7 +42,7 @@
      */
     getAlertasStockBajo(productos = []) {
       if (!Array.isArray(productos)) return [];
-      return productos.filter(p => Number(p.stock) <= Number(p.stockMinimo));
+      return productos.filter((p) => Number(p.stock) <= Number(p.stockMinimo));
     },
 
     /**
@@ -67,9 +67,11 @@
         stockAnterior: Number(stockAnterior) || 0,
         stockPosterior: Number(stockPosterior) || 0,
         motivo: (motivo || '').trim(),
-        fecha: window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0]
+        fecha: window.obtenerFechaHoyISO
+          ? window.obtenerFechaHoyISO()
+          : new Date().toISOString().split('T')[0],
       };
-    }
+    },
   };
 
   window.BusinessInventoryDomain = inventoryDomain;

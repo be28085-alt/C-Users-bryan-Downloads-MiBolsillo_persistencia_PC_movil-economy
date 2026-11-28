@@ -2,12 +2,31 @@ const fs = require('fs');
 const vm = require('vm');
 const store = new Map();
 const window = {
-  localStorage: { getItem:k=>store.has(k)?store.get(k):null, setItem:(k,v)=>store.set(k,v), removeItem:k=>store.delete(k) },
-  sessionStorage: { getItem:k=>store.has('s:'+k)?store.get('s:'+k):null, setItem:(k,v)=>store.set('s:'+k,v), removeItem:k=>store.delete('s:'+k) },
-  addEventListener:()=>{}
+  localStorage: {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, v),
+    removeItem: (k) => store.delete(k),
+  },
+  sessionStorage: {
+    getItem: (k) => (store.has('s:' + k) ? store.get('s:' + k) : null),
+    setItem: (k, v) => store.set('s:' + k, v),
+    removeItem: (k) => store.delete('s:' + k),
+  },
+  addEventListener: () => {},
 };
-const document = { createElement:()=>({set textContent(v){this._v=v},get innerHTML(){return this._v}}) };
-const code = fs.readFileSync(__dirname + '/legacy/web/shared.js','utf8') + `
+const document = {
+  createElement: () => ({
+    set textContent(v) {
+      this._v = v;
+    },
+    get innerHTML() {
+      return this._v;
+    },
+  }),
+};
+const code =
+  fs.readFileSync(__dirname + '/legacy/web/shared.js', 'utf8') +
+  `
 (() => {
   const m = Finanzas.agregarMovimiento({tipo:'INGRESO', concepto:'Prueba', categoria:'Salario', valor:100000, fecha:obtenerFechaHoyISO()});
   if (m.error) throw new Error(m.error);
@@ -26,7 +45,23 @@ const code = fs.readFileSync(__dirname + '/legacy/web/shared.js','utf8') + `
   if (!saved || !saved.data || !saved.data.movimientos.some(x=>x.id===m.id)) throw new Error('No persistió el movimiento');
   return 'OK';
 })();`;
-const context = {window, document, console, Date, Math, JSON, Number, String, Object, Array, Boolean, RegExp, isFinite, setTimeout, clearTimeout};
+const context = {
+  window,
+  document,
+  console,
+  Date,
+  Math,
+  JSON,
+  Number,
+  String,
+  Object,
+  Array,
+  Boolean,
+  RegExp,
+  isFinite,
+  setTimeout,
+  clearTimeout,
+};
 vm.createContext(context);
 const result = vm.runInContext(code, context);
 console.log(result);

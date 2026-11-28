@@ -1,7 +1,7 @@
 /**
  * ============================================================================
- * SECURITY MODULE
- * Responsabilidad: Prevención de inyecciones XSS, sanitización de textos y CSV injection.
+ * ESCAPADO Y PROTECCIÓN DE EXPORTACIONES
+ * Responsabilidad: Prevención de XSS, escapado de textos y neutralización de fórmulas CSV.
  * ============================================================================
  */
 (function () {
@@ -60,7 +60,7 @@
     setText(node, text) {
       if (!node) return;
       node.textContent = text !== null && text !== undefined ? String(text) : '';
-    }
+    },
   };
 
   // Exportar en namespaces compatibles y globales

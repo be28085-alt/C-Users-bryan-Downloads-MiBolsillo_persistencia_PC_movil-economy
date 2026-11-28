@@ -17,7 +17,7 @@
      */
     getProductos(productos = [], negocioId = '', filtroTipo = 'ALL') {
       if (!Array.isArray(productos)) return [];
-      return productos.filter(p => {
+      return productos.filter((p) => {
         if (p.negocioId !== negocioId) return false;
         if (p.estado === 'ARCHIVADO') return false;
         if (filtroTipo === 'ALL') return true;
@@ -38,7 +38,7 @@
       const margenPorcentaje = pv > 0 ? (margenDinero / pv) * 100 : 0;
       return {
         margenDinero,
-        margenPorcentaje
+        margenPorcentaje,
       };
     },
 
@@ -52,7 +52,10 @@
       const tipo = datos.tipo === 'MATERIA_PRIMA' ? 'MATERIA_PRIMA' : 'PRODUCTO';
       const prefix = tipo === 'MATERIA_PRIMA' ? 'prod-mp' : 'prod-pt';
       const precioVenta = tipo === 'PRODUCTO' ? Math.max(Number(datos.precioVenta) || 0, 0) : 0;
-      const costoUnitario = Math.max(Number(datos.costoUnitario) || Number(datos.precioCompra) || 0, 0);
+      const costoUnitario = Math.max(
+        Number(datos.costoUnitario) || Number(datos.precioCompra) || 0,
+        0,
+      );
 
       return {
         id: `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -66,9 +69,9 @@
         unidadMedida: (datos.unidadMedida || 'unidades').trim(),
         stock: Math.max(Number(datos.stock) || 0, 0),
         stockMinimo: Math.max(Number(datos.stockMinimo) || 0, 0),
-        estado: 'DISPONIBLE'
+        estado: 'DISPONIBLE',
       };
-    }
+    },
   };
 
   window.BusinessProductsDomain = productsDomain;

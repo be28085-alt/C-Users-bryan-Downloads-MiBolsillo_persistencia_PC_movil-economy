@@ -103,9 +103,8 @@
   .pc-table tbody td[colspan]::before { display: none; }
   .bm-kpis,.bm-grid,.business-dashboard__kpis { grid-template-columns: minmax(0,1fr) !important; }
   .bm-kpis .bm-hero { grid-column: auto; }
-  .bm-header,.bm-header-controls,.bm-toolbar,.bm-search { flex-wrap: wrap; }
-  .bm-header { align-items: flex-start; }
-  .bm-header-controls { width: 100%; }
+  .bm-toolbar, .bm-search { flex-wrap: wrap; }
+
   .bm-search label:first-child { min-width: 0; }
   .bm-table-wrap { overflow-x: auto; max-width: 100%; }
   .bm-dialog { max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; }

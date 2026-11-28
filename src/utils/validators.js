@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * VALIDATORS MODULE
+ * VALIDACIÓN DE ENTRADAS
  * Responsabilidad: Validación de montos, números, textos requeridos y entradas.
  * ============================================================================
  */
@@ -68,15 +68,15 @@
       if (!data || typeof data !== 'object') {
         return { ok: false, missing: fields };
       }
-      const missing = fields.filter(field => {
+      const missing = fields.filter((field) => {
         const value = data[field];
         return value === null || value === undefined || String(value).trim() === '';
       });
       return {
         ok: missing.length === 0,
-        missing
+        missing,
       };
-    }
+    },
   };
 
   // Exportar en namespaces compatibles y globales

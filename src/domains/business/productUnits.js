@@ -13,34 +13,51 @@
     ['PZA', 'Piezas', 'pza', ['pieza', 'piezas', 'pza', 'pzas']],
     ['PAQ', 'Paquetes', 'paq', ['paquete', 'paquetes', 'paq', 'pqt', 'pqte']],
     ['CAJA', 'Cajas', 'caja', ['caja', 'cajas', 'cja']],
-    ['PAR', 'Pares', 'par', ['par', 'pares']]
+    ['PAR', 'Pares', 'par', ['par', 'pares']],
   ];
-  const key = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').replace(/\./g, '').trim();
+  const key = (value) =>
+    String(value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('es')
+      .replace(/\./g, '')
+      .trim();
   const aliases = new Map();
-  const catalog = Object.freeze(definitions.map(([code, label, symbol, names]) => {
-    for (const name of [code, label, symbol, ...names]) aliases.set(key(name), code);
-    return Object.freeze({ code, label, symbol });
-  }));
+  const catalog = Object.freeze(
+    definitions.map(([code, label, symbol, names]) => {
+      for (const name of [code, label, symbol, ...names]) aliases.set(key(name), code);
+      return Object.freeze({ code, label, symbol });
+    }),
+  );
   function normalize(value) {
-    if (value !== undefined && value !== null && typeof value !== 'string') throw new Error('Selecciona una unidad de medida o escribe su nombre.');
+    if (value !== undefined && value !== null && typeof value !== 'string') {
+      throw new Error('Selecciona una unidad de medida o escribe su nombre.');
+    }
     const text = String(value ?? '').trim();
     if (!text) return 'UND';
-    if (text.length > 200 || /[\u0000-\u001f\u007f]/.test(text)) throw new Error('La unidad de medida debe tener hasta 200 caracteres y no contener caracteres de control.');
+    // eslint-disable-next-line no-control-regex -- La etiqueta de unidad excluye controles; esta validación no convierte cantidades.
+    if (text.length > 200 || /[\u0000-\u001f\u007f]/.test(text)) {
+      throw new Error(
+        'La unidad de medida debe tener hasta 200 caracteres y no contener caracteres de control.',
+      );
+    }
     return aliases.get(key(text)) || text;
   }
   function get(value) {
     const code = normalize(value);
-    return catalog.find(item => item.code === code) || { code, label: code, symbol: code };
+    return catalog.find((item) => item.code === code) || { code, label: code, symbol: code };
   }
   function options(value) {
-    const entries = catalog.map(item => [item.code, `${item.label} (${item.symbol})`]);
+    const entries = catalog.map((item) => [item.code, `${item.label} (${item.symbol})`]);
     const current = normalize(value);
-    if (!catalog.some(item => item.code === current)) entries.push([current, current]);
+    if (!catalog.some((item) => item.code === current)) entries.push([current, current]);
     return entries;
   }
   function formatQuantity(value, unit) {
     const quantity = Number(value ?? 0);
-    const formatted = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 4 }).format(Number.isFinite(quantity) ? quantity : 0);
+    const formatted = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 4 }).format(
+      Number.isFinite(quantity) ? quantity : 0,
+    );
     return `${formatted} ${get(unit).symbol}`;
   }
   window.BusinessProductUnits = Object.freeze({ catalog, normalize, get, options, formatQuantity });

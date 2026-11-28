@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * SEED DATA MODULE
+ * CATÁLOGOS INICIALES
  * Responsabilidad: Catálogos maestros, categorías de ingresos/gastos y constantes base.
  * ============================================================================
  */
@@ -13,7 +13,7 @@
     { id: 'Ocio', nombre: 'Ocio', icon: '☕', color: '#f59e0b' },
     { id: 'Vivienda', nombre: 'Vivienda', icon: '🏠', color: '#6366f1' },
     { id: 'Sanidad', nombre: 'Sanidad', icon: '⚕️', color: '#ec4899' },
-    { id: 'Otros', nombre: 'Otros', icon: '···', color: '#8b5cf6' }
+    { id: 'Otros', nombre: 'Otros', icon: '···', color: '#8b5cf6' },
   ];
 
   const CATEGORIAS_INGRESO = [
@@ -22,7 +22,7 @@
     { id: 'Freelance', nombre: 'Freelance', icon: '💻', color: '#3b82f6' },
     { id: 'Inversiones', nombre: 'Inversión', icon: '📈', color: '#8b5cf6' },
     { id: 'Mesada', nombre: 'Apoyo', icon: '🤝', color: '#f59e0b' },
-    { id: 'Otros', nombre: 'Otros', icon: '✨', color: '#14b8a6' }
+    { id: 'Otros', nombre: 'Otros', icon: '✨', color: '#14b8a6' },
   ];
 
   const CATEGORIAS_GASTO_NEGOCIO = [
@@ -34,19 +34,31 @@
     'Suministros y papelería',
     'Marketing y publicidad',
     'Impuestos y tasas',
-    'Otros gastos operativos'
+    'Otros gastos operativos',
   ];
 
   const CUENTAS_BASE = [
-    { id: 'cta-1', nombre: 'Cuenta Principal', tipo: 'BANCO', saldo: 2859500, entidad: 'Bancolombia' },
-    { id: 'cta-2', nombre: 'Caja / Efectivo', tipo: 'EFECTIVO', saldo: 1000000, entidad: 'Billetera' }
+    {
+      id: 'cta-1',
+      nombre: 'Cuenta Principal',
+      tipo: 'BANCO',
+      saldo: 2859500,
+      entidad: 'Bancolombia',
+    },
+    {
+      id: 'cta-2',
+      nombre: 'Caja / Efectivo',
+      tipo: 'EFECTIVO',
+      saldo: 1000000,
+      entidad: 'Billetera',
+    },
   ];
 
   const seed = {
     CATEGORIAS_GASTO,
     CATEGORIAS_INGRESO,
     CATEGORIAS_GASTO_NEGOCIO,
-    CUENTAS_BASE
+    CUENTAS_BASE,
   };
 
   window.FinanzasSeed = seed;

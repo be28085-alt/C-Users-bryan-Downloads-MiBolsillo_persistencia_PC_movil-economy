@@ -20,16 +20,26 @@
      * Conserva el tratamiento de entradas incompletas como cero y no redondea la
      * proyección: el redondeo y la validación del guardado siguen en sus servicios.
      */
-    proyectarMovimiento({ tipo, valor, saldoActual, presupuesto, gastoCategoria = 0, limiteCategoria = 0 }) {
+    proyectarMovimiento({
+      tipo,
+      valor,
+      saldoActual,
+      presupuesto,
+      gastoCategoria = 0,
+      limiteCategoria = 0,
+    }) {
       const entrada = Number(valor);
       const monto = Number.isFinite(entrada) && entrada > 0 ? entrada : 0;
       const esIngreso = tipo === 'INGRESO';
       return {
-        monto, esIngreso, saldoActual,
+        monto,
+        esIngreso,
+        saldoActual,
         saldoProyectado: esIngreso ? saldoActual + monto : saldoActual - monto,
-        impactoPresupuesto: presupuesto.limite > 0 ? monto / presupuesto.limite * 100 : 0,
-        excedePresupuesto: !esIngreso && presupuesto.limite > 0 && presupuesto.gastado + monto > presupuesto.limite,
-        excedeCategoria: !esIngreso && gastoCategoria + monto > limiteCategoria
+        impactoPresupuesto: presupuesto.limite > 0 ? (monto / presupuesto.limite) * 100 : 0,
+        excedePresupuesto:
+          !esIngreso && presupuesto.limite > 0 && presupuesto.gastado + monto > presupuesto.limite,
+        excedeCategoria: !esIngreso && gastoCategoria + monto > limiteCategoria,
       };
     },
 
@@ -42,7 +52,7 @@
     calcularEstadoPresupuestoGlobal(limiteMensual = 0, movimientosMes = []) {
       const limite = Number(limiteMensual) || 0;
       let gastado = 0;
-      (movimientosMes || []).forEach(m => {
+      (movimientosMes || []).forEach((m) => {
         if (m.tipo === 'GASTO') gastado += Number(m.valor) || 0;
       });
 
@@ -60,7 +70,7 @@
         gastado,
         restante,
         porcentaje,
-        estado
+        estado,
       };
     },
 
@@ -74,7 +84,7 @@
       const limites = limitesCategorias || {};
       const gastosPorCat = {};
 
-      (movimientosMes || []).forEach(m => {
+      (movimientosMes || []).forEach((m) => {
         if (m.tipo === 'GASTO') {
           const cat = m.categoria || 'Otros';
           gastosPorCat[cat] = (gastosPorCat[cat] || 0) + (Number(m.valor) || 0);
@@ -82,7 +92,7 @@
       });
 
       const categorias = Object.keys(limites);
-      return categorias.map(cat => {
+      return categorias.map((cat) => {
         const limite = Number(limites[cat]) || 0;
         const gastado = Number(gastosPorCat[cat]) || 0;
         const restante = limite - gastado;
@@ -94,7 +104,7 @@
           restante,
           porcentaje: Math.min(porcentaje, 100),
           porcentajeReal: porcentaje,
-          excedido: gastado > limite
+          excedido: gastado > limite,
         };
       });
     },
@@ -115,30 +125,30 @@
           tipo: 'danger',
           icono: '🚨',
           titulo: 'Presupuesto mensual superado',
-          mensaje: `Has consumido el ${estadoPresupuesto.porcentaje.toFixed(1)}% de tu presupuesto asignado.`
+          mensaje: `Has consumido el ${estadoPresupuesto.porcentaje.toFixed(1)}% de tu presupuesto asignado.`,
         });
       } else if (estadoPresupuesto && estadoPresupuesto.estado === 'ALERTA') {
         alertas.push({
           tipo: 'warning',
           icono: '⚠️',
           titulo: 'Presupuesto mensual cerca del límite',
-          mensaje: `Has consumido el ${estadoPresupuesto.porcentaje.toFixed(1)}% de tu presupuesto asignado.`
+          mensaje: `Has consumido el ${estadoPresupuesto.porcentaje.toFixed(1)}% de tu presupuesto asignado.`,
         });
       }
 
-      desgloseCategorias.forEach(c => {
+      desgloseCategorias.forEach((c) => {
         if (c.excedido) {
           alertas.push({
             tipo: 'danger',
             icono: '⚠️',
             titulo: `Límite superado en ${c.categoria}`,
-            mensaje: `Gastado: $${c.gastado.toLocaleString('es-CO')} de un tope de $${c.limite.toLocaleString('es-CO')}.`
+            mensaje: `Gastado: $${c.gastado.toLocaleString('es-CO')} de un tope de $${c.limite.toLocaleString('es-CO')}.`,
           });
         }
       });
 
       return alertas;
-    }
+    },
   };
 
   window.PersonalBudgetDomain = budgetDomain;

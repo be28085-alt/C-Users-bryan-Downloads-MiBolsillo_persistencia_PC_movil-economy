@@ -9,27 +9,6 @@
   font-size: 1rem;
 }
 
-.business-manager .bm-header {
-  gap: 24px;
-  margin-bottom: 24px;
-}
-.business-manager .bm-header > div:first-child { min-width: 0; }
-.business-manager .bm-header small {
-  color: var(--bm-muted);
-  font-size: .75rem;
-  font-weight: 600;
-  letter-spacing: .1em;
-}
-.business-manager .bm-header h1 {
-  color: var(--app-text-title);
-  font-size: clamp(1.55rem, 2.2vw, 2rem);
-  font-weight: 650;
-  letter-spacing: -.035em;
-  margin: 8px 0;
-}
-.business-manager .bm-header p { font-size: .875rem; line-height: 1.65; }
-.business-manager .bm-header-controls { align-items: end; gap: 8px; }
-.business-manager .bm-business-picker { font-size: .75rem; max-width: 200px; }
 .business-manager label,
 .bm-dialog label { font-size: .875rem; font-weight: 500; }
 .business-manager button,
@@ -58,7 +37,7 @@
   padding: 10px 12px;
   min-height: 42px;
 }
-.business-manager .bm-business-picker select { font-size: .875rem; min-height: 42px; }
+
 .business-manager .bm-switch-business { max-width: 20rem; margin: 16px 0; }
 .business-manager :focus-visible,
 .bm-dialog :focus-visible { outline: 3px solid var(--app-focus); outline-offset: 3px; }
@@ -207,8 +186,7 @@
   .business-manager .bm-distribution { flex-direction: row; align-items: center; }
 }
 @media (min-width: 1100px) {
-  .business-manager .bm-header { flex-direction: row; align-items: center; }
-  .business-manager .bm-header-controls { flex: 0 1 470px; }
+
   .business-manager .bm-distribution { flex-direction: row; align-items: center; }
 }
 
@@ -236,20 +214,13 @@
   #view-negocio .bm-mobile-sections button { font-size: .875rem; min-height: 44px; }
 }
 @media (min-width: 1100px) {
-  #view-negocio .bm-header { flex-direction: row; align-items: center; }
-  #view-negocio .bm-header-controls { width: auto; justify-content: end; }
+
   #view-negocio .bm-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* Reflow every record with its labels; all amounts and actions remain visible. */
 @media (max-width: 799px) {
-  .business-manager .bm-header { flex-direction: column; align-items: stretch; gap: 18px; }
-  .business-manager .bm-header h1 { font-size: 1.55rem; }
-  .business-manager .bm-header p { font-size: .875rem; }
-  .business-manager .bm-header-controls { width: 100%; justify-content: start; }
-  .business-manager .bm-header-controls > button { flex: 1 1 120px; min-height: 44px; }
-  .business-manager .bm-business-picker { max-width: none; flex: 1 1 100%; }
-  .business-manager .bm-business-picker select { min-height: 44px; }
+
   .business-manager .bm-period > span { margin-left: 0; flex: 1 1 100%; }
   .business-manager .bm-kpis,
   #view-negocio .bm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px; }

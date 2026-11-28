@@ -3,35 +3,59 @@
 
   // Presentation accepts canonical model values only. Localized text is parsed
   // separately, at the form boundary, so a saved 10.49 remains ten pesos 49.
-  const inputError = scale => new Error(`Número inválido: usa separadores de miles completos y máximo ${scale} decimales.`);
+  const inputError = (scale) =>
+    new Error(`Número inválido: usa separadores de miles completos y máximo ${scale} decimales.`);
   function checkScale(scale) {
-    if (!Number.isInteger(scale) || scale < 0 || scale > 8) throw new Error('Precisión numérica inválida.');
+    if (!Number.isInteger(scale) || scale < 0 || scale > 8) {
+      throw new Error('Precisión numérica inválida.');
+    }
   }
   function expandNumber(value) {
     if (!Number.isFinite(value)) throw new Error('El importe debe ser un número finito.');
     const text = String(value);
     if (!/[eE]/.test(text)) return text;
     const match = /^(-?)(\d+)(?:\.(\d+))?[eE]([+-]?\d+)$/.exec(text);
-    const digits = match[2] + (match[3] || ''), point = match[2].length + Number(match[4]);
-    return match[1] + (point <= 0 ? `0.${'0'.repeat(-point)}${digits}` : point >= digits.length ? digits + '0'.repeat(point - digits.length) : `${digits.slice(0, point)}.${digits.slice(point)}`);
+    const digits = match[2] + (match[3] || ''),
+      point = match[2].length + Number(match[4]);
+    return (
+      match[1] +
+      (point <= 0
+        ? `0.${'0'.repeat(-point)}${digits}`
+        : point >= digits.length
+          ? digits + '0'.repeat(point - digits.length)
+          : `${digits.slice(0, point)}.${digits.slice(point)}`)
+    );
   }
   function canonical(value, negative = true) {
     const text = typeof value === 'number' ? expandNumber(value) : String(value ?? '0').trim();
     const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(text);
-    if (!match || (!negative && match[1]) || match[2].length > 32 || (match[3] || '').length > 32) throw new Error('Importe decimal inválido.');
-    return { negative: Boolean(match[1]), whole: match[2].replace(/^0+(?=\d)/, ''), fraction: match[3] || '' };
+    if (!match || (!negative && match[1]) || match[2].length > 32 || (match[3] || '').length > 32) {
+      throw new Error('Importe decimal inválido.');
+    }
+    return {
+      negative: Boolean(match[1]),
+      whole: match[2].replace(/^0+(?=\d)/, ''),
+      fraction: match[3] || '',
+    };
   }
   function scaled(value, scale) {
-    const parts = canonical(value), fraction = parts.fraction.padEnd(scale, '0');
-    let amount = BigInt(parts.whole) * 10n ** BigInt(scale) + BigInt(fraction.slice(0, scale) || '0');
+    const parts = canonical(value),
+      fraction = parts.fraction.padEnd(scale, '0');
+    let amount =
+      BigInt(parts.whole) * 10n ** BigInt(scale) + BigInt(fraction.slice(0, scale) || '0');
     if (fraction.length > scale && fraction[scale] >= '5') amount += 1n;
     return { amount, negative: parts.negative && amount !== 0n };
   }
   function partsAtScale(value, scale) {
-    const result = scaled(value, scale), digits = result.amount.toString().padStart(scale + 1, '0');
-    return { ...result, whole: scale ? digits.slice(0, -scale) : digits, fraction: scale ? digits.slice(-scale) : '' };
+    const result = scaled(value, scale),
+      digits = result.amount.toString().padStart(scale + 1, '0');
+    return {
+      ...result,
+      whole: scale ? digits.slice(0, -scale) : digits,
+      fraction: scale ? digits.slice(-scale) : '',
+    };
   }
-  const group = whole => whole.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const group = (whole) => whole.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   function separator(value) {
     if (![',', '.'].includes(value)) throw new Error('Separador decimal inválido.');
     return value;
@@ -93,14 +117,23 @@
   function quantityInput(value, scale = 4) {
     checkScale(scale);
     if (value === '' || value === null || value === undefined) return '';
-    const result = partsAtScale(value, scale), fraction = result.fraction.replace(/0+$/, '');
+    const result = partsAtScale(value, scale),
+      fraction = result.fraction.replace(/0+$/, '');
     return `${result.negative ? '-' : ''}${result.whole}${fraction ? '.' + fraction : ''}`;
   }
   function formatQuantity(value, { maximumFractionDigits = 4 } = {}) {
     checkScale(maximumFractionDigits);
-    const result = partsAtScale(value, maximumFractionDigits), fraction = result.fraction.replace(/0+$/, '');
+    const result = partsAtScale(value, maximumFractionDigits),
+      fraction = result.fraction.replace(/0+$/, '');
     return `${result.negative ? '-' : ''}${group(result.whole)}${fraction ? ',' + fraction : ''}`;
   }
 
-  window.BusinessNumbers = Object.freeze({ formatMoney, parseMoneyInput, moneyInput, parseQuantityInput, quantityInput, formatQuantity });
+  window.BusinessNumbers = Object.freeze({
+    formatMoney,
+    parseMoneyInput,
+    moneyInput,
+    parseQuantityInput,
+    quantityInput,
+    formatQuantity,
+  });
 })();

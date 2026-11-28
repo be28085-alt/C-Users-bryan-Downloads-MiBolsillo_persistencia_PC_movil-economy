@@ -60,6 +60,15 @@ npm run test:personal:browser
 
 Las pruebas de navegador admiten `PLAYWRIGHT_MODULE` para localizar Playwright y `PLAYWRIGHT_CHROME` para indicar el ejecutable del navegador. Generan sus resultados en `tmp/`.
 
+Para revisar el código propio con las dependencias de desarrollo instaladas:
+
+```sh
+npm run quality
+npm run quality:metrics
+```
+
+`quality` ejecuta ESLint y la comprobación de formato de Prettier. Las métricas analizan sintaxis sin ejecutar la aplicación ni abrir SQLite; `npm run quality:metrics -- --ref <commit>` permite medir una revisión anterior con el mismo criterio. Para aplicar correcciones revisables están `npm run lint:fix` y `npm run format`. Estos controles excluyen datos privados, código de terceros, archivos generados y versiones archivadas; no sustituyen las pruebas funcionales. Consulte los estándares antes de introducir módulos o cambiar contratos.
+
 La regresión personal comprueba los formularios de movimientos, metas, aportes, deudas, abonos, presupuesto y perfil en PC y móvil. Simula errores de escritura, conserva los campos para reintentar y comprueba SQLite después de recargar y reiniciar el servidor. Los resúmenes de ingresos, gastos y presupuesto usan el mes seleccionado; el saldo disponible conserva todos los movimientos. El correo editado en Perfil pasa a ser el correo de inicio de sesión después de confirmar el guardado.
 
 ## Alcance y documentación
@@ -72,6 +81,9 @@ Los importes de Mi Negocio se muestran como `10.490.00 COP`, siempre con dos dec
 
 - [Arquitectura, contratos y desarrollo de módulos](docs/ARQUITECTURA.md)
 - [Estructura y responsabilidades del código](docs/ESTRUCTURA_PROYECTO.md)
+- [Estándares de código y herramientas de calidad](docs/ESTANDARES_CODIGO.md)
+- [Convenciones de desarrollo y revisión de cambios](docs/CONVENCIONES_DESARROLLO.md)
+- [Auditoría de calidad de fase 5](docs/AUDITORIA_FASE_5.md)
 - [Auditoría de arquitectura de fase 4](docs/AUDITORIA_FASE_4.md)
 - [Seguridad y pendientes operativos](docs/AUDITORIA_SEGURIDAD_FASE_3.md)
 - [Proyecto Android y preparación para Google Play](docs/ANDROID.md)

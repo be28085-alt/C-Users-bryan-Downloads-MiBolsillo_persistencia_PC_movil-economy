@@ -1,16 +1,39 @@
 /**
  * ============================================================================
- * DATES MODULE
+ * FECHAS LOCALES Y PERÍODOS
  * Responsabilidad: Parseo, formateo y cálculo de fechas locales, períodos y meses.
  * ============================================================================
  */
 (function () {
   'use strict';
 
-  const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const MESES_CORTOS = [
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic',
+  ];
   const MESES_LARGOS = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
   ];
 
   const dates = {
@@ -52,7 +75,7 @@
       const d = this.parseFechaLocal(fecha);
       if (!d || isNaN(d.getTime())) return false;
       const [y, m, dia] = fecha.split('-').map(Number);
-      return d.getFullYear() === y && (d.getMonth() + 1) === m && d.getDate() === dia;
+      return d.getFullYear() === y && d.getMonth() + 1 === m && d.getDate() === dia;
     },
 
     /**
@@ -112,7 +135,7 @@
       const m = String(hoy.getMonth() + 1).padStart(2, '0');
       const d = String(hoy.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
-    }
+    },
   };
 
   // Exportar en namespaces compatibles y globales
@@ -155,14 +178,28 @@
       else if (movimiento.tipo === 'GASTO') mesesMap[clave].gastos += valor;
     });
 
-    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const filas = Object.keys(mesesMap).sort().map((clave) => mesesMap[clave]);
+    const meses = [
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
+    ];
+    const filas = Object.keys(mesesMap)
+      .sort()
+      .map((clave) => mesesMap[clave]);
     return {
       labels: filas.map((fila) => `${meses[fila.mes]} ${fila.anio}`),
       ingresos: filas.map((fila) => fila.ingresos),
       gastos: filas.map((fila) => fila.gastos),
-      tieneDatos: filas.length > 0
+      tieneDatos: filas.length > 0,
     };
   };
-
 })();

@@ -10,15 +10,17 @@
   const goalsDomain = {
     /** Normaliza una entidad histórica sin mutar el registro recibido ni persistir datos. */
     normalizar(meta = {}, index = 0) {
-      if (!meta || typeof meta !== 'object') return {
-        id: `meta-${Date.now()}-${index}`,
-        nombre: 'Meta',
-        objetivo: 0,
-        ahorrado: 0,
-        fechaLimite: '',
-        color: '#10b981',
-        icono: '🎯'
-      };
+      if (!meta || typeof meta !== 'object') {
+        return {
+          id: `meta-${Date.now()}-${index}`,
+          nombre: 'Meta',
+          objetivo: 0,
+          ahorrado: 0,
+          fechaLimite: '',
+          color: '#10b981',
+          icono: '🎯',
+        };
+      }
 
       const objetivo = Number(meta.montoObjetivo ?? meta.objetivo ?? 0) || 0;
       const ahorrado = Number(meta.montoActual ?? meta.ahorrado ?? 0) || 0;
@@ -32,7 +34,7 @@
         montoActual: Math.max(ahorrado, 0),
         fechaLimite: meta.fechaLimite || '',
         color: meta.color || '#10b981',
-        icono: meta.icono || '🎯'
+        icono: meta.icono || '🎯',
       };
     },
     /**
@@ -42,7 +44,7 @@
      */
     enriquecerMetas(metas = []) {
       if (!Array.isArray(metas)) return [];
-      return metas.map(meta => {
+      return metas.map((meta) => {
         const objetivo = Number(meta.montoObjetivo) || 0;
         const actual = Number(meta.montoActual) || 0;
         const restante = Math.max(objetivo - actual, 0);
@@ -52,7 +54,7 @@
           restante,
           porcentaje: Math.min(porcentaje, 100),
           porcentajeReal: porcentaje,
-          completada: actual >= objetivo
+          completada: actual >= objetivo,
         };
       });
     },
@@ -71,18 +73,20 @@
         id: `ap-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         metaId: meta.id,
         monto: valor,
-        fecha: window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0],
-        nota: (nota || '').trim()
+        fecha: window.obtenerFechaHoyISO
+          ? window.obtenerFechaHoyISO()
+          : new Date().toISOString().split('T')[0],
+        nota: (nota || '').trim(),
       };
 
       return {
         metaActualizada: {
           ...meta,
-          montoActual: nuevoActual
+          montoActual: nuevoActual,
         },
-        aporte
+        aporte,
       };
-    }
+    },
   };
 
   window.PersonalGoalsDomain = goalsDomain;

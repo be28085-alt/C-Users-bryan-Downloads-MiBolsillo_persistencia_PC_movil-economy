@@ -13,7 +13,11 @@ test('el paquete Android conserva el código activo de PC/móvil y funciona sin 
     const packaged = fs.readFileSync(path.join(output, page), 'utf8');
     assert.ok(!/https:\/\/(?:fonts\.|cdn\.jsdelivr)/.test(packaged));
     for (const [, file] of original.matchAll(/<script\s+src="(src\/[^"?]+)/g)) {
-      assert.deepEqual(fs.readFileSync(path.join(output, file)), fs.readFileSync(path.join(root, file)), file);
+      assert.deepEqual(
+        fs.readFileSync(path.join(output, file)),
+        fs.readFileSync(path.join(root, file)),
+        file,
+      );
     }
     for (const [, reference] of packaged.matchAll(/(?:src|href)\s*=\s*["']([^"']+)["']/g)) {
       if (/^(?:[a-z]+:|#|\/\/)/i.test(reference)) continue;
@@ -25,8 +29,10 @@ test('el paquete Android conserva el código activo de PC/móvil y funciona sin 
   }
   assert.match(fs.readFileSync(path.join(output, 'index.html'), 'utf8'), /account-access/);
   assert.match(fs.readFileSync(path.join(output, 'index.html'), 'utf8'), /accountAccess\.js/);
-  assert.deepEqual(fs.readFileSync(path.join(output, 'src/ui/shared/adaptiveEntry.js')),
-    fs.readFileSync(path.join(root, 'src/ui/shared/adaptiveEntry.js')));
+  assert.deepEqual(
+    fs.readFileSync(path.join(output, 'src/ui/shared/adaptiveEntry.js')),
+    fs.readFileSync(path.join(root, 'src/ui/shared/adaptiveEntry.js')),
+  );
   assert.match(fs.readFileSync(path.join(output, 'index.html'), 'utf8'), /mibolsillo-app/);
   const config = JSON.parse(fs.readFileSync(path.join(root, 'capacitor.config.json')));
   assert.equal(config.server.androidScheme, 'https');

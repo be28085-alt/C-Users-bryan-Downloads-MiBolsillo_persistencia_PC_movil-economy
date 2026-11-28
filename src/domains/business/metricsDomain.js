@@ -19,12 +19,34 @@
     calcularMetricasEmpresariales(negocioId, datasets = {}, filtroPeriodo = 'MES_ACTUAL') {
       const D = window.BusinessReportsDomain;
       const r = D.build(datasets, negocioId, { period: filtroPeriodo });
-      const products = (datasets.productos || []).filter(p => p.negocioId === negocioId && p.estado !== 'ARCHIVADO');
-      const inventory = products.reduce((sum, p) => sum + D.product(p.stock || 0, p.costoUnitario ?? p.precioCompra ?? 0), 0n);
-      const payable = [...(datasets.compras || []), ...(datasets.gastosNegocio || [])].filter(p => p.negocioId === negocioId && p.estado !== 'ANULADA').reduce((sum, p) => sum + D.cents(p.saldoPendiente || 0), 0n);
+      const products = (datasets.productos || []).filter(
+        (p) => p.negocioId === negocioId && p.estado !== 'ARCHIVADO',
+      );
+      const inventory = products.reduce(
+        (sum, p) => sum + D.product(p.stock || 0, p.costoUnitario ?? p.precioCompra ?? 0),
+        0n,
+      );
+      const payable = [...(datasets.compras || []), ...(datasets.gastosNegocio || [])]
+        .filter((p) => p.negocioId === negocioId && p.estado !== 'ANULADA')
+        .reduce((sum, p) => sum + D.cents(p.saldoPendiente || 0), 0n);
       const t = r.totals;
-      return { ventasTotales: Number(t.sales), costoProductosVendidos: Number(t.cogs), utilidadBruta: Number(t.grossProfit), gastosOperativos: Number(t.operatingExpenses), utilidadNeta: Number(t.netProfit), margenBrutoPct: Number(t.sales) > 0 ? Number(t.grossProfit) / Number(t.sales) * 100 : 0, margenNetoPct: t.margin, cuentasPorCobrar: Number(r.receivables), cuentasPorPagar: Number(D.decimal(payable)), valorInventario: Number(D.decimal(inventory)), productosAlerta: products.filter(p => Number(p.stock) <= Number(p.stockMinimo || 0)).length, cantidadProductos: products.length, cantidadVentas: t.salesCount };
-    }
+      return {
+        ventasTotales: Number(t.sales),
+        costoProductosVendidos: Number(t.cogs),
+        utilidadBruta: Number(t.grossProfit),
+        gastosOperativos: Number(t.operatingExpenses),
+        utilidadNeta: Number(t.netProfit),
+        margenBrutoPct: Number(t.sales) > 0 ? (Number(t.grossProfit) / Number(t.sales)) * 100 : 0,
+        margenNetoPct: t.margin,
+        cuentasPorCobrar: Number(r.receivables),
+        cuentasPorPagar: Number(D.decimal(payable)),
+        valorInventario: Number(D.decimal(inventory)),
+        productosAlerta: products.filter((p) => Number(p.stock) <= Number(p.stockMinimo || 0))
+          .length,
+        cantidadProductos: products.length,
+        cantidadVentas: t.salesCount,
+      };
+    },
   };
 
   window.BusinessMetricsDomain = metricsDomain;

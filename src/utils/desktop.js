@@ -6,11 +6,21 @@
  * ============================================================================
  */
 
+/* exported pcApp */
 class DesktopApp {
   constructor() {
     this.ui = window.MiBolsilloUiShared || null;
     this._pendingForms = new Set();
-    for (const name of ["handleGuardarMovimientoForm","handleQuickMovementSubmit","handleNuevaMetaSubmit","handleAporteMetaSubmit","handleNuevaDeudaSubmit","handleAbonoDeudaSubmit","handlePresupuestoSubmit","handlePerfilSubmit"]) {
+    for (const name of [
+      'handleGuardarMovimientoForm',
+      'handleQuickMovementSubmit',
+      'handleNuevaMetaSubmit',
+      'handleAporteMetaSubmit',
+      'handleNuevaDeudaSubmit',
+      'handleAbonoDeudaSubmit',
+      'handlePresupuestoSubmit',
+      'handlePerfilSubmit',
+    ]) {
       const handler = this[name];
       if (typeof handler !== 'function') continue;
       this[name] = window.FinanzasForms.wrap(this, name, handler);
@@ -41,7 +51,9 @@ class DesktopApp {
     }
 
     if (this.ui && typeof this.ui.bindDocumentAction === 'function') {
-      this.ui.bindDocumentAction(document, '[data-pc-action]', (event, button) => this.handleDynamicAction(event, button));
+      this.ui.bindDocumentAction(document, '[data-pc-action]', (event, button) =>
+        this.handleDynamicAction(event, button),
+      );
     } else {
       document.addEventListener('click', (event) => this.handleDynamicAction(event));
     }
@@ -50,14 +62,35 @@ class DesktopApp {
     // Configurar fechas por defecto en inputs
     const hoyStr = obtenerFechaHoyISO();
     if (this.ui && typeof this.ui.applyDateDefaults === 'function') {
-      this.ui.applyDateDefaults(['regInputFecha', 'modalQuickFecha', 'modalCompraFecha', 'modalVentaFecha', 'modalProdFecha', 'modalAbonoFecha', 'modalEmpFecha', 'modalPagoNomFecha', 'modalGastoNegFecha'], hoyStr);
+      this.ui.applyDateDefaults(
+        [
+          'regInputFecha',
+          'modalQuickFecha',
+          'modalCompraFecha',
+          'modalVentaFecha',
+          'modalProdFecha',
+          'modalAbonoFecha',
+          'modalEmpFecha',
+          'modalPagoNomFecha',
+          'modalGastoNegFecha',
+        ],
+        hoyStr,
+      );
     } else {
       const inputFecha = document.getElementById('regInputFecha');
       if (inputFecha) inputFecha.value = hoyStr;
       const inputQuickFecha = document.getElementById('modalQuickFecha');
       if (inputQuickFecha) inputQuickFecha.value = hoyStr;
 
-      ['modalCompraFecha', 'modalVentaFecha', 'modalProdFecha', 'modalAbonoFecha', 'modalEmpFecha', 'modalPagoNomFecha', 'modalGastoNegFecha'].forEach(id => {
+      [
+        'modalCompraFecha',
+        'modalVentaFecha',
+        'modalProdFecha',
+        'modalAbonoFecha',
+        'modalEmpFecha',
+        'modalPagoNomFecha',
+        'modalGastoNegFecha',
+      ].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.value = hoyStr;
       });
@@ -69,13 +102,17 @@ class DesktopApp {
 
     // Sincronizar estado inicial de visualización de módulos
     const requestedModule = new URLSearchParams(window.location.search).get('modulo');
-    const initialModule = requestedModule && requestedModule.toUpperCase() === 'EMPRESARIAL'
-      ? 'EMPRESARIAL'
-      : 'PERSONAL';
+    const initialModule =
+      requestedModule && requestedModule.toUpperCase() === 'EMPRESARIAL'
+        ? 'EMPRESARIAL'
+        : 'PERSONAL';
 
     // Renderizar toda la interfaz
     this.renderAll();
-    await this.setModulo(initialModule, initialModule === 'EMPRESARIAL' ? 'negocio-dashboard' : 'inicio');
+    await this.setModulo(
+      initialModule,
+      initialModule === 'EMPRESARIAL' ? 'negocio-dashboard' : 'inicio',
+    );
 
     // Atajo de teclado: Ctrl + K para enfocar búsqueda
     window.addEventListener('keydown', (e) => {
@@ -88,10 +125,15 @@ class DesktopApp {
   }
 
   handleDynamicAction(event, resolvedButton = null) {
-    const button = resolvedButton || (event && event.target ? event.target.closest('[data-pc-action]') : null);
+    const button =
+      resolvedButton || (event && event.target ? event.target.closest('[data-pc-action]') : null);
     if (!button) return;
 
-    if (this.ui && typeof this.ui.dispatchCommonAction === 'function' && this.ui.dispatchCommonAction(this, button)) {
+    if (
+      this.ui &&
+      typeof this.ui.dispatchCommonAction === 'function' &&
+      this.ui.dispatchCommonAction(this, button)
+    ) {
       return;
     }
 
@@ -129,7 +171,10 @@ class DesktopApp {
 
   async setModulo(modulo, targetView = null) {
     const result = await Finanzas.setModuloActivo(modulo);
-    if (result?.error) { this.showToast(result.error); return result; }
+    if (result?.error) {
+      this.showToast(result.error);
+      return result;
+    }
     this.actualizarModuloVisual(modulo);
     if (targetView) {
       this.switchView(targetView);
@@ -141,7 +186,9 @@ class DesktopApp {
   actualizarModuloVisual(modulo) {
     const isEmpresarial = modulo === 'EMPRESARIAL';
     document.body.classList.toggle('bm-business-mode', isEmpresarial);
-    document.querySelectorAll('a[href*="mobile.html"]').forEach(a => { a.href = `mobile.html${isEmpresarial ? '?modulo=EMPRESARIAL' : ''}`; });
+    document.querySelectorAll('a[href*="mobile.html"]').forEach((a) => {
+      a.href = `mobile.html${isEmpresarial ? '?modulo=EMPRESARIAL' : ''}`;
+    });
     const navPersonal = document.getElementById('navPersonal');
     const navEmpresarial = document.getElementById('navEmpresarial');
     const pillPersonal = document.getElementById('pillModoPersonal');
@@ -191,12 +238,13 @@ class DesktopApp {
     if (viewId === 'negocio-compras') viewId = 'negocio-inventario';
     this.currentView = viewId;
 
-    const esEmpresarial = viewId.startsWith('negocio-') ||
+    const esEmpresarial =
+      viewId.startsWith('negocio-') ||
       (viewId === 'perfil' && Finanzas.state.moduloActivo === 'EMPRESARIAL');
     this.actualizarModuloVisual(esEmpresarial ? 'EMPRESARIAL' : 'PERSONAL');
 
     // Actualizar botones de navegación en sidebar
-    document.querySelectorAll('.nav-item-btn').forEach(btn => {
+    document.querySelectorAll('.nav-item-btn').forEach((btn) => {
       if (btn.getAttribute('data-view') === viewId) {
         btn.classList.add('active');
       } else {
@@ -205,7 +253,7 @@ class DesktopApp {
     });
 
     // Actualizar secciones de vista
-    document.querySelectorAll('.pc-view').forEach(view => {
+    document.querySelectorAll('.pc-view').forEach((view) => {
       view.classList.remove('active');
     });
 
@@ -216,14 +264,14 @@ class DesktopApp {
 
     // Actualizar breadcrumb superior
     const breadcrumbMap = {
-      'inicio': 'Balance general',
-      'movimientos': 'Historial de movimientos',
-      'registrar': 'Registrar nuevo movimiento',
-      'plan': 'Mi plan · Control presupuestal',
-      'metas': 'Metas de ahorro',
-      'deudas': 'Deudas y obligaciones',
-      'informes': 'Informes y analítica',
-      'perfil': 'Tu espacio · Perfil y ajustes',
+      inicio: 'Balance general',
+      movimientos: 'Historial de movimientos',
+      registrar: 'Registrar nuevo movimiento',
+      plan: 'Mi plan · Control presupuestal',
+      metas: 'Metas de ahorro',
+      deudas: 'Deudas y obligaciones',
+      informes: 'Informes y analítica',
+      perfil: 'Tu espacio · Perfil y ajustes',
       'negocio-dashboard': 'Inicio',
       'negocio-inventario': 'Inventario del negocio',
       'negocio-movimientos': 'Movimientos del negocio',
@@ -232,7 +280,7 @@ class DesktopApp {
       'negocio-productos': 'Productos y utilidad',
       'negocio-caja': 'Caja / flujo de efectivo',
       'negocio-gastos': 'Gastos del negocio',
-      'negocio-gestion': 'Gestión del negocio'
+      'negocio-gestion': 'Gestión del negocio',
     };
     const spaceLabel = document.querySelector('.page-breadcrumb > span:first-child');
     if (spaceLabel) spaceLabel.textContent = esEmpresarial ? 'Mi Negocio' : 'Finanzas personales';
@@ -354,7 +402,13 @@ class DesktopApp {
     const barLarge = document.getElementById('barBudgetLarge');
     if (barLarge) {
       barLarge.style.width = `${budgetStatus.porcentaje}%`;
-      barLarge.className = 'progress-fill ' + (budgetStatus.porcentajeReal > 90 ? 'red' : (budgetStatus.porcentajeReal > 75 ? 'yellow' : 'green'));
+      barLarge.className =
+        'progress-fill ' +
+        (budgetStatus.porcentajeReal > 90
+          ? 'red'
+          : budgetStatus.porcentajeReal > 75
+            ? 'yellow'
+            : 'green');
     }
     const lblAvail = document.getElementById('lblBudgetAvailableText');
     if (lblAvail) lblAvail.textContent = Finanzas.getMensajePresupuesto(budgetStatus);
@@ -374,7 +428,7 @@ class DesktopApp {
     }
 
     let html = '';
-    alertas.forEach(a => {
+    alertas.forEach((a) => {
       html += `
         <div class="alert-notice-box ${escapeHTML(a.tipo)}">
           <span style="font-size: 1.25rem;">${escapeHTML(a.icono)}</span>
@@ -400,16 +454,19 @@ class DesktopApp {
       .sort((a, b) => b.fecha.localeCompare(a.fecha))
       .slice(0, 5);
     if (recents.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--pc-text-muted);">No hay movimientos registrados.</td></tr>';
+      tbody.innerHTML =
+        '<tr><td colspan="6" style="text-align: center; color: var(--pc-text-muted);">No hay movimientos registrados.</td></tr>';
       return;
     }
 
     let html = '';
-    recents.forEach(m => {
+    recents.forEach((m) => {
       const isIncome = m.tipo === 'INGRESO';
       const sign = isIncome ? '+' : '-';
       const colorClass = isIncome ? 'income' : 'expense';
-      const cat = (isIncome ? CATEGORIAS_INGRESO : CATEGORIAS_GASTO).find(c => c.id === m.categoria) || { icon: '🏷️' };
+      const cat = (isIncome ? CATEGORIAS_INGRESO : CATEGORIAS_GASTO).find(
+        (c) => c.id === m.categoria,
+      ) || { icon: '🏷️' };
 
       html += `
         <tr>
@@ -442,7 +499,7 @@ class DesktopApp {
 
     const metas = Finanzas.state.metas.slice(0, 3);
     let html = '';
-    metas.forEach(m => {
+    metas.forEach((m) => {
       const pct = m.objetivo > 0 ? Math.min(100, Math.round((m.ahorrado / m.objetivo) * 100)) : 0;
       html += `
         <div style="background: var(--pc-bg); padding: 0.75rem 1rem; border-radius: var(--radius-md);">
@@ -479,11 +536,11 @@ class DesktopApp {
     let html = '';
     const topCats = ['Vivienda', 'Alimentación', 'Transporte', 'Ocio'];
 
-    topCats.forEach(catId => {
+    topCats.forEach((catId) => {
       const gastado = gastosCat[catId] || 0;
-      const limite = (Finanzas.getLimitesCategorias()[catId] ?? 0);
+      const limite = Finanzas.getLimitesCategorias()[catId] ?? 0;
       const pct = limite > 0 ? Math.min(100, Math.round((gastado / limite) * 100)) : 0;
-      const colorClass = pct > 90 ? 'red' : (pct > 75 ? 'yellow' : 'green');
+      const colorClass = pct > 90 ? 'red' : pct > 75 ? 'yellow' : 'green';
 
       html += `
         <div class="category-budget-item">
@@ -508,7 +565,7 @@ class DesktopApp {
   // ==========================================================================
   setMovFilter(filter) {
     this.currentMovFilter = filter;
-    ['btnFilterTodos', 'btnFilterIngresos', 'btnFilterGastos'].forEach(id => {
+    ['btnFilterTodos', 'btnFilterIngresos', 'btnFilterGastos'].forEach((id) => {
       const btn = document.getElementById(id);
       if (btn) btn.classList.remove('active');
     });
@@ -537,9 +594,15 @@ class DesktopApp {
     const textSearch = document.getElementById('inputMovSearchTable')?.value || '';
 
     // Filtra por el período seleccionado
-    const items = window.PersonalMovementsDomain.filtrarMovimientos(Finanzas.getMovimientosPeriodo(), {
-      tipo: filterType, categoria: catSelect, busqueda: textSearch, campos: ['concepto', 'categoria', 'cuenta']
-    });
+    const items = window.PersonalMovementsDomain.filtrarMovimientos(
+      Finanzas.getMovimientosPeriodo(),
+      {
+        tipo: filterType,
+        categoria: catSelect,
+        busqueda: textSearch,
+        campos: ['concepto', 'categoria', 'cuenta'],
+      },
+    );
 
     const countLabel = document.getElementById('lblTableTotalCount');
     if (countLabel) {
@@ -552,12 +615,14 @@ class DesktopApp {
     }
 
     let html = '';
-    items.forEach(m => {
+    items.forEach((m) => {
       const isIncome = m.tipo === 'INGRESO';
       const sign = isIncome ? '+' : '-';
       const colorClass = isIncome ? 'income' : 'expense';
       const icon = isIncome ? '↙' : '↗';
-      const catObj = (isIncome ? CATEGORIAS_INGRESO : CATEGORIAS_GASTO).find(c => c.id === m.categoria) || { icon: '🏷️' };
+      const catObj = (isIncome ? CATEGORIAS_INGRESO : CATEGORIAS_GASTO).find(
+        (c) => c.id === m.categoria,
+      ) || { icon: '🏷️' };
 
       html += `
         <tr>
@@ -604,7 +669,7 @@ class DesktopApp {
 
     const cats = this.formType === 'GASTO' ? CATEGORIAS_GASTO : CATEGORIAS_INGRESO;
     let html = '';
-    cats.forEach(c => {
+    cats.forEach((c) => {
       const isSelected = c.id === this.formCategory;
       html += `
         <button type="button" class="btn-category-card ${isSelected ? 'selected' : ''}" data-pc-action="select-category" data-category-id="${escapeHTMLAttribute(c.id)}">
@@ -625,8 +690,10 @@ class DesktopApp {
   updateLiveImpact() {
     const inputVal = document.getElementById('regInputMonto');
     const preview = window.PersonalBudgetDomain.proyectarMovimiento({
-      tipo: this.formType, valor: inputVal?.value || 0,
-      saldoActual: Finanzas.calcSaldoTotal(), presupuesto: Finanzas.calcPresupuestoStatus()
+      tipo: this.formType,
+      valor: inputVal?.value || 0,
+      saldoActual: Finanzas.calcSaldoTotal(),
+      presupuesto: Finanzas.calcPresupuestoStatus(),
     });
     const { monto: valor, esIngreso: isIncome, saldoActual, saldoProyectado } = preview;
 
@@ -647,7 +714,9 @@ class DesktopApp {
 
     const impactPct = preview.impactoPresupuesto.toFixed(1);
     const lblImp = document.getElementById('lblLiveBudgetImpact');
-    if (lblImp) lblImp.textContent = isIncome ? 'Aporte a liquidez' : `+${impactPct}% del presupuesto`;
+    if (lblImp) {
+      lblImp.textContent = isIncome ? 'Aporte a liquidez' : `+${impactPct}% del presupuesto`;
+    }
 
     // Notificación lógica si excede
     const logicNotice = document.getElementById('liveLogicNoticeArea');
@@ -691,7 +760,7 @@ class DesktopApp {
       categoria: this.formCategory,
       cuenta,
       valor,
-      fecha
+      fecha,
     });
 
     if (res.error) {
@@ -733,11 +802,11 @@ class DesktopApp {
     const gastosCat = Finanzas.calcGastosPorCategoria();
     let html = '';
 
-    CATEGORIAS_GASTO.forEach(c => {
+    CATEGORIAS_GASTO.forEach((c) => {
       const gastado = gastosCat[c.id] || 0;
-      const limite = (Finanzas.getLimitesCategorias()[c.id] ?? 0);
+      const limite = Finanzas.getLimitesCategorias()[c.id] ?? 0;
       const pct = limite > 0 ? Math.min(100, Math.round((gastado / limite) * 100)) : 0;
-      const colorClass = pct > 90 ? 'red' : (pct > 75 ? 'yellow' : 'green');
+      const colorClass = pct > 90 ? 'red' : pct > 75 ? 'yellow' : 'green';
 
       html += `
         <div style="background: var(--pc-bg); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 0.85rem;">
@@ -765,7 +834,7 @@ class DesktopApp {
     if (alertsCont) {
       const alerts = Finanzas.evaluarAlertas();
       let aHtml = '';
-      alerts.forEach(a => {
+      alerts.forEach((a) => {
         aHtml += `
           <div class="alert-notice-box ${escapeHTML(a.tipo)}" style="margin-bottom: 0.75rem; padding: 0.75rem;">
             <span style="font-size: 1.1rem;">${escapeHTML(a.icono)}</span>
@@ -794,18 +863,22 @@ class DesktopApp {
     if (kpiObj) kpiObj.textContent = formatCOP(totObjetivo);
     const kpiRes = document.getElementById('metasKpiRestante');
     if (kpiRes) kpiRes.textContent = formatCOP(restante);
-    const enProgreso = Finanzas.getMetas().filter(meta => !meta.completada).length;
+    const enProgreso = Finanzas.getMetas().filter((meta) => !meta.completada).length;
     const count = document.getElementById('metasKpiEnProgreso');
-    if (count) count.textContent = `${enProgreso} ${enProgreso === 1 ? 'meta' : 'metas'} en progreso`;
+    if (count) {
+      count.textContent = `${enProgreso} ${enProgreso === 1 ? 'meta' : 'metas'} en progreso`;
+    }
     const progress = document.getElementById('metasKpiAvance');
-    if (progress) progress.textContent = `${totObjetivo ? ((totObjetivo - restante) / totObjetivo * 100).toFixed(1) : 0} % de avance global`;
+    if (progress) {
+      progress.textContent = `${totObjetivo ? (((totObjetivo - restante) / totObjetivo) * 100).toFixed(1) : 0} % de avance global`;
+    }
 
     // Grid de Metas
     const grid = document.getElementById('metasCardsGrid');
     if (!grid) return;
 
     let html = '';
-    Finanzas.state.metas.forEach(m => {
+    Finanzas.state.metas.forEach((m) => {
       // El porcentaje de avance visual se limita al 100%, pero el monto real ahorrado se conserva íntegro
       const pct = m.objetivo > 0 ? Math.min(100, Math.round((m.ahorrado / m.objetivo) * 100)) : 0;
       html += `
@@ -846,10 +919,11 @@ class DesktopApp {
     const tbody = document.getElementById('tableAportesMetas');
     if (tbody) {
       if (Finanzas.state.aportesMetas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--pc-text-muted);">Sin aportes registrados aún.</td></tr>';
+        tbody.innerHTML =
+          '<tr><td colspan="4" style="text-align: center; color: var(--pc-text-muted);">Sin aportes registrados aún.</td></tr>';
       } else {
         let tHtml = '';
-        Finanzas.state.aportesMetas.forEach(ap => {
+        Finanzas.state.aportesMetas.forEach((ap) => {
           tHtml += `
             <tr>
               <td>${escapeHTML(ap.fecha)}</td>
@@ -877,7 +951,9 @@ class DesktopApp {
     if (kpiPag) kpiPag.textContent = formatCOP(totPagado);
     const activas = Finanzas.getDeudas().activas.length;
     const count = document.getElementById('deudasKpiActivas');
-    if (count) count.textContent = `${activas} ${activas === 1 ? 'obligación activa' : 'obligaciones activas'}`;
+    if (count) {
+      count.textContent = `${activas} ${activas === 1 ? 'obligación activa' : 'obligaciones activas'}`;
+    }
     const monthly = document.getElementById('deudasKpiCuotas');
     if (monthly) monthly.textContent = `${formatCOP(Finanzas.getDeudas().cuotaMensualTotal)}/mes`;
 
@@ -885,9 +961,10 @@ class DesktopApp {
     if (!grid) return;
 
     let html = '';
-    Finanzas.getDeudas().deudasEnriquecidas.forEach(d => {
+    Finanzas.getDeudas().deudasEnriquecidas.forEach((d) => {
       const pagado = Math.max(0, d.valorInicial - d.saldoPendiente);
-      const pct = d.valorInicial > 0 ? Math.min(100, Math.round((pagado / d.valorInicial) * 100)) : 0;
+      const pct =
+        d.valorInicial > 0 ? Math.min(100, Math.round((pagado / d.valorInicial) * 100)) : 0;
 
       html += `
         <div class="debt-card">
@@ -937,10 +1014,11 @@ class DesktopApp {
     const tbody = document.getElementById('tableAbonosDeudas');
     if (tbody) {
       if (Finanzas.state.abonosDeudas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--pc-text-muted);">Sin abonos registrados aún.</td></tr>';
+        tbody.innerHTML =
+          '<tr><td colspan="4" style="text-align: center; color: var(--pc-text-muted);">Sin abonos registrados aún.</td></tr>';
       } else {
         let tHtml = '';
-        Finanzas.state.abonosDeudas.forEach(ab => {
+        Finanzas.state.abonosDeudas.forEach((ab) => {
           tHtml += `
             <tr>
               <td>${escapeHTML(ab.fecha)}</td>
@@ -978,11 +1056,14 @@ class DesktopApp {
     if (tbody) {
       const gastosCat = Finanzas.calcGastosPorCategoria();
       let html = '';
-      CATEGORIAS_GASTO.forEach(c => {
+      CATEGORIAS_GASTO.forEach((c) => {
         const gastado = gastosCat[c.id] || 0;
         const pctDelTotal = gas > 0 ? ((gastado / gas) * 100).toFixed(1) : '0.0';
-        const limite = (Finanzas.getLimitesCategorias()[c.id] ?? 0);
-        const estadoBadge = gastado >= limite ? '<span class="kpi-sub-badge red">Límite alcanzado</span>' : '<span class="kpi-sub-badge green">En rango</span>';
+        const limite = Finanzas.getLimitesCategorias()[c.id] ?? 0;
+        const estadoBadge =
+          gastado >= limite
+            ? '<span class="kpi-sub-badge red">Límite alcanzado</span>'
+            : '<span class="kpi-sub-badge green">En rango</span>';
 
         html += `
           <tr>
@@ -1045,7 +1126,8 @@ class DesktopApp {
         notice.style.padding = '2rem';
         notice.style.textAlign = 'center';
         notice.style.color = 'var(--pc-text-muted)';
-        notice.textContent = 'Gráficos desactivados (librería Chart.js no disponible sin conexión a CDN).';
+        notice.textContent =
+          'Gráficos desactivados (librería Chart.js no disponible sin conexión a CDN).';
         parent.appendChild(notice);
       }
       return;
@@ -1078,34 +1160,34 @@ class DesktopApp {
             label: 'Ingresos (COP)',
             data: ingresosData,
             backgroundColor: window.FinanzasVisualPalette.color('chart-income'),
-            borderRadius: 6
+            borderRadius: 6,
           },
           {
             label: 'Gastos (COP)',
             data: gastosData,
             backgroundColor: window.FinanzasVisualPalette.color('chart-expense'),
-            borderRadius: 6
-          }
-        ]
+            borderRadius: 6,
+          },
+        ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'top', align: 'end' }
+          legend: { position: 'top', align: 'end' },
         },
         scales: {
           y: {
             ticks: {
-              callback: (val) => '$' + (val / 1000000).toFixed(1) + 'M'
+              callback: (val) => '$' + (val / 1000000).toFixed(1) + 'M',
             },
-            grid: { color: window.FinanzasVisualPalette.color('border') }
+            grid: { color: window.FinanzasVisualPalette.color('border') },
           },
           x: {
-            grid: { display: false }
-          }
-        }
-      }
+            grid: { display: false },
+          },
+        },
+      },
     });
   }
 
@@ -1137,21 +1219,21 @@ class DesktopApp {
               label: 'Ingresos',
               data: dataIng,
               backgroundColor: window.FinanzasVisualPalette.color('chart-income'),
-              borderRadius: 6
+              borderRadius: 6,
             },
             {
               label: 'Gastos',
               data: dataGas,
               backgroundColor: window.FinanzasVisualPalette.color('chart-expense'),
-              borderRadius: 6
-            }
-          ]
+              borderRadius: 6,
+            },
+          ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: 'top' } }
-        }
+          plugins: { legend: { position: 'top' } },
+        },
       });
     }
 
@@ -1185,21 +1267,23 @@ class DesktopApp {
         type: 'doughnut',
         data: {
           labels,
-          datasets: [{
-            data,
-            backgroundColor: colors,
-            borderWidth: 2,
-            borderColor: '#ffffff'
-          }]
+          datasets: [
+            {
+              data,
+              backgroundColor: colors,
+              borderWidth: 2,
+              borderColor: '#ffffff',
+            },
+          ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'right' }
+            legend: { position: 'right' },
           },
-          cutout: '65%'
-        }
+          cutout: '65%',
+        },
       });
     }
   }
@@ -1252,7 +1336,9 @@ class DesktopApp {
   async handleQuickMovementSubmit(e) {
     e.preventDefault();
     const valor = Number(document.getElementById('modalQuickValor')?.value);
-    const concepto = document.getElementById('modalQuickConcepto')?.value ? document.getElementById('modalQuickConcepto').value.trim() : '';
+    const concepto = document.getElementById('modalQuickConcepto')?.value
+      ? document.getElementById('modalQuickConcepto').value.trim()
+      : '';
     const categoria = document.getElementById('modalQuickCategoria')?.value || 'Alimentación';
     const fecha = document.getElementById('modalQuickFecha')?.value || obtenerFechaHoyISO();
 
@@ -1271,7 +1357,7 @@ class DesktopApp {
       categoria,
       cuenta: 'Principal',
       valor,
-      fecha
+      fecha,
     });
 
     if (res.error) {
@@ -1366,7 +1452,14 @@ class DesktopApp {
     }
 
     const proximoPago = document.getElementById('inputDeudaProximoPago')?.value || '';
-    const res = await Finanzas.agregarDeuda({ nombre, valorInicial, saldoPendiente, cuotaMensual, condiciones, proximoPago });
+    const res = await Finanzas.agregarDeuda({
+      nombre,
+      valorInicial,
+      saldoPendiente,
+      cuotaMensual,
+      condiciones,
+      proximoPago,
+    });
     if (res.error) {
       alert(res.error);
       return;
@@ -1381,7 +1474,7 @@ class DesktopApp {
     const modal = document.getElementById('modalPcAbonarDeuda');
     modal.dataset.operationKey = crypto.randomUUID();
     const accounts = document.getElementById('inputAbonoDeudaCuenta');
-    accounts.replaceChildren(...Finanzas.getCuentas().map(c => new Option(c.nombre, c.id)));
+    accounts.replaceChildren(...Finanzas.getCuentas().map((c) => new Option(c.nombre, c.id)));
     document.getElementById('inputAbonoDeudaFecha').value = obtenerFechaHoyISO();
     document.getElementById('lblAbonoDeudaTitle').textContent = `Abonar a: ${deudaNombre}`;
     document.getElementById('modalPcAbonarDeuda')?.classList.remove('hidden');
@@ -1399,7 +1492,11 @@ class DesktopApp {
       return;
     }
 
-    const res = await Finanzas.abonarDeuda(deudaId, monto, 'Transferencia', { cuenta: document.getElementById('inputAbonoDeudaCuenta').value, fecha: document.getElementById('inputAbonoDeudaFecha').value, operationKey: document.getElementById('modalPcAbonarDeuda').dataset.operationKey });
+    const res = await Finanzas.abonarDeuda(deudaId, monto, 'Transferencia', {
+      cuenta: document.getElementById('inputAbonoDeudaCuenta').value,
+      fecha: document.getElementById('inputAbonoDeudaFecha').value,
+      operationKey: document.getElementById('modalPcAbonarDeuda').dataset.operationKey,
+    });
     if (res.error) {
       alert(res.error);
       return;
@@ -1423,7 +1520,10 @@ class DesktopApp {
     const monto = Number(document.getElementById('inputPresupuestoGlobal')?.value);
     if (isFinite(monto) && monto >= 0) {
       const result = await Finanzas.actualizarPresupuesto(monto);
-      if (result.error) { alert(result.error); return; }
+      if (result.error) {
+        alert(result.error);
+        return;
+      }
       this.closeModalAjustarPresupuesto();
       this.showToast(`✔ Presupuesto de ${Finanzas.getNombrePeriodo()} actualizado.`);
     } else {
@@ -1450,12 +1550,16 @@ class DesktopApp {
     const nombre = document.getElementById('inputPerfilNombre')?.value || '';
     const email = document.getElementById('inputPerfilEmail')?.value || '';
     const saldoInicialInput = document.getElementById('inputPerfilSaldoInicial');
-    const saldoInicial = saldoInicialInput && saldoInicialInput.value.trim() !== ''
-      ? Number(saldoInicialInput.value)
-      : null;
+    const saldoInicial =
+      saldoInicialInput && saldoInicialInput.value.trim() !== ''
+        ? Number(saldoInicialInput.value)
+        : null;
 
     const result = await Finanzas.actualizarPerfil({ nombre, email, saldoInicial });
-    if (result.error) { alert(result.error); return; }
+    if (result.error) {
+      alert(result.error);
+      return;
+    }
     this.closeModalEditarPerfil();
     this.showToast('✔ Perfil y capital inicial actualizados.');
   }
@@ -1480,42 +1584,72 @@ class DesktopApp {
 
   async eliminarMeta(id) {
     if (confirm('¿Desea eliminar esta meta de ahorro?')) {
-      if (!await Finanzas.eliminarMeta(id)) { this.showToast('No se confirmó la eliminación. Revisa el aviso de persistencia.'); return; }
+      if (!(await Finanzas.eliminarMeta(id))) {
+        this.showToast('No se confirmó la eliminación. Revisa el aviso de persistencia.');
+        return;
+      }
       this.showToast('Meta eliminada.');
     }
   }
 
   async eliminarDeuda(id) {
     if (confirm('¿Desea eliminar este pasivo?')) {
-      if (!await Finanzas.eliminarDeuda(id)) { this.showToast('No se confirmó la eliminación. Revisa el aviso de persistencia.'); return; }
-      this.showToast(Finanzas.state.deudas.some(d => d.id === id && d.archivada) ? 'Deuda archivada; pagos e historial conservados.' : 'Deuda eliminada.');
+      if (!(await Finanzas.eliminarDeuda(id))) {
+        this.showToast('No se confirmó la eliminación. Revisa el aviso de persistencia.');
+        return;
+      }
+      this.showToast(
+        Finanzas.state.deudas.some((d) => d.id === id && d.archivada)
+          ? 'Deuda archivada; pagos e historial conservados.'
+          : 'Deuda eliminada.',
+      );
     }
   }
 
   async toggleOcultarSaldo() {
     const result = await Finanzas.toggleSaldoOculto();
-    if (result.error) { this.showToast(result.error); return; }
+    if (result.error) {
+      this.showToast(result.error);
+      return;
+    }
     this.renderKPIs();
     this.renderPerfilView();
   }
 
   async cambiarMes(delta) {
     const result = await Finanzas.cambiarPeriodo(delta);
-    if (result.error) { this.showToast(result.error); return; }
+    if (result.error) {
+      this.showToast(result.error);
+      return;
+    }
     this.renderAll();
     this.showToast(`Visualizando período: ${Finanzas.getNombrePeriodo()}`);
   }
 
   async toggleAlertaPresupuesto(checked) {
     const result = await Finanzas.actualizarPreferencia('alertasPresupuesto', checked);
-    if (result.error) { this.renderAll(); this.showToast(result.error); return; }
-    this.showToast(checked ? 'Alertas de presupuesto activadas.' : 'Alertas de presupuesto pausadas.');
+    if (result.error) {
+      this.renderAll();
+      this.showToast(result.error);
+      return;
+    }
+    this.showToast(
+      checked ? 'Alertas de presupuesto activadas.' : 'Alertas de presupuesto pausadas.',
+    );
   }
 
   async toggleRecordatoriosDeudas(checked) {
     const result = await Finanzas.actualizarPreferencia('recordatoriosDeudas', checked);
-    if (result.error) { this.renderAll(); this.showToast(result.error); return; }
-    this.showToast(checked ? 'Avisos de vencimiento dentro de la app activados.' : 'Avisos de vencimiento pausados.');
+    if (result.error) {
+      this.renderAll();
+      this.showToast(result.error);
+      return;
+    }
+    this.showToast(
+      checked
+        ? 'Avisos de vencimiento dentro de la app activados.'
+        : 'Avisos de vencimiento pausados.',
+    );
   }
 
   toggleAlerta(chk) {
@@ -1523,14 +1657,20 @@ class DesktopApp {
   }
 
   toggleAlertsSummary() {
-    if (Finanzas.state.moduloActivo === 'EMPRESARIAL') { window.BusinessUI.alerts(); return; }
+    if (Finanzas.state.moduloActivo === 'EMPRESARIAL') {
+      window.BusinessUI.alerts();
+      return;
+    }
     this.switchView('plan');
   }
 
   handleGlobalSearch() {
     const q = (document.getElementById('pcGlobalSearch')?.value || '').toLowerCase();
     if (q.length > 1) {
-      if (Finanzas.state.moduloActivo === 'EMPRESARIAL') { window.BusinessUI.search('movements', q); return; }
+      if (Finanzas.state.moduloActivo === 'EMPRESARIAL') {
+        window.BusinessUI.search('movements', q);
+        return;
+      }
       this.switchView('movimientos');
       const tableInput = document.getElementById('inputMovSearchTable');
       if (tableInput) {
@@ -1545,7 +1685,10 @@ class DesktopApp {
   // ==========================================================================
   exportarCSV() {
     window.FinanzasExportService.descargarMovimientosPeriodoCSV(
-      Finanzas.getMovimientosPeriodo(), Finanzas.state.periodoAnio, Finanzas.state.periodoMes);
+      Finanzas.getMovimientosPeriodo(),
+      Finanzas.state.periodoAnio,
+      Finanzas.state.periodoMes,
+    );
     this.showToast('📥 Archivo CSV descargado con éxito.');
   }
 
@@ -1561,14 +1704,20 @@ class DesktopApp {
 
   async restablecerDatos() {
     if (confirm('¿Restablecer todos los datos a la configuración inicial del proyecto?')) {
-      try { await Finanzas.resetState(); this.showToast('🔄 Datos iniciales restablecidos.'); }
-      catch (error) { this.showToast(error.message); }
+      try {
+        await Finanzas.resetState();
+        this.showToast('🔄 Datos iniciales restablecidos.');
+      } catch (error) {
+        this.showToast(error.message);
+      }
     }
   }
 
   showToast(mensaje) {
     if (window.FinanzasStorage?.hasPendingChanges()) {
-      mensaje = mensaje.replace(/guardada/g, 'registrada en memoria').replace(/guardado/g, 'registrado en memoria');
+      mensaje = mensaje
+        .replace(/guardada/g, 'registrada en memoria')
+        .replace(/guardado/g, 'registrado en memoria');
       mensaje += ' ⚠ Hay cambios sin guardar. Revisa el aviso de almacenamiento.';
     }
     const existing = document.querySelector('.toast-notice');
@@ -1591,33 +1740,73 @@ class DesktopApp {
   renderBusinessModule() {
     window.BusinessUI?.renderAll();
     const negocio = Finanzas.getNegocioActivo();
-    if (negocio) window.BusinessReportsView?.render(Finanzas, negocio, this.filtroPeriodoReportes || 'MES_ACTUAL');
+    if (negocio) {
+      window.BusinessReportsView?.render(
+        Finanzas,
+        negocio,
+        this.filtroPeriodoReportes || 'MES_ACTUAL',
+      );
+    }
   }
-  renderBusinessReportes(negocio) { window.BusinessReportsView?.render(Finanzas, negocio, this.filtroPeriodoReportes || 'MES_ACTUAL'); }
+  renderBusinessReportes(negocio) {
+    window.BusinessReportsView?.render(
+      Finanzas,
+      negocio,
+      this.filtroPeriodoReportes || 'MES_ACTUAL',
+    );
+  }
   cambiarFiltroReportesPeriodo(periodo) {
     this.filtroPeriodoReportes = periodo;
     const root = document.querySelector('[data-business-report]');
     if (root) root.dataset.reportPeriod = periodo;
     this.renderBusinessReportes(Finanzas.getNegocioActivo());
   }
-  cambiarNegocioActivo(id) { return window.BusinessUI.selectBusiness(id).catch(e => this.showToast(e.message)); }
-  openQuickBusinessActions() { window.BusinessUI.actions(); }
-  openModalNuevaVenta() { window.BusinessUI.form('sale'); }
-  openModalNuevaCompra() { window.BusinessUI.form('purchase'); }
-  openModalNuevoProducto(tipo = 'PRODUCTO') { window.BusinessUI.form('product', '', '', { tipo }); }
-  openModalNuevoGasto() { window.BusinessUI.form('expense'); }
-  openModalNuevoIngresoNegocio() { window.BusinessUI.form('income'); }
-  openModalAjusteInventario() { window.BusinessUI.form('stock'); }
-  openModalNuevoProveedor() { window.BusinessUI.form('supplier'); }
-  openModalNuevoEmpleado() { window.BusinessUI.form('employee'); }
-  openModalPagoNomina() { window.BusinessUI.form('payroll'); }
-  openModalNuevaFormula() { window.BusinessUI.form('formula'); }
-  openModalRegistrarProduccion() { window.BusinessUI.form('production'); }
-  openModalNuevoNegocio() { window.BusinessUI.form('business'); }
-  openModalAbonoCredito(ventaId) { window.BusinessUI.form('payment', ventaId, 'ventas'); }
-
+  cambiarNegocioActivo(id) {
+    return window.BusinessUI.selectBusiness(id).catch((e) => this.showToast(e.message));
+  }
+  openQuickBusinessActions() {
+    window.BusinessUI.actions();
+  }
+  openModalNuevaVenta() {
+    window.BusinessUI.form('sale');
+  }
+  openModalNuevaCompra() {
+    window.BusinessUI.form('purchase');
+  }
+  openModalNuevoProducto(tipo = 'PRODUCTO') {
+    window.BusinessUI.form('product', '', '', { tipo });
+  }
+  openModalNuevoGasto() {
+    window.BusinessUI.form('expense');
+  }
+  openModalNuevoIngresoNegocio() {
+    window.BusinessUI.form('income');
+  }
+  openModalAjusteInventario() {
+    window.BusinessUI.form('stock');
+  }
+  openModalNuevoProveedor() {
+    window.BusinessUI.form('supplier');
+  }
+  openModalNuevoEmpleado() {
+    window.BusinessUI.form('employee');
+  }
+  openModalPagoNomina() {
+    window.BusinessUI.form('payroll');
+  }
+  openModalNuevaFormula() {
+    window.BusinessUI.form('formula');
+  }
+  openModalRegistrarProduccion() {
+    window.BusinessUI.form('production');
+  }
+  openModalNuevoNegocio() {
+    window.BusinessUI.form('business');
+  }
+  openModalAbonoCredito(ventaId) {
+    window.BusinessUI.form('payment', ventaId, 'ventas');
+  }
 }
 
 // Inicialización global de la aplicación de escritorio
 const pcApp = new DesktopApp();
-

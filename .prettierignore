@@ -1,0 +1,14 @@
+node_modules/
+src/vendor/
+legacy/
+database/
+dist/
+tmp/
+android/
+qt_app/
+*.html
+styles/
+docs/
+*.md
+pnpm-lock.yaml
+.env*

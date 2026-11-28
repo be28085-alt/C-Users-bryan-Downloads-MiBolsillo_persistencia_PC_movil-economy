@@ -16,7 +16,7 @@
      */
     getNegocioActivo(negocios = [], activoId = '') {
       if (!Array.isArray(negocios) || negocios.length === 0) return null;
-      const found = negocios.find(n => n.id === activoId);
+      const found = negocios.find((n) => n.id === activoId);
       return found || negocios[0];
     },
 
@@ -36,9 +36,11 @@
         direccion: (datos.direccion || '').trim(),
         moneda: 'COP',
         estado: 'ACTIVO',
-        fechaCreacion: window.obtenerFechaHoyISO ? window.obtenerFechaHoyISO() : new Date().toISOString().split('T')[0]
+        fechaCreacion: window.obtenerFechaHoyISO
+          ? window.obtenerFechaHoyISO()
+          : new Date().toISOString().split('T')[0],
       };
-    }
+    },
   };
 
   window.BusinessDomain = businessDomain;

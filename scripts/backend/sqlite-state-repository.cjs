@@ -29,11 +29,31 @@ function openStore(filename) {
     );
     ${version === 0 ? 'PRAGMA user_version = 1;' : ''}`);
   // Las proyecciones de consulta conservan el esquema financiero existente.
-  const collections = ['movimientos', 'metas', 'deudas', 'negocios', 'productos', 'proveedores',
-    'empleados', 'clientes', 'ventas', 'compras', 'gastos', 'cuentas', 'ingresosNegocio',
-    'gastosNegocio', 'pagosEmpleado', 'pagosVenta', 'pagosCompra', 'pagosGasto',
-    'movimientosInventario', 'formulas', 'producciones', 'devolucionesNegocio'];
-  const views = Object.fromEntries(collections.map(collection => [collection, collection]));
+  const collections = [
+    'movimientos',
+    'metas',
+    'deudas',
+    'negocios',
+    'productos',
+    'proveedores',
+    'empleados',
+    'clientes',
+    'ventas',
+    'compras',
+    'gastos',
+    'cuentas',
+    'ingresosNegocio',
+    'gastosNegocio',
+    'pagosEmpleado',
+    'pagosVenta',
+    'pagosCompra',
+    'pagosGasto',
+    'movimientosInventario',
+    'formulas',
+    'producciones',
+    'devolucionesNegocio',
+  ];
+  const views = Object.fromEntries(collections.map((collection) => [collection, collection]));
   for (const collection of ['documents', 'operations', 'audit', 'refunds']) {
     views[`facturacion_${collection}`] = `facturacion.${collection}`;
   }
@@ -65,14 +85,27 @@ function openStore(filename) {
         FROM app_state, json_each(app_state.raw, '$.data.${jsonPath}') AS item;`);
     }
     db.exec('COMMIT');
-  } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
+  } catch (error) {
+    db.exec('ROLLBACK');
+    db.close();
+    throw error;
+  }
   const read = db.prepare('SELECT raw FROM app_state WHERE id = 1');
   const write = db.prepare(`INSERT INTO app_state (id, raw) VALUES (1, ?)
     ON CONFLICT(id) DO UPDATE SET raw=excluded.raw, updated_at=strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`);
   return {
     db,
-    receipt: id => operations.get(id),
-    get() { return read.get()?.raw ?? null; },
+    receipt: (id) => operations.get(id),
+    get() {
+      return read.get()?.raw ?? null;
+    },
+    /**
+     * @param {string|null} expectedRaw Sobre cuya lectura originó el candidato.
+     * @param {string} raw Candidato que el adaptador ya validó.
+     * @param {object} [receipt] Recibo opcional que confirma junto al estado.
+     * @returns {{ok:boolean,raw?:string|null}} Conflicto sin escritura o COMMIT.
+     * @throws {Error} Si falla la transacción; no sustituye la autorización de cuenta.
+     */
     compareAndSet(expectedRaw, raw, receipt) {
       if ((expectedRaw !== null && typeof expectedRaw !== 'string') || !validEnvelope(raw)) {
         throw new TypeError('Formato de estado inválido');
@@ -80,14 +113,22 @@ function openStore(filename) {
       db.exec('BEGIN IMMEDIATE');
       try {
         const current = read.get()?.raw ?? null;
-        if (current !== expectedRaw) { db.exec('ROLLBACK'); return { ok: false, raw: current }; }
+        if (current !== expectedRaw) {
+          db.exec('ROLLBACK');
+          return { ok: false, raw: current };
+        }
         write.run(raw);
         operations.remember(receipt);
         db.exec('COMMIT');
         return { ok: true };
-      } catch (error) { db.exec('ROLLBACK'); throw error; }
+      } catch (error) {
+        db.exec('ROLLBACK');
+        throw error;
+      }
     },
-    close() { db.close(); }
+    close() {
+      db.close();
+    },
   };
 }
 module.exports = { openStore };

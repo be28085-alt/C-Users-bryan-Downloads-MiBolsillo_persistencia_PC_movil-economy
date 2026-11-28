@@ -4,15 +4,49 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const root = path.resolve(__dirname, '..'), output = path.join(root, 'tmp', 'business-workspace');
+const root = path.resolve(__dirname, '..'),
+  output = path.join(root, 'tmp', 'business-workspace');
 fs.mkdirSync(output, { recursive: true });
 const server = http.createServer((req, res) => {
-  if (req.url === '/api/auth/session') { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({legacyMode:true})); return; }
-  const file = path.resolve(root, '.' + decodeURIComponent(new URL(req.url, 'http://localhost').pathname));
-  if (!file.startsWith(root + path.sep)) { res.writeHead(403); res.end(); return; }
-  fs.readFile(file, (e, data) => { if (e) { res.writeHead(404); res.end(); } else { res.setHeader('Content-Type', ({ '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' })[path.extname(file)] || 'application/octet-stream'); res.end(data); } });
+  if (req.url === '/api/auth/session') {
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ legacyMode: true }));
+    return;
+  }
+  const file = path.resolve(
+    root,
+    '.' + decodeURIComponent(new URL(req.url, 'http://localhost').pathname),
+  );
+  if (!file.startsWith(root + path.sep)) {
+    res.writeHead(403);
+    res.end();
+    return;
+  }
+  fs.readFile(file, (e, data) => {
+    if (e) {
+      res.writeHead(404);
+      res.end();
+    } else {
+      res.setHeader(
+        'Content-Type',
+        { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[
+          path.extname(file)
+        ] || 'application/octet-stream',
+      );
+      res.end(data);
+    }
+  });
 });
-const routes = { dashboard: ['negocio-dashboard', 'negocio'], inventory: ['negocio-inventario', 'inventario'], sales: ['negocio-ventas', 'ventas'], reports: ['negocio-informes', 'informes'], management: ['negocio-gestion', 'gestion'], products: ['negocio-productos', 'productos'], cash: ['negocio-caja', 'caja'], expenses: ['negocio-gastos', 'gastos'] };
+const routes = {
+  dashboard: ['negocio-dashboard', 'negocio'],
+  inventory: ['negocio-inventario', 'inventario'],
+  sales: ['negocio-ventas', 'ventas'],
+  reports: ['negocio-informes', 'informes'],
+  management: ['negocio-gestion', 'gestion'],
+  products: ['negocio-productos', 'productos'],
+  cash: ['negocio-caja', 'caja'],
+  expenses: ['negocio-gastos', 'gastos'],
+};
 async function nav(page, section, mobile) {
   const route = routes[section][mobile ? 1 : 0];
   if (!mobile) {
@@ -21,180 +55,574 @@ async function nav(page, section, mobile) {
     else {
       const bottom = page.locator(`#responsiveBottomNav [data-responsive-view="${route}"]`);
       if (await bottom.count()) await bottom.click();
-      else { await page.locator('#responsiveBottomNav button[aria-label="Más secciones"]').click(); await page.locator(`#responsiveMenu [data-responsive-view="${route}"]`).click(); }
+      else {
+        await page.locator('#responsiveBottomNav button[aria-label="Más secciones"]').click();
+        await page.locator(`#responsiveMenu [data-responsive-view="${route}"]`).click();
+      }
     }
-  }
-  else if (section === 'movements') { await page.locator('#mobileBusinessOptionsToggle').click(); await page.locator('[data-quick-action="business-movements"]').click(); }
-  else if (['purchases', 'products', 'cash', 'expenses'].includes(section)) await page.locator('.business-panel.active .bm-mobile-sections [data-section="' + section + '"]').click();
-  else await page.locator(`#mobileBusinessNav [data-business-tab="${route}"]`).click();
-  return page.locator(section === 'reports' ? '[data-business-report]' : `[data-business-section="${section}"]`);
+  } else if (section === 'movements') {
+    await page.locator('#mobileBusinessOptionsToggle').click();
+    await page.locator('[data-quick-action="business-movements"]').click();
+  } else if (['purchases', 'products', 'cash', 'expenses'].includes(section)) {
+    await page
+      .locator('.business-panel.active .bm-mobile-sections [data-section="' + section + '"]')
+      .click();
+  } else await page.locator(`#mobileBusinessNav [data-business-tab="${route}"]`).click();
+  return page.locator(
+    section === 'reports' ? '[data-business-report]' : `[data-business-section="${section}"]`,
+  );
 }
-async function fill(dialog, values) { for (const [name, value] of Object.entries(values)) await dialog.locator(`[name="${name}"]`).fill(String(value)); }
+async function fill(dialog, values) {
+  for (const [name, value] of Object.entries(values)) {
+    await dialog.locator(`[name="${name}"]`).fill(String(value));
+  }
+}
 async function save(page, double = false) {
   const dialog = page.locator('.bm-dialog[open]');
-  if (await dialog.locator('.bm-invoice-brand').count()) await page.screenshot({ path: path.join(output, 'sale-form-' + await page.evaluate(() => location.pathname.includes('mobile') ? 'mobile' : 'pc') + '.png') });
-  if (double) await dialog.locator('button[type="submit"]').evaluate(b => { b.click(); b.click(); });
-  else await dialog.locator('button[type="submit"]').click();
-  await page.waitForFunction(() => !document.querySelector('.bm-dialog')?.open || !!document.querySelector('.bm-sale-success'));
+  if (await dialog.locator('.bm-invoice-brand').count()) {
+    await page.screenshot({
+      path: path.join(
+        output,
+        'sale-form-' +
+          (await page.evaluate(() => (location.pathname.includes('mobile') ? 'mobile' : 'pc'))) +
+          '.png',
+      ),
+    });
+  }
+  if (double) {
+    await dialog.locator('button[type="submit"]').evaluate((b) => {
+      b.click();
+      b.click();
+    });
+  } else await dialog.locator('button[type="submit"]').click();
+  await page.waitForFunction(
+    () =>
+      !document.querySelector('.bm-dialog')?.open || !!document.querySelector('.bm-sale-success'),
+  );
   if (await dialog.locator('.bm-sale-success').count()) {
-    await page.screenshot({ path: path.join(output, 'sale-complete-' + await page.evaluate(() => location.pathname.includes('mobile') ? 'mobile' : 'pc') + '.png') });
-    const snapshot = await page.evaluate(() => JSON.stringify([Finanzas.state.ventas, Finanzas.state.productos, Finanzas.state.pagosVenta]));
-    const downloaded = page.waitForEvent('download'); await dialog.getByRole('button', { name: 'Descargar PDF', exact: true }).click();
-    const file = await downloaded; const target = path.join(output, 'sale-' + await page.evaluate(() => location.pathname.includes('mobile') ? 'mobile' : 'pc') + '.pdf'); await file.saveAs(target);
+    await page.screenshot({
+      path: path.join(
+        output,
+        'sale-complete-' +
+          (await page.evaluate(() => (location.pathname.includes('mobile') ? 'mobile' : 'pc'))) +
+          '.png',
+      ),
+    });
+    const snapshot = await page.evaluate(() =>
+      JSON.stringify([Finanzas.state.ventas, Finanzas.state.productos, Finanzas.state.pagosVenta]),
+    );
+    const downloaded = page.waitForEvent('download');
+    await dialog.getByRole('button', { name: 'Descargar PDF', exact: true }).click();
+    const file = await downloaded;
+    const target = path.join(
+      output,
+      'sale-' +
+        (await page.evaluate(() => (location.pathname.includes('mobile') ? 'mobile' : 'pc'))) +
+        '.pdf',
+    );
+    await file.saveAs(target);
     assert.equal(fs.readFileSync(target).subarray(0, 8).toString(), '%PDF-1.4');
-    const opened = page.waitForEvent('popup'); await dialog.getByRole('button', { name: 'Imprimir comprobante', exact: true }).click(); const popup = await opened; await popup.waitForLoadState(); assert.match(await popup.locator('body').innerText(), /SIN VALIDEZ FISCAL/); await popup.close();
-    assert.equal(await page.evaluate(() => JSON.stringify([Finanzas.state.ventas, Finanzas.state.productos, Finanzas.state.pagosVenta])), snapshot);
+    const opened = page.waitForEvent('popup');
+    await dialog.getByRole('button', { name: 'Imprimir comprobante', exact: true }).click();
+    const popup = await opened;
+    await popup.waitForLoadState();
+    assert.match(await popup.locator('body').innerText(), /SIN VALIDEZ FISCAL/);
+    await popup.close();
+    assert.equal(
+      await page.evaluate(() =>
+        JSON.stringify([
+          Finanzas.state.ventas,
+          Finanzas.state.productos,
+          Finanzas.state.pagosVenta,
+        ]),
+      ),
+      snapshot,
+    );
     await dialog.getByRole('button', { name: 'Finalizar', exact: true }).click();
   }
 }
 async function saveCatalogInPurchase(page, double = false) {
   const dialog = page.locator('.bm-dialog[open]');
-  if (double) await dialog.locator('button[type="submit"]').evaluate(b => { b.click(); b.click(); });
-  else await dialog.locator('button[type="submit"]').click();
+  if (double) {
+    await dialog.locator('button[type="submit"]').evaluate((b) => {
+      b.click();
+      b.click();
+    });
+  } else await dialog.locator('button[type="submit"]').click();
   await dialog.locator('[name="observaciones"]').waitFor();
   await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
 }
 async function flow(page, mobile) {
-  let view = await nav(page, 'inventory', mobile); await view.getByRole('button', { name: '+ Producto', exact: true }).click();
-  let dialog = page.locator('.bm-dialog[open]'); await dialog.getByRole('button', { name: '+ Registrar proveedor', exact: true }).click();
-  await fill(dialog, { nombre: 'Proveedor A', cedula: '900123', email: 'proveedor@example.co' }); await saveCatalogInPurchase(page);
-  view = await nav(page, 'reports', mobile); await view.locator('[data-report-tab="sales"]').click(); await view.getByRole('button', { name: '+ Cliente', exact: true }).click();
-  dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Cliente A', cedula: '123456', email: 'cliente@example.co', direccion: 'Bogotá' }); await save(page);
+  let view = await nav(page, 'inventory', mobile);
+  await view.getByRole('button', { name: '+ Producto', exact: true }).click();
+  let dialog = page.locator('.bm-dialog[open]');
+  await dialog.getByRole('button', { name: '+ Registrar proveedor', exact: true }).click();
+  await fill(dialog, { nombre: 'Proveedor A', cedula: '900123', email: 'proveedor@example.co' });
+  await saveCatalogInPurchase(page);
+  view = await nav(page, 'reports', mobile);
+  await view.locator('[data-report-tab="sales"]').click();
+  await view.getByRole('button', { name: '+ Cliente', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, {
+    nombre: 'Cliente A',
+    cedula: '123456',
+    email: 'cliente@example.co',
+    direccion: 'Bogotá',
+  });
+  await save(page);
   // Exercise the formerly decorative quick action from each platform.
-  if (mobile) { await page.locator('#mobileBusinessOptionsToggle').click(); await page.locator('[data-quick-action="business-product"]').click(); }
-  else { await page.locator('#btnPcBusinessQuick').click(); await page.locator('.bm-dialog[open] [data-kind="purchase"]').click(); }
-  await page.locator('.bm-dialog[open]').getByRole('button', { name: '+ Registrar producto', exact: true }).click();
-  dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Artículo principal', sku: 'SKU-A', stock: '10', stockMinimo: '2', costoUnitario: '1000', precioVenta: '2000' });
-  await dialog.locator('[name="proveedorId"]').selectOption({ label: 'Proveedor A · 900123' }); await saveCatalogInPurchase(page, true);
+  if (mobile) {
+    await page.locator('#mobileBusinessOptionsToggle').click();
+    await page.locator('[data-quick-action="business-product"]').click();
+  } else {
+    await page.locator('#btnPcBusinessQuick').click();
+    await page.locator('.bm-dialog[open] [data-kind="purchase"]').click();
+  }
+  await page
+    .locator('.bm-dialog[open]')
+    .getByRole('button', { name: '+ Registrar producto', exact: true })
+    .click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, {
+    nombre: 'Artículo principal',
+    sku: 'SKU-A',
+    stock: '10',
+    stockMinimo: '2',
+    costoUnitario: '1000',
+    precioVenta: '2000',
+  });
+  await dialog.locator('[name="proveedorId"]').selectOption({ label: 'Proveedor A · 900123' });
+  await saveCatalogInPurchase(page, true);
   assert.equal(await page.evaluate(() => Finanzas.state.productos.length), 1);
-  view = await nav(page, 'inventory', mobile); await view.getByRole('button', { name: '+ Producto', exact: true }).click();
-  dialog = page.locator('.bm-dialog[open]'); await dialog.locator('[name="proveedorId"]').selectOption({ label: 'Proveedor A · 900123' });
-  await dialog.locator('[name="productoId"]').selectOption({ label: 'Artículo principal · stock 10' });
-  await fill(dialog, { cantidad: '5', fecha: '2026-11-09', fechaVencimiento: '2026-12-09' }); await dialog.locator('[name="tipoPago"]').selectOption('CREDITO'); await save(page);
-  view = await nav(page, 'sales', mobile); await view.getByRole('button', { name: '+ Confirmar venta', exact: true }).click();
+  view = await nav(page, 'inventory', mobile);
+  await view.getByRole('button', { name: '+ Producto', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await dialog.locator('[name="proveedorId"]').selectOption({ label: 'Proveedor A · 900123' });
+  await dialog
+    .locator('[name="productoId"]')
+    .selectOption({ label: 'Artículo principal · stock 10' });
+  await fill(dialog, { cantidad: '5', fecha: '2026-11-09', fechaVencimiento: '2026-12-09' });
+  await dialog.locator('[name="tipoPago"]').selectOption('CREDITO');
+  await save(page);
+  view = await nav(page, 'sales', mobile);
+  await view.getByRole('button', { name: '+ Confirmar venta', exact: true }).click();
   dialog = page.locator('.invoice-dialog[open]');
   await dialog.locator('[name="customerId"]').selectOption({ label: 'Cliente A · 123456' });
-  await dialog.locator('[name="productId"]').selectOption({ label: 'Artículo principal · stock 15' });
-  await fill(dialog, { quantity: '3', discountPercent: '10', date: '2026-11-09', dueDate: '2026-12-09' });
+  await dialog
+    .locator('[name="productId"]')
+    .selectOption({ label: 'Artículo principal · stock 15' });
+  await fill(dialog, {
+    quantity: '3',
+    discountPercent: '10',
+    date: '2026-11-09',
+    dueDate: '2026-12-09',
+  });
   await dialog.locator('[name="paymentTerms"]').selectOption('CREDITO');
   await dialog.locator('#inv-editor [value="submit"]').click();
   await dialog.locator('.inv-sale-complete').waitFor();
   assert.equal(await page.evaluate(() => Finanzas.state.ventas.length), 1);
-  await dialog.locator('#inv-payment [name="amount"]').fill('2000'); await dialog.locator('#inv-payment button').click();
+  await dialog.locator('#inv-payment [name="amount"]').fill('2000');
+  await dialog.locator('#inv-payment button').click();
   await page.waitForFunction(() => Finanzas.state.ventas[0].saldoPendiente === 4426);
   await dialog.locator('[data-inv="close"]').click();
-  view = await nav(page, 'management', mobile); await view.locator('[data-tab="payables"]').click(); await view.getByRole('button', { name: 'Registrar pago', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { monto: '1000', fecha: '2026-11-09' }); await save(page);
-  view = await nav(page, 'expenses', mobile); await view.getByRole('button', { name: '+ Gasto', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { descripcion: 'Servicios empresariales', categoria: 'Servicios', monto: '500', fecha: '2026-11-09' }); await save(page);
-  await view.getByRole('button', { name: '+ Ingreso', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { descripcion: 'Ingreso adicional', monto: '250', fecha: '2026-11-09' }); await save(page);
-  view = await nav(page, 'management', mobile); await view.locator('[data-tab="employees"]').click(); await view.getByRole('button', { name: '+ Empleado', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Colaborador A', salario: '2000', fechaIngreso: '2026-11-09' }); await save(page);
-  await view.getByRole('button', { name: 'Registrar pago', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { monto: '300', periodo: '2026-11', fecha: '2026-11-09' }); await save(page);
+  view = await nav(page, 'management', mobile);
+  await view.locator('[data-tab="payables"]').click();
+  await view.getByRole('button', { name: 'Registrar pago', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, { monto: '1000', fecha: '2026-11-09' });
+  await save(page);
+  view = await nav(page, 'expenses', mobile);
+  await view.getByRole('button', { name: '+ Gasto', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, {
+    descripcion: 'Servicios empresariales',
+    categoria: 'Servicios',
+    monto: '500',
+    fecha: '2026-11-09',
+  });
+  await save(page);
+  await view.getByRole('button', { name: '+ Ingreso', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, { descripcion: 'Ingreso adicional', monto: '250', fecha: '2026-11-09' });
+  await save(page);
+  view = await nav(page, 'management', mobile);
+  await view.locator('[data-tab="employees"]').click();
+  await view.getByRole('button', { name: '+ Empleado', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, { nombre: 'Colaborador A', salario: '2000', fechaIngreso: '2026-11-09' });
+  await save(page);
+  await view.getByRole('button', { name: 'Registrar pago', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, { monto: '300', periodo: '2026-11', fecha: '2026-11-09' });
+  await save(page);
   // Edit the existing item instead of silently adding a second one.
-  view = await nav(page, 'inventory', mobile); await view.getByRole('button', { name: 'Editar', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Artículo editado' }); await save(page);
-  assert.equal(await page.evaluate(() => Finanzas.state.productos.length), 1); assert.equal(await page.evaluate(() => Finanzas.state.ventas[0].detalles[0].productoNombre), 'Artículo principal');
-  const snapshot = await page.evaluate(() => { const m = BusinessReadModel.build(Finanzas, Finanzas.state.negocioActivoId, 'TODOS'); return { stock: Finanzas.state.productos[0].stock, revenue: m.report.totals.income, profit: m.report.totals.netProfit, ar: m.receivableTotal, ap: m.payableTotal, cash: m.cash.flujoNeto }; });
-  assert.deepEqual(snapshot, { stock: 12, revenue: '5650.00', profit: '1850.00', ar: '4426.00', ap: '4000.00', cash: 450 });
+  view = await nav(page, 'inventory', mobile);
+  await view.getByRole('button', { name: 'Editar', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, { nombre: 'Artículo editado' });
+  await save(page);
+  assert.equal(await page.evaluate(() => Finanzas.state.productos.length), 1);
+  assert.equal(
+    await page.evaluate(() => Finanzas.state.ventas[0].detalles[0].productoNombre),
+    'Artículo principal',
+  );
+  const snapshot = await page.evaluate(() => {
+    const m = BusinessReadModel.build(Finanzas, Finanzas.state.negocioActivoId, 'TODOS');
+    return {
+      stock: Finanzas.state.productos[0].stock,
+      revenue: m.report.totals.income,
+      profit: m.report.totals.netProfit,
+      ar: m.receivableTotal,
+      ap: m.payableTotal,
+      cash: m.cash.flujoNeto,
+    };
+  });
+  assert.deepEqual(snapshot, {
+    stock: 12,
+    revenue: '5650.00',
+    profit: '1850.00',
+    ar: '4426.00',
+    ap: '4000.00',
+    cash: 450,
+  });
   // Storage failure keeps the form and its key; retry creates exactly one record.
-  await view.getByRole('button', { name: '+ Producto', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await dialog.getByRole('button', { name: '+ Registrar producto', exact: true }).click(); await fill(dialog, { nombre: 'Producto reintentado', sku: 'RETRY' });
-  await page.evaluate(() => { window.__originalStorageSet = Storage.prototype.setItem; Storage.prototype.setItem = function(k, v) { if (window.__storageFailure && k === 'FINANZAS_ETAPA_DATA_V2') throw new Error('QuotaExceededError'); return window.__originalStorageSet.call(this, k, v); }; window.__storageFailure = true; });
-  await dialog.locator('button[type="submit"]').click(); await dialog.locator('.bm-form-feedback').filter({ hasText: 'No se pudo guardar' }).waitFor(); assert.equal(await page.evaluate(() => Finanzas.state.productos.length), 1);
-  await page.evaluate(() => { window.__storageFailure = false; }); await saveCatalogInPurchase(page); assert.equal(await page.evaluate(() => Finanzas.state.productos.length), 2);
+  await view.getByRole('button', { name: '+ Producto', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await dialog.getByRole('button', { name: '+ Registrar producto', exact: true }).click();
+  await fill(dialog, { nombre: 'Producto reintentado', sku: 'RETRY' });
+  await page.evaluate(() => {
+    window.__originalStorageSet = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) {
+      if (window.__storageFailure && k === 'FINANZAS_ETAPA_DATA_V2') {
+        throw new Error('QuotaExceededError');
+      }
+      return window.__originalStorageSet.call(this, k, v);
+    };
+    window.__storageFailure = true;
+  });
+  await dialog.locator('button[type="submit"]').click();
+  await dialog.locator('.bm-form-feedback').filter({ hasText: 'No se pudo guardar' }).waitFor();
+  assert.equal(await page.evaluate(() => Finanzas.state.productos.length), 1);
+  await page.evaluate(() => {
+    window.__storageFailure = false;
+  });
+  await saveCatalogInPurchase(page);
+  assert.equal(await page.evaluate(() => Finanzas.state.productos.length), 2);
   // Search and consultation still use saved records in the simplified interface.
-  await view.locator('[data-bm-search]').fill('Artículo editado'); assert.equal(await view.locator('tr[data-record-id]').count(), 1);
+  await view.locator('[data-bm-search]').fill('Artículo editado');
+  assert.equal(await view.locator('tr[data-record-id]').count(), 1);
   assert.equal(await view.getByRole('button', { name: 'Descargar CSV', exact: true }).count(), 0);
-  await view.getByRole('button', { name: 'Consultar', exact: true }).click(); await page.locator('.bm-dialog[open] [data-bm="close"]').first().click();
-  
+  await view.getByRole('button', { name: 'Consultar', exact: true }).click();
+  await page.locator('.bm-dialog[open] [data-bm="close"]').first().click();
+
   assert.equal(await page.evaluate(() => Finanzas.state.productos[0].stock), 12);
   // Print a real sale voucher (the normal flow does not fabricate an official invoice).
-  view = await nav(page, 'sales', mobile); const downloadPromise = page.waitForEvent('download'); await view.getByRole('button', { name: 'Comprobante', exact: true }).click(); await (await downloadPromise).saveAs(path.join(output, 'linked-sale.pdf'));
+  view = await nav(page, 'sales', mobile);
+  const downloadPromise = page.waitForEvent('download');
+  await view.getByRole('button', { name: 'Comprobante', exact: true }).click();
+  await (await downloadPromise).saveAs(path.join(output, 'linked-sale.pdf'));
   // Recipes, stock consumption and the produced lot are exercised through the actual forms.
-  view = await nav(page, 'products', mobile); await view.getByRole('button', { name: '+ Nuevo producto', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Producto fabricado', sku: 'FAB', precioVenta: '5000' }); await save(page);
-  view = await nav(page, 'management', mobile); await view.locator('[data-tab="production"]').click(); await view.getByRole('button', { name: '+ Receta', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Receta comprobada', cantidadBase: '1' });
-  await dialog.locator('[name="productoId"]').selectOption({ label: 'Producto fabricado' }); await dialog.locator('[name="materiaPrimaId"]').selectOption({ label: 'Artículo editado · stock 12' }); await dialog.locator('[name="cantidadRequerida"]').fill('2'); await save(page);
-  await view.getByRole('button', { name: 'Producir', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { cantidad: '1', fecha: '2026-11-09' }); await save(page);
-  assert.equal(await page.evaluate(() => Finanzas.state.producciones.length), 1); assert.equal(await page.evaluate(() => Finanzas.state.productos.find(p => p.sku === 'SKU-A').stock), 10);
+  view = await nav(page, 'products', mobile);
+  await view.getByRole('button', { name: '+ Nuevo producto', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, { nombre: 'Producto fabricado', sku: 'FAB', precioVenta: '5000' });
+  await save(page);
+  view = await nav(page, 'management', mobile);
+  await view.locator('[data-tab="production"]').click();
+  await view.getByRole('button', { name: '+ Receta', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, { nombre: 'Receta comprobada', cantidadBase: '1' });
+  await dialog.locator('[name="productoId"]').selectOption({ label: 'Producto fabricado' });
+  await dialog
+    .locator('[name="materiaPrimaId"]')
+    .selectOption({ label: 'Artículo editado · stock 12' });
+  await dialog.locator('[name="cantidadRequerida"]').fill('2');
+  await save(page);
+  await view.getByRole('button', { name: 'Producir', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, { cantidad: '1', fecha: '2026-11-09' });
+  await save(page);
+  assert.equal(await page.evaluate(() => Finanzas.state.producciones.length), 1);
+  assert.equal(
+    await page.evaluate(() => Finanzas.state.productos.find((p) => p.sku === 'SKU-A').stock),
+    10,
+  );
   // Business settings and switching do not move records into another business.
-  await view.locator('[data-tab="business"]').click(); await view.getByRole('button', { name: 'Editar negocio activo', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Negocio comprobado' }); await save(page);
+  await view.locator('[data-tab="business"]').click();
+  await view.getByRole('button', { name: 'Editar negocio activo', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, { nombre: 'Negocio comprobado' });
+  await save(page);
   const originalBusiness = await page.evaluate(() => Finanzas.state.negocioActivoId);
-  view = await nav(page, 'management', mobile); await view.locator('[data-tab="business"]').click(); await view.getByRole('button', { name: '+ Crear negocio', exact: true }).click(); dialog = page.locator('.bm-dialog[open]'); await fill(dialog, { nombre: 'Segundo negocio' }); await save(page);
-  assert.equal(await page.evaluate(() => Finanzas.getVentas().length), 0); view = await nav(page, 'management', mobile); await view.locator('[data-tab="business"]').click(); await view.getByLabel('Cambiar negocio').selectOption(originalBusiness); await page.waitForFunction(id => Finanzas.state.negocioActivoId === id, originalBusiness);
+  view = await nav(page, 'management', mobile);
+  await view.locator('[data-tab="business"]').click();
+  await view.getByRole('button', { name: '+ Crear negocio', exact: true }).click();
+  dialog = page.locator('.bm-dialog[open]');
+  await fill(dialog, { nombre: 'Segundo negocio' });
+  await save(page);
+  assert.equal(await page.evaluate(() => Finanzas.getVentas().length), 0);
+  view = await nav(page, 'management', mobile);
+  await view.locator('[data-tab="business"]').click();
+  await view.getByLabel('Cambiar negocio').selectOption(originalBusiness);
+  await page.waitForFunction((id) => Finanzas.state.negocioActivoId === id, originalBusiness);
   // The bell/menu now shows business alerts instead of opening the personal plan.
-  if (mobile) { await page.locator('#mobileBusinessOptionsToggle').click(); await page.locator('[data-quick-action="business-alerts"]').click(); }
-  else await page.evaluate(() => pcApp.toggleAlertsSummary());
-  await page.locator('.bm-dialog[open]').getByRole('heading', { name: 'Alertas de Mi Negocio' }).waitFor(); await page.locator('.bm-dialog[open] [data-bm="close"]').first().click();
-  const persisted = await page.evaluate(() => JSON.stringify({ ventas: Finanzas.state.ventas, compras: Finanzas.state.compras, productos: Finanzas.state.productos, pagosCompra: Finanzas.state.pagosCompra, pagosVenta: Finanzas.state.pagosVenta }));
-  await page.reload(); assert.equal(await page.evaluate(() => JSON.stringify({ ventas: Finanzas.state.ventas, compras: Finanzas.state.compras, productos: Finanzas.state.productos, pagosCompra: Finanzas.state.pagosCompra, pagosVenta: Finanzas.state.pagosVenta })), persisted);
-  await page.evaluate(async () => { for (let i = 0; i < 11; i++) await Finanzas.getBusinessService().execute('saveSupplier', { nombre: `Proveedor adicional ${i}`, cedula: String(80010000 + i) }); });
-  view = await nav(page, 'reports', mobile); await view.locator('[data-report-tab="purchases"]').click(); assert.equal(await view.locator('[data-report-detail="suppliers"] tr[data-report-contact-id]').count(), 12); await view.locator('[data-report-contact-search="suppliers"]').fill('Proveedor adicional 10'); assert.equal(await view.locator('[data-report-detail="suppliers"] tr[data-report-contact-id]').count(), 1);
+  if (mobile) {
+    await page.locator('#mobileBusinessOptionsToggle').click();
+    await page.locator('[data-quick-action="business-alerts"]').click();
+  } else await page.evaluate(() => pcApp.toggleAlertsSummary());
+  await page
+    .locator('.bm-dialog[open]')
+    .getByRole('heading', { name: 'Alertas de Mi Negocio' })
+    .waitFor();
+  await page.locator('.bm-dialog[open] [data-bm="close"]').first().click();
+  const persisted = await page.evaluate(() =>
+    JSON.stringify({
+      ventas: Finanzas.state.ventas,
+      compras: Finanzas.state.compras,
+      productos: Finanzas.state.productos,
+      pagosCompra: Finanzas.state.pagosCompra,
+      pagosVenta: Finanzas.state.pagosVenta,
+    }),
+  );
+  await page.reload();
+  assert.equal(
+    await page.evaluate(() =>
+      JSON.stringify({
+        ventas: Finanzas.state.ventas,
+        compras: Finanzas.state.compras,
+        productos: Finanzas.state.productos,
+        pagosCompra: Finanzas.state.pagosCompra,
+        pagosVenta: Finanzas.state.pagosVenta,
+      }),
+    ),
+    persisted,
+  );
+  await page.evaluate(async () => {
+    for (let i = 0; i < 11; i++) {
+      await Finanzas.getBusinessService().execute('saveSupplier', {
+        nombre: `Proveedor adicional ${i}`,
+        cedula: String(80010000 + i),
+      });
+    }
+  });
+  view = await nav(page, 'reports', mobile);
+  await view.locator('[data-report-tab="purchases"]').click();
+  assert.equal(
+    await view.locator('[data-report-detail="suppliers"] tr[data-report-contact-id]').count(),
+    12,
+  );
+  await view.locator('[data-report-contact-search="suppliers"]').fill('Proveedor adicional 10');
+  assert.equal(
+    await view.locator('[data-report-detail="suppliers"] tr[data-report-contact-id]').count(),
+    1,
+  );
   // Archive a related customer and retain the sale and customer snapshot.
-  await view.locator('[data-report-tab="sales"]').click(); await view.locator('[data-report-detail="customers"]').getByRole('button', { name: 'Eliminar / archivar', exact: true }).click(); await save(page);
-  assert.equal(await page.evaluate(() => Finanzas.state.clientes[0].estado), 'ARCHIVADO'); assert.equal(await page.evaluate(() => Finanzas.state.facturacion.documents.find(d => d.id === Finanzas.state.ventas[0].invoiceDocumentId).customer.name), 'Cliente A');
+  await view.locator('[data-report-tab="sales"]').click();
+  await view
+    .locator('[data-report-detail="customers"]')
+    .getByRole('button', { name: 'Eliminar / archivar', exact: true })
+    .click();
+  await save(page);
+  assert.equal(await page.evaluate(() => Finanzas.state.clientes[0].estado), 'ARCHIVADO');
+  assert.equal(
+    await page.evaluate(
+      () =>
+        Finanzas.state.facturacion.documents.find(
+          (d) => d.id === Finanzas.state.ventas[0].invoiceDocumentId,
+        ).customer.name,
+    ),
+    'Cliente A',
+  );
 }
 async function seed(page) {
   await page.evaluate(async () => {
     const s = Finanzas.getBusinessService();
     await s.execute('saveSupplier', { nombre: 'Proveedor de prueba', cedula: '9001' });
-    const c = (await s.execute('saveCustomer', { nombre: 'Cliente de prueba', cedula: '1234' })).record;
-    const p = (await s.execute('saveProduct', { nombre: 'Producto con descripción para pantalla estrecha', stock: '12', stockMinimo: '15', precioVenta: '15000', costoUnitario: '7000', sku: 'P-01' })).record;
-    await s.execute('sale', { clienteId: c.id, fecha: '2026-11-09', tipoPago: 'CREDITO', detalles: [{ productoId: p.id, cantidad: '2', precioUnitario: '15000' }] });
+    const c = (await s.execute('saveCustomer', { nombre: 'Cliente de prueba', cedula: '1234' }))
+      .record;
+    const p = (
+      await s.execute('saveProduct', {
+        nombre: 'Producto con descripción para pantalla estrecha',
+        stock: '12',
+        stockMinimo: '15',
+        precioVenta: '15000',
+        costoUnitario: '7000',
+        sku: 'P-01',
+      })
+    ).record;
+    await s.execute('sale', {
+      clienteId: c.id,
+      fecha: '2026-11-09',
+      tipoPago: 'CREDITO',
+      detalles: [{ productoId: p.id, cantidad: '2', precioUnitario: '15000' }],
+    });
   });
 }
 (async () => {
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); const origin = `http://127.0.0.1:${server.address().port}`;
-  const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHROME ? { executablePath: process.env.PLAYWRIGHT_CHROME } : {}) });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const browser = await chromium.launch({
+    headless: true,
+    ...(process.env.PLAYWRIGHT_CHROME ? { executablePath: process.env.PLAYWRIGHT_CHROME } : {}),
+  });
   try {
-    for (const [name, mobile] of [['desktop.html', false], ['mobile.html', true]]) for (const width of [320, 375, 390, 768, 1024, 1366, 1920]) {
-      const context = await browser.newContext({ viewport: { width, height: width < 500 ? 900 : 1100 }, acceptDownloads: true }); context.setDefaultTimeout(10000);
-      await context.route('https://**/*', route => route.abort()); await context.addInitScript(() => { window.print = () => {}; });
-      const page = await context.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message));
-      await page.goto(`${origin}/${name}?modulo=EMPRESARIAL`); await page.addStyleTag({ content: '*{animation:none!important;transition:none!important}.toast-container,.pc-toast-container{display:none!important}' });
-      if ((!mobile && width === 1366) || (mobile && width === 390)) await flow(page, mobile); else await seed(page);
-      await page.addStyleTag({ content: '*{animation:none!important;transition:none!important}.toast-container,.toast-notice{display:none!important}' });
-      for (const section of Object.keys(routes)) {
-        const view = await nav(page, section, mobile);
-        assert.equal(await view.locator('.bm-error').count(), 0, `${name} ${width} ${section}`);
-        const bounds = await view.evaluate(el => ({ right: el.getBoundingClientRect().right, scroll: el.scrollWidth, client: el.clientWidth, viewport: innerWidth }));
-        assert.ok(bounds.right <= bounds.viewport + 2, `${name} ${width} ${section}: right=${bounds.right}`);
-        assert.ok(bounds.scroll <= bounds.client + 2, `${name} ${width} ${section}: horizontal overflow ${bounds.scroll}/${bounds.client}`);
-        assert.equal(await view.locator('.bm-header,.bm-location,h1').count(), 0);
-        assert.ok(await view.getAttribute('aria-label'), 'la sección conserva su nombre accesible');
-        if (!['management', 'movements', 'reports'].includes(section)) assert.equal(await view.locator('.bm-kpis article').count(), 4);
-        if (section === 'inventory') assert.equal(await view.getByRole('button', { name: 'Historial de inventario', exact: true }).count(), 0);
-        if ((!mobile && width === 1366) || (mobile && width === 390)) await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-${section}.png`), animations: 'disabled' });
-        if ((width === 1366 && !mobile) || (width === 390 && mobile)) {
-          if (['purchases', 'products', 'cash', 'expenses'].includes(section)) {
-            // Gastos contiene dos acciones legítimas: comprobar ambas sin selector ambiguo.
-            const actions = section === 'expenses' ? ['expense', 'income'] : [null];
-            for (const kind of actions) {
-              await view.locator('.bm-toolbar [data-bm="form"]' + `[data-kind="${kind || ({ purchases: 'purchase', products: 'product', cash: 'income' }[section])}"]`).click();
-              const dialog = page.locator('.bm-dialog[open]'); await dialog.waitFor();
-              assert.ok(await dialog.locator('form').count());
-              await dialog.locator('[data-bm="close"]').first().click();
+    for (const [name, mobile] of [
+      ['desktop.html', false],
+      ['mobile.html', true],
+    ]) {
+      for (const width of [320, 375, 390, 768, 1024, 1366, 1920]) {
+        const context = await browser.newContext({
+          viewport: { width, height: width < 500 ? 900 : 1100 },
+          acceptDownloads: true,
+        });
+        context.setDefaultTimeout(10000);
+        await context.route('https://**/*', (route) => route.abort());
+        await context.addInitScript(() => {
+          window.print = () => {};
+        });
+        const page = await context.newPage(),
+          errors = [];
+        page.on('pageerror', (e) => errors.push(e.message));
+        await page.goto(`${origin}/${name}?modulo=EMPRESARIAL`);
+        await page.addStyleTag({
+          content:
+            '*{animation:none!important;transition:none!important}.toast-container,.pc-toast-container{display:none!important}',
+        });
+        if ((!mobile && width === 1366) || (mobile && width === 390)) await flow(page, mobile);
+        else await seed(page);
+        await page.addStyleTag({
+          content:
+            '*{animation:none!important;transition:none!important}.toast-container,.toast-notice{display:none!important}',
+        });
+        for (const section of Object.keys(routes)) {
+          const view = await nav(page, section, mobile);
+          assert.equal(await view.locator('.bm-error').count(), 0, `${name} ${width} ${section}`);
+          const bounds = await view.evaluate((el) => ({
+            right: el.getBoundingClientRect().right,
+            scroll: el.scrollWidth,
+            client: el.clientWidth,
+            viewport: innerWidth,
+          }));
+          assert.ok(
+            bounds.right <= bounds.viewport + 2,
+            `${name} ${width} ${section}: right=${bounds.right}`,
+          );
+          assert.ok(
+            bounds.scroll <= bounds.client + 2,
+            `${name} ${width} ${section}: horizontal overflow ${bounds.scroll}/${bounds.client}`,
+          );
+          assert.equal(await view.locator('.bm-header,.bm-location,h1').count(), 0);
+          assert.ok(
+            await view.getAttribute('aria-label'),
+            'la sección conserva su nombre accesible',
+          );
+          if (!['management', 'movements', 'reports'].includes(section)) {
+            assert.equal(await view.locator('.bm-kpis article').count(), 4);
+          }
+          if (section === 'inventory') {
+            assert.equal(
+              await view
+                .getByRole('button', { name: 'Historial de inventario', exact: true })
+                .count(),
+              0,
+            );
+          }
+          if ((!mobile && width === 1366) || (mobile && width === 390)) {
+            await page.screenshot({
+              path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-${section}.png`),
+              animations: 'disabled',
+            });
+          }
+          if ((width === 1366 && !mobile) || (width === 390 && mobile)) {
+            if (['purchases', 'products', 'cash', 'expenses'].includes(section)) {
+              // Gastos contiene dos acciones legítimas: comprobar ambas sin selector ambiguo.
+              const actions = section === 'expenses' ? ['expense', 'income'] : [null];
+              for (const kind of actions) {
+                await view
+                  .locator(
+                    '.bm-toolbar [data-bm="form"]' +
+                      `[data-kind="${kind || { purchases: 'purchase', products: 'product', cash: 'income' }[section]}"]`,
+                  )
+                  .click();
+                const dialog = page.locator('.bm-dialog[open]');
+                await dialog.waitFor();
+                assert.ok(await dialog.locator('form').count());
+                await dialog.locator('[data-bm="close"]').first().click();
+              }
+            }
+            if (['dashboard', 'cash'].includes(section)) {
+              await view.locator('.bm-chart-data summary').click();
+              assert.equal(await view.locator('.bm-chart-data tbody tr').count(), 6);
+              await view.locator('.bm-chart-data summary').click();
             }
           }
-          if (['dashboard', 'cash'].includes(section)) {
-            await view.locator('.bm-chart-data summary').click();
-            assert.equal(await view.locator('.bm-chart-data tbody tr').count(), 6);
-            await view.locator('.bm-chart-data summary').click();
-          }
         }
-      }
-      await nav(page, 'dashboard', mobile);
-      assert.equal(await page.locator('a[href*="desktop.html"],a[href*="mobile.html"]').count(), 0, 'no platform selectors');
-      await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-dashboard.png`), animations: 'disabled' });
-      await nav(page, 'inventory', mobile); await page.locator('[data-business-section="inventory"]').getByRole('button', { name: '+ Producto', exact: true }).click();
-      const dialog = page.locator('.bm-dialog[open]'); assert.ok(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 2)); await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-form.png`) }); await dialog.locator('[data-bm="close"]').first().click();
-      const avatar = page.locator(mobile ? '#view-negocio [data-business-profile]' : '.pc-top-header [data-business-profile]');
-      if (mobile || width >= 768) {
-        assert.ok((await avatar.innerText()).trim());
-        await avatar.click(); assert.equal(await page.locator('#view-perfil').evaluate(el => el.classList.contains('active')), true);
         await nav(page, 'dashboard', mobile);
+        assert.equal(
+          await page.locator('a[href*="desktop.html"],a[href*="mobile.html"]').count(),
+          0,
+          'no platform selectors',
+        );
+        await page.screenshot({
+          path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-dashboard.png`),
+          animations: 'disabled',
+        });
+        await nav(page, 'inventory', mobile);
+        await page
+          .locator('[data-business-section="inventory"]')
+          .getByRole('button', { name: '+ Producto', exact: true })
+          .click();
+        const dialog = page.locator('.bm-dialog[open]');
+        assert.ok(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 2));
+        await page.screenshot({
+          path: path.join(output, `${mobile ? 'mobile' : 'pc'}-${width}-form.png`),
+        });
+        await dialog.locator('[data-bm="close"]').first().click();
+        const avatar = page.locator(
+          mobile
+            ? '#view-negocio [data-business-profile]'
+            : '.pc-top-header [data-business-profile]',
+        );
+        if (mobile || width >= 768) {
+          assert.ok((await avatar.innerText()).trim());
+          await avatar.click();
+          assert.equal(
+            await page.locator('#view-perfil').evaluate((el) => el.classList.contains('active')),
+            true,
+          );
+          await nav(page, 'dashboard', mobile);
+        }
+        const personal = await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos));
+        await page.evaluate(async () => {
+          if (typeof pcApp !== 'undefined') await pcApp.setModulo('PERSONAL', 'inicio');
+          else await mobileApp.setModulo('PERSONAL', 'inicio');
+        });
+        assert.equal(
+          await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)),
+          personal,
+        );
+        assert.equal(
+          await page.locator('#view-inicio').evaluate((el) => el.classList.contains('active')),
+          true,
+        );
+        await page.setViewportSize({ width: width < 800 ? 1366 : 390, height: 950 });
+        assert.equal(
+          await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)),
+          personal,
+        );
+        assert.deepEqual(errors, []);
+        await context.close();
+        console.log(
+          `PASS ${name} ${width}px: business views, forms, navigation and isolation${(!mobile && width === 1366) || (mobile && width === 390) ? '; full CRUD/payment/reload/storage-error flow' : ''}`,
+        );
       }
-      const personal = await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos));
-      await page.evaluate(async () => { if (typeof pcApp !== 'undefined') await pcApp.setModulo('PERSONAL', 'inicio'); else await mobileApp.setModulo('PERSONAL', 'inicio'); });
-      assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)), personal); assert.equal(await page.locator('#view-inicio').evaluate(el => el.classList.contains('active')), true);
-      await page.setViewportSize({ width: width < 800 ? 1366 : 390, height: 950 });
-      assert.equal(await page.evaluate(() => JSON.stringify(Finanzas.state.movimientos)), personal);
-      assert.deepEqual(errors, []); await context.close(); console.log(`PASS ${name} ${width}px: business views, forms, navigation and isolation${(!mobile && width === 1366) || (mobile && width === 390) ? '; full CRUD/payment/reload/storage-error flow' : ''}`);
     }
-  } finally { await browser.close(); server.close(); }
-})().catch(e => { console.error(e); server.close(); process.exitCode = 1; });
+  } finally {
+    await browser.close();
+    server.close();
+  }
+})().catch((e) => {
+  console.error(e);
+  server.close();
+  process.exitCode = 1;
+});
